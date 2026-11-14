@@ -14,10 +14,10 @@ Cloudflare recommends its Workers Vitest integration for this purpose. The `@clo
 
 - `@simplewebauthn/server@14.1.0`: current JSR release at the time of this test; its official package listing explicitly names Cloudflare Workers as a supported runtime.
 - `@simplewebauthn/browser@14.0.0`: current browser package release; browser behavior still needs separate Safari/iPhone testing.
-- `vitest@4.1.0`: minimum version named by Cloudflare's current first-test guide.
-- `@cloudflare/vitest-plugin@1.8.2`: current npm release selected for this experiment.
+- `vitest@4.1.0`: minimum version named by Cloudflare's first-test guide used when this experiment was prepared.
+- `@cloudflare/vitest-plugin@1.8.2`: plugin version selected for this experiment.
 
-These are test candidates, not production approvals. The CI job installs exact direct versions temporarily with `--no-save --package-lock=false`; no dependencies or lockfile are committed by this experiment. A production dependency lockfile is created only after successful compatibility and security review.
+These are test candidates, not production approvals. The CI job uses Node.js 24 with the current Node-24-compatible GitHub Actions releases, then installs exact direct package versions temporarily with `--no-save`; no dependencies or lockfile are committed by this experiment. npm 10 has a documented Arborist peer-dependency resolution crash matching the initial `edgesOut` error, so the harness now uses Node.js 24 (with its newer bundled npm) rather than Node.js 22. A production dependency lockfile is created only after successful compatibility and security review.
 
 ## Tests prepared
 
@@ -55,7 +55,7 @@ GitHub documents standard GitHub-hosted runners as free for public repositories.
 ## Remaining gates
 
 1. Confirm the GitHub Actions run completed successfully; the GitHub connector currently does not expose the push-triggered run listing.
-2. If it fails, inspect the exact install/runtime error and correct the harness before adding authentication code.
+2. If it fails, inspect the exact install/runtime error and correct the harness before adding authentication code. The first observed failure was an npm Arborist `edgesOut` crash during dependency installation; the workflow was moved to Node.js 24 to avoid the affected older npm resolver.
 3. After the smoke test passes, add negative tests around WebAuthn verification with synthetic fixtures.
 4. Separately test the browser package and passkey ceremony in Safari on the owner's iPhone.
 5. Only then consider a reviewed authentication implementation. No deployment or personal-data storage is authorized by this test.
