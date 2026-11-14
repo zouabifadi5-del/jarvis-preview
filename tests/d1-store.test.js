@@ -458,6 +458,7 @@ test("recovery codes are hashed, single-use, and replace all previous codes atom
     });
     assert.equal(replacement.recoveryCodes.length, 10);
     assert.ok(await findActiveCredential(binding, "recovery-replacement"));
+    assert.equal(await findActiveCredential(binding, "recovery-original"), null);
     assert.equal(await findActiveRecoveryCode(binding, oldCode), null);
     assert.equal(await findActiveRecoveryCode(binding, oldUnusedCode), null);
     assert.equal(await findActiveSession(binding, { sessionToken: session.sessionToken, now: 1005 }), null);
