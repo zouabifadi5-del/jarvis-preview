@@ -16,8 +16,9 @@
 
 ## Initial architecture
 
-- **Backend candidate:** Cloudflare Workers Free for a small stateless API, subject to account eligibility and a fresh zero-cost review before deployment. The current free documentation lists 100,000 requests/day and 10 ms CPU time per invocation. No account has been connected and no service has been deployed.
-- **Service scaffold:** `src/worker.js` currently exposes only a non-sensitive `/health` response. It does not process commands, authenticate users, store memory, or call an AI provider.
+- **Backend candidate:** Cloudflare Workers is the provisional host for a small stateless API. The account's billing status and free-plan eligibility have not yet been independently verified; do not enable paid services, billing, or trials.
+- **Deployment status:** The owner connected the public `jarvis-preview` repository to a Cloudflare Workers project named `jarvis-preview-api`, configured its production branch as `jarvis-foundation`, and observed a successful deployment build. GitHub's repository default branch remains `main`; Cloudflare's production-branch setting is separate.
+- **Service scaffold:** `src/worker.js` exposes only a non-sensitive `/health` response. The deployment build succeeded, but the live `/health` response has not yet been verified. The worker does not process commands, authenticate users, store memory, or call an AI provider.
 
 
 - **iPhone client:** responsive web app/PWA, designed for Safari on iPhone. A PWA can provide an app-like home-screen entry point, but iOS does not permit an ordinary website to continuously listen for a custom wake word in the background.
@@ -44,8 +45,8 @@
 ## Phased delivery
 
 1. **Foundation:** document architecture, privacy boundaries, permissions, and repository structure.
-2. **Client:** replace the echo-only prototype with an accessible, responsive command interface and honest status indicators.
-3. **Service:** select a genuinely free backend option and implement a minimal authenticated health endpoint without exposing secrets.
+2. **Client:** create an accessible, responsive preview command interface with honest status indicators.
+3. **Service:** deploy the minimal health-only worker scaffold; verify the live endpoint and confirm the account remains on a zero-cost plan before adding functionality.
 4. **AI connection:** connect an AI provider only after confirming a no-cost option and its limits. No paid API is assumed.
 5. **Identity and memory:** implement owner authentication, protected memory, and data controls.
 6. **Integrations:** add one integration at a time, starting with read-only access and explicit approvals for writes.
