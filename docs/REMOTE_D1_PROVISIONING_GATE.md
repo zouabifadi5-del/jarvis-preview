@@ -22,14 +22,15 @@ It must not store conversations, prompts, private memory, email, contact lists, 
 
 ## Required Worker configuration
 
-The isolated branch configures Workers Static Assets and the D1 binding above.
+The isolated branch configures Workers Static Assets and the D1 binding above. The owner-auth schema migration `0001_owner_auth.sql` was confirmed applied by the owner. A follow-up migration `0002_auth_rate_limits.sql` has now been added on the isolated branch and must also be applied before deploying the updated code.
 
 Required non-secret Worker variables:
 - `AUTH_ORIGIN`: the exact HTTPS origin serving the owner page and API.
 - `WEBAUTHN_RP_ID`: the hostname only, matching that origin.
 
 Required temporary secret:
-- `JARVIS_BOOTSTRAP_SECRET`: a locally generated high-entropy secret of at least 32 characters. Set it through Cloudflare's secret controls; never put its value in Git, a URL, a screenshot, or this repository.
+- `JARVIS_BOOTSTRAP_SECRET`: a locally generated high-entropy secret of at least 32 characters. Set it through Cloudflare's secret controls; never put its value in Git, a URL, a screenshot, or this repository. Remove it immediately after first-owner enrollment succeeds.
+- `JARVIS_RATE_LIMIT_HMAC_SECRET`: a separate, persistent, locally generated high-entropy secret of at least 32 characters. It HMACs the Cloudflare-provided client IP and action group so raw IP addresses are not stored in D1. Keep it configured after enrollment; never reuse the bootstrap secret.
 
 For the currently documented Worker host, the intended values are:
 - Origin: `https://jarvis-preview-api.zouabifadi5.workers.dev`
@@ -39,8 +40,8 @@ These values must be verified against the actual served owner page immediately b
 
 ## Remaining approved sequence
 
-1. Apply `migrations/0001_owner_auth.sql` to the isolated D1 database and run real D1 smoke tests.
-2. Configure `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, and the temporary `JARVIS_BOOTSTRAP_SECRET` through Cloudflare controls.
+1. Confirm `migrations/0001_owner_auth.sql` is applied (owner confirmed success); apply `migrations/0002_auth_rate_limits.sql` and run real D1 smoke tests for both migrations.
+2. Configure `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, temporary `JARVIS_BOOTSTRAP_SECRET`, and persistent `JARVIS_RATE_LIMIT_HMAC_SECRET` through Cloudflare controls.
 3. Obtain separate explicit approval before deploying the isolated Worker branch.
 4. Verify the served page origin, CSP, cookies, and static assets. Only then perform the first passkey enrollment on the owner's iPhone.
 5. Immediately after successful first-owner enrollment, remove the temporary `JARVIS_BOOTSTRAP_SECRET` from the Worker. The database's singleton owner marker permanently closes first-owner enrollment.
