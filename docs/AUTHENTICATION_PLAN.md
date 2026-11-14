@@ -5,15 +5,24 @@
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
 
-## WebAuthn frontend identity — pending verification
+## Selected WebAuthn identity and frontend hosting
 
-- **Confirmed backend/API URL:** `https://jarvis-preview-api.zouabifadi5.workers.dev`. This is the Worker endpoint only.
-- **Frontend origin:** not yet verified. The repository architecture describes a GitHub Pages frontend, but the exact live page URL has not been confirmed.
-- **WebAuthn RP ID and expected browser origin:** deliberately unset until the actual login page URL is confirmed.
+- **Authentication UI origin (planned):** `https://jarvis-preview-api.zouabifadi5.workers.dev`
+- **WebAuthn RP ID (planned):** `jarvis-preview-api.zouabifadi5.workers.dev`
+- **Allowed origin:** exact match to the authentication UI origin above
+- **API:** same Worker origin; use relative same-origin `/auth/*` requests
+- **Cookie scope:** host-only; omit the `Domain` attribute
 
-Important correction: the Worker API hostname is **not automatically a valid WebAuthn RP ID**. The RP ID must equal the browser page's effective domain or be a registrable-domain suffix of it. The server must also validate the exact browser origin. If the login page is on GitHub Pages while the API is on `workers.dev`, the Worker hostname cannot be used as that page's RP ID. Do not generate real passkey options or enroll a credential until the page origin and matching RP ID are confirmed.
+The owner supplied this Worker URL. To make it a valid WebAuthn identity without buying a domain, the authentication/login page will be served from the same Worker hostname using Cloudflare Workers Static Assets. The existing GitHub Pages preview, if enabled, remains a public demo and will not perform passkey ceremonies. This avoids cross-site cookies/CORS and ensures the browser page's effective domain matches the RP ID.
 
-Reference: https://www.w3.org/TR/2026/REC-webauthn-3-20260825/
+Cloudflare documents Workers Static Assets as free and unlimited for asset requests, with no additional asset storage charge. Requests that invoke the Worker script remain subject to the Workers Free request limit. This configuration is planned only; static assets have not been added to the deployed Worker and no deployment has been made.
+
+The RP ID and exact origin must be rechecked against the actual served login page before the first real passkey is enrolled. Never accept origin or RP ID values supplied by a request. Changing the hostname after enrollment generally requires enrolling new passkeys.
+
+References:
+- https://www.w3.org/TR/2026/REC-webauthn-3-20260825/
+- https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/
+- https://developers.cloudflare.com/workers/static-assets/
 
 ## 1. Library selection
 
