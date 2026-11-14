@@ -17,6 +17,7 @@
 - [x] Connect the public preview repository and configure Cloudflare's production branch as `jarvis-foundation`.
 - [ ] Verify the active deployment was built from `jarvis-foundation` and serves the health-only worker scaffold.
 - [ ] Verify the live `/health` response and independently confirm zero-cost account/billing status.
+- [x] Add zero-dependency tests for the worker health route, unknown routes, and non-GET requests; all three pass locally with Node.js.
 - [ ] Keep credentials on the server only.
 - [ ] Add request validation before accepting commands.
 - [ ] Add rate limiting and safe error handling.
