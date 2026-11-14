@@ -66,6 +66,10 @@ The workflow:
 
 The Worker test harness is not a hardened security sandbox. Only trusted project code should be run in it.
 
+## D1 schema validation added alongside this harness
+
+The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, and hash-only session storage. The latest workflow run passed all 6 schema tests plus all 24 Worker-runtime tests (30 total assertions across the two test commands). This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on confirmed Free-plan eligibility and separate owner approval.
+
 ## Remaining gates
 
 1. Add a separate, reviewed server-side authentication design: origin/RP ID allowlists, one-time challenge storage and expiry, credential persistence, replay/counter policy, session issuance, CSRF protections where applicable, rate limits, and recovery procedures.
