@@ -24,7 +24,10 @@
 
 ## Milestone 3 — Owner security and memory
 - [x] Document a single-owner passkey, session, privacy, and command-approval design (design only; not implemented or audited).
-- [ ] Select and verify a maintained WebAuthn implementation compatible with the Worker runtime.
+- [x] Research a maintained WebAuthn candidate: SimpleWebAuthn server 14.1.0 documents Cloudflare Workers support; browser 14.0.0 is the current browser package (candidates only, not installed).
+- [x] Document the one-owner enrollment/login/session design and negative-test matrix.
+- [ ] Verify the actual Cloudflare account is on the Free plan before provisioning SQLite Durable Object storage.
+- [ ] Pin dependencies and prove the selected versions work in the exact Worker runtime.
 - [ ] Owner authentication.
 - [ ] Session protection and logout.
 - [ ] Explicit memory review, correction, export, and deletion.
