@@ -10,6 +10,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 
 - [Architecture foundation](docs/ARCHITECTURE.md)
 - [Delivery roadmap](docs/ROADMAP.md)
+- [Owner security design](docs/SECURITY.md) (proposal only; no authentication is implemented)
 
 ## Repository boundaries
 
