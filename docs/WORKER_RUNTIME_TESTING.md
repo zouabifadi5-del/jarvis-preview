@@ -49,16 +49,11 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 
 ### Current CI result
 
-- Local SQLite/Node checks: 14 passed.
-- Workers runtime test files: 2 passed.
-- Workers runtime test cases: 31 passed.
-- Wrangler `deploy --dry-run`: successful; it validated the static assets and `ASSETS` binding without uploading or deploying.
-- Total test cases: 45 passed.
-- Run #78: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43614569630
+The current suite is being extended to cover the native browser client and static-asset routing. Check the latest GitHub Actions run on `jarvis-worker-runtime-tests` for the result; do not treat the older #78 run as validation of the new browser client.
 
 ### Static shell and Wrangler validation
 
-The isolated branch now contains `public/index.html` and `public/_headers`, with a Workers Static Assets binding in `wrangler.toml`. The page is intentionally informational only: it has no script, form, sign-in, or enrollment flow. Its headers deny framing, disable caching, and apply a restrictive Content Security Policy. CI runs `wrangler deploy --dry-run`, which compiles and validates the Worker/assets configuration without uploading or deploying; this was successful in run #54.
+The isolated branch now contains `public/index.html`, `public/app.js`, and `public/_headers`, with a Workers Static Assets binding in `wrangler.toml`. The first-party browser client uses native WebAuthn APIs (no third-party CDN, localStorage, or sessionStorage) for first-owner enrollment, sign-in, additional passkey enrollment, credential listing, and logout. The CSP allows only same-origin scripts and API calls. The Worker routes the root page, HTML, JS, and CSS to static assets. CI syntax-checks the browser script and dry-runs Wrangler without uploading or deploying.
 
 ## CI safety boundaries
 
@@ -74,13 +69,13 @@ The Worker test harness is not a hardened security sandbox. Only trusted project
 
 ## D1 schema validation added alongside this harness
 
-The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow run #54 passed all 19 local SQLite/Node tests, the Wrangler 4.148.0 `deploy --dry-run` build/config validation, and all 24 Workers runtime tests (43 tests total). The dry run read both static files and reported the `ASSETS` binding; it did not upload or deploy anything. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43613735127 This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 storage helpers are now wired into initial registration, login, session-inspection, and logout route handlers on the isolated branch. Synthetic tests cover registration/login option generation, origin enforcement, bootstrap secret checks, and request content-type enforcement. The routes fail closed until D1 and origin settings are configured. No D1 database, secret, deployment, or real passkey has been created. The static owner-access shell remains informational only, with no scripts, forms, sign-in, or enrollment.
+The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow run #54 passed all 19 local SQLite/Node tests, the Wrangler 4.148.0 `deploy --dry-run` build/config validation, and all 24 Workers runtime tests (43 tests total). The dry run read both static files and reported the `ASSETS` binding; it did not upload or deploy anything. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43613735127 This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 storage helpers are wired into first-owner registration, login, session inspection, logout, and protected additional-credential management routes on the isolated branch. Synthetic tests cover registration/login option generation, origin enforcement, bootstrap-secret checks, content-type enforcement, CSRF-protected additional credential setup, and refusal to revoke the final active credential. The browser client is implemented but remains untested on a real iPhone/browser. Routes fail closed until D1 and exact origin settings are configured. No D1 database, secret, deployment, or real passkey has been created.
 
 ## Remaining gates
 
 1. Add end-to-end route tests for registration verification, login verification, session cookie flags, CSRF, logout, replay, and error handling using a local D1-compatible test adapter.
 2. Add multiple-device passkey enrollment and revocation, plus a safe recovery path and login rate limiting.
-3. Add browser-side passkey UI and test the actual ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior.
+3. Test the first-party browser passkey client and actual ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior.
 4. Review the pinned dependency and commit a lockfile after advisory review.
 5. Only after those gates and separate explicit approval, create an isolated D1 database and perform a real D1 smoke test. No deployment or personal-data storage is authorized by this test.
 
