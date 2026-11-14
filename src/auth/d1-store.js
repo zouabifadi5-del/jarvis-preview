@@ -201,8 +201,6 @@ export async function createSession(
 
   // Remove expired/revoked session rows when issuing a new session.
   await db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ? OR revoked_at IS NOT NULL").bind(now).run();
-  // Bound stale session storage without retaining old session identifiers.
-  await db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ? OR (revoked_at IS NOT NULL AND revoked_at <= ?)").bind(now, now - 7 * 24 * 60 * 60).run();
 
   const sessionToken = randomToken();
   const csrfToken = randomToken();
