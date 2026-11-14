@@ -42,15 +42,14 @@
 - [x] Add negative route tests for replayed ceremonies, wrong origin, tampered signatures, CSRF failure, and owner-enrollment enumeration.
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
 - [x] Add a CI production-dependency advisory audit (`npm audit --omit=dev --audit-level=moderate`); a committed, reviewed lockfile and full transitive dependency review remain outstanding.
-- [x] Pass 23 local SQLite/Node checks, 39 Workers runtime tests, production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI (62 test cases total).
+- [x] Pass 25 local SQLite/Node checks and 40 Workers runtime tests (65 total), including HMAC-keyed rate-limit enforcement, plus production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI.
 - [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add/remove passkeys, recovery-code display/copy/download, and sign-out.
 - [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey; the browser interface is not deployed or device-tested.
 - [x] Add multi-device credential listing/addition/revocation with last-passkey protection, reload-persistent CSRF cookie, sign-out-everywhere, recent-passkey confirmation, session rotation, and idle timeout.
 - [x] Add ten one-time hashed recovery codes, replacement-passkey recovery, and atomic invalidation of old credentials, sessions, and recovery codes.
 - [x] Implement fixed-window D1 rate-limit counters keyed by HMACs of the Cloudflare client IP and auth action; raw IPs are not stored.
-- [ ] Pass CI tests for rate-limit enforcement and verify the rate-limit migration against remote D1.
-- [ ] Configure the persistent `JARVIS_RATE_LIMIT_HMAC_SECRET` plus the temporary bootstrap secret through Cloudflare controls.
-- [ ] Configure the exact same-origin Worker variables and temporary bootstrap secret through Cloudflare controls; do not place the secret in Git or chat.
+- [x] Pass CI tests for rate-limit enforcement and local migration/storage validation; remote D1 verification of migration 0002 remains pending.
+- [ ] Configure `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through Cloudflare controls; never put secret values in Git or chat.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [ ] Explicit memory review, correction, export, and deletion.
 - [ ] Encrypt sensitive data at rest and in transit.
