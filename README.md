@@ -1,2 +1,27 @@
-# jarvis-preview
-JARVIS — Public Preview Prototype
+# J.A.R.V.I.S. — Public Preview
+
+**Just A Rather Very Intelligent System**
+
+This repository contains the public-facing prototype and non-sensitive project documentation.
+
+> The current website is a visual preview, not a functioning AI assistant. AI, owner authentication, memory, and account integrations are not connected yet.
+
+## Project documents
+
+- [Architecture foundation](docs/ARCHITECTURE.md)
+- [Delivery roadmap](docs/ROADMAP.md)
+
+## Repository boundaries
+
+- Public preview: this repository. Keep it free of credentials and private user data.
+- Private development repository: `jarvis-core`. Do not copy secrets into this public repository.
+
+## Development
+
+The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`.
+
+## Constraints
+
+- iPhone-first development; no Mac is assumed.
+- Zero-cost approach: no paid services, billing, or auto-renewing trials.
+- Do not claim features are operational until verified.
