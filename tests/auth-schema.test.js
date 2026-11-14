@@ -5,13 +5,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const migrationPath = fileURLToPath(new URL("../migrations/0001_owner_auth.sql", import.meta.url));
-const migration = readFileSync(migrationPath, "utf8");\nconst rateLimitMigration = readFileSync(\n  fileURLToPath(new URL("../migrations/0002_auth_rate_limits.sql", import.meta.url)),\n  "utf8"\n);
+const migration = readFileSync(migrationPath, "utf8");
+const rateLimitMigration = readFileSync(
+  fileURLToPath(new URL("../migrations/0002_auth_rate_limits.sql", import.meta.url)),
+  "utf8"
+);
 
 function createDatabase() {
   const db = new DatabaseSync(":memory:");
   // D1 enforces foreign keys by default; mirror that behavior in local SQLite.
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(migration);
+  db.exec(rateLimitMigration);
   return db;
 }
 
@@ -23,6 +28,7 @@ test("D1 auth migration creates only the intended auth tables", () => {
     ).all().map((row) => row.name);
     assert.deepEqual(names, [
       "auth_challenges",
+      "auth_rate_limits",
       "auth_sessions",
       "jarvis_owner",
       "owner_credentials",
