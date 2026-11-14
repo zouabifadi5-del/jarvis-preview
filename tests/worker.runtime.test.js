@@ -964,4 +964,88 @@ describe("JARVIS Worker runtime contract", () => {
     expect(challengeIssued).toBe(false);
   });
 
+
+  it("recovers owner access with one recovery code and rotates every recovery code", async () => {
+    const { db, state } = makeRouteD1();
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_BOOTSTRAP_SECRET: "r".repeat(64)
+    };
+    const origin = "https://example.test";
+    const registrationOptionsResponse = await handleAuthRequest(request("/auth/register/options", {
+      method: "POST",
+      headers: { Origin: origin, "X-Jarvis-Bootstrap": env.JARVIS_BOOTSTRAP_SECRET }
+    }), env);
+    const registrationOptions = await registrationOptionsResponse.json();
+    const firstCredential = await makeRouteRegistration(registrationOptions.challenge);
+    const registrationVerify = await handleAuthRequest(request("/auth/register/verify", {
+      method: "POST",
+      headers: {
+        Origin: origin,
+        "X-Jarvis-Bootstrap": env.JARVIS_BOOTSTRAP_SECRET,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ challenge: registrationOptions.challenge, response: firstCredential.response })
+    }), env);
+    expect(registrationVerify.status).toBe(200);
+    const registered = await registrationVerify.json();
+    expect(registered.recoveryCodes).toHaveLength(10);
+    const originalSessionCookie = registrationVerify.headers.get("set-cookie").match(/__Host-jarvis_session=([^;,]+)/)?.[1];
+    const recoveryCode = registered.recoveryCodes[0];
+
+    const recoveryOptionsResponse = await handleAuthRequest(request("/auth/recovery/options", {
+      method: "POST",
+      headers: { Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify({ recoveryCode })
+    }), env);
+    expect(recoveryOptionsResponse.status).toBe(200);
+    const recoveryOptions = await recoveryOptionsResponse.json();
+    const replacementCredential = await makeRouteRegistration(
+      recoveryOptions.challenge,
+      new Uint8Array([0x52,0x45,0x43,0x4f,0x56,0x45,0x52,0x59,0x2d,0x4e,0x45,0x57,0x2d,0x50,0x4b])
+    );
+    const recoveryVerify = await handleAuthRequest(request("/auth/recovery/verify", {
+      method: "POST",
+      headers: { Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: recoveryOptions.challenge, response: replacementCredential.response })
+    }), env);
+    expect(recoveryVerify.status).toBe(200);
+    const recovered = await recoveryVerify.json();
+    expect(recovered.authenticated).toBe(true);
+    expect(recovered.recoveryCodes).toHaveLength(10);
+    expect(state.credentials).toHaveLength(2);
+    expect(state.recoveryCodes.filter((row) => row.used_at === null)).toHaveLength(10);
+    expect(await (async () => {
+      const code = registered.recoveryCodes[1];
+      const hashBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code)));
+      let binary = "";
+      for (const byte of hashBytes) binary += String.fromCharCode(byte);
+      const hash = btoa(binary).split("+").join("-").split("/").join("_").split("=").join("");
+      return state.recoveryCodes.some((row) => row.code_hash === hash && row.used_at === null);
+    })()).toBe(false);
+
+    const oldSession = await handleAuthRequest(request("/auth/me", {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + originalSessionCookie }
+    }), env);
+    expect(oldSession.status).toBe(401);
+
+    const replayOldCode = await handleAuthRequest(request("/auth/recovery/options", {
+      method: "POST",
+      headers: { Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify({ recoveryCode })
+    }), env);
+    expect(replayOldCode.status).toBe(401);
+    await expect(replayOldCode.json()).resolves.toEqual({ error: "recovery_failed" });
+
+    const nextRecoveryOptions = await handleAuthRequest(request("/auth/recovery/options", {
+      method: "POST",
+      headers: { Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify({ recoveryCode: recovered.recoveryCodes[0] })
+    }), env);
+    expect(nextRecoveryOptions.status).toBe(200);
+  });
+
 });
