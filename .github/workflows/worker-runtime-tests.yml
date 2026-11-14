@@ -1,0 +1,29 @@
+name: Worker runtime tests
+
+on:
+  push:
+    branches:
+      - jarvis-worker-runtime-tests
+  pull_request:
+    branches:
+      - jarvis-foundation
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  worker-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+      - name: Install temporary test tooling
+        run: npm install --no-save --package-lock=false --no-audit --no-fund vitest@4.1.0 @cloudflare/vitest-plugin@1.8.2
+      - name: Run tests inside the Cloudflare Workers runtime
+        run: npx vitest run --config vitest.config.js
