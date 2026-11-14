@@ -21,3 +21,5 @@
     .credential { border: 1px solid #2d4058; border-radius: 10px; padding: 12px; margin-top: 9px; font-size: 12px; overflow-wrap: anywhere; }
     [hidden] { display: none !important; }
     .note { border-top: 1px solid #26364d; margin-top: 22px; padding-top: 16px; font-size: 11px; color: #8494aa; }
+
+pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px; border: 1px solid #3b5573; border-radius: 10px; background: #090f19; color: #cfe3ff; font-size: 12px; line-height: 1.8; }
