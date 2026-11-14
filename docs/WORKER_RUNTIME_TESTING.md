@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status:** The latest verified run #124 passed 34 Workers runtime tests and 15 local SQLite/Node checks, plus browser JavaScript syntax validation and a Wrangler dry-run build/config validation. Initial auth routes and a native browser passkey UI are present but not production-ready.  
+**Status:** The latest verified run #160 passed 37 Workers runtime tests and 19 local SQLite/Node checks, plus browser JavaScript syntax validation and Wrangler dry-run build/config validation (56 test cases total). The auth routes and native browser passkey UI remain a non-production scaffold.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -13,7 +13,7 @@ Cloudflare recommends its Workers Vitest integration for this purpose. The `@clo
 ## Candidate versions for this compatibility experiment
 
 - `@simplewebauthn/server@14.1.0`: pinned in `package.json`; synthetic WebAuthn and route option tests pass in the Workers runtime.
-- `@simplewebauthn/browser@14.0.0`: browser package candidate; browser behavior still needs separate Safari/iPhone testing.
+- Browser client: native WebAuthn APIs, with no third-party browser package.
 - `vitest@4.1.0`: version selected for the test harness.
 - `@cloudflare/vitest-plugin@1.8.2`: plugin version selected for this experiment.
 
@@ -38,7 +38,7 @@ The server package is now a declared runtime dependency. CI uses Node.js 24 and 
 - Construct a synthetic CBOR/none-attestation registration response and a signed synthetic authentication assertion.
 - Verify successful registration and authentication against the expected challenge, origin, and RP ID.
 - Assert rejection when registration or authentication uses a wrong challenge, wrong origin, or wrong RP ID.
-- Tamper with the synthetic authentication signature and assert verification does not succeed.
+- Exercise full synthetic route registration/login/session/logout, including challenge replay rejection, wrong-origin assertions, tampered signatures, CSRF failure, and owner-enrollment enumeration protection.
 - Reject authentication when user presence or user verification flags are missing.
 - Reject an authentication counter rollback.
 - Enforce application-level binding between response `id`/`rawId` and the selected stored credential record before calling the library verifier. This is an explicit wrapper because the library expects the caller to select and supply the correct credential.
@@ -74,7 +74,7 @@ The Worker test harness is not a hardened security sandbox. Only trusted project
 
 ## D1 schema validation added alongside this harness
 
-The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow run #54 passed all 19 local SQLite/Node tests, the Wrangler 4.148.0 `deploy --dry-run` build/config validation, and all 24 Workers runtime tests (43 tests total). The dry run read both static files and reported the `ASSETS` binding; it did not upload or deploy anything. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43613735127 This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 storage helpers are wired into first-owner registration, login, session inspection, logout, and protected additional-credential management routes on the isolated branch. Synthetic tests cover registration/login option generation, origin enforcement, bootstrap-secret checks, content-type enforcement, CSRF-protected additional credential setup, and refusal to revoke the final active credential. The browser client is implemented but remains untested on a real iPhone/browser. Routes fail closed until D1 and exact origin settings are configured. No D1 database, secret, deployment, or real passkey has been created.
+The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. Latest verified workflow run #160 passed all 19 local SQLite/Node checks and all 37 Workers-runtime tests (56 test cases total). It also passed `node --check public/app.js` and Wrangler 4.148.0 `deploy --dry-run`; the dry run validated the Worker and static assets without uploading or deploying. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43615922593 This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 storage helpers are wired into first-owner registration, login, session inspection, logout, and protected additional-credential management routes on the isolated branch. Synthetic tests cover registration/login option generation, origin enforcement, bootstrap-secret checks, content-type enforcement, CSRF-protected additional credential setup, and refusal to revoke the final active credential. The browser client is implemented but remains untested on a real iPhone/browser. Routes fail closed until D1 and exact origin settings are configured. No D1 database, secret, deployment, or real passkey has been created.
 
 ## Remaining gates
 
