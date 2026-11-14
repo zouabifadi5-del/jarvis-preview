@@ -1,92 +1,54 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#07111f">
-  <title>J.A.R.V.I.S. — Personal Assistant</title>
+  <meta name="description" content="J.A.R.V.I.S. private-assistant interface preview.">
+  <title>J.A.R.V.I.S. — Preview</title>
   <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: radial-gradient(circle at top, #142b46, #050a12 65%);
-      color: #e8f5ff;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-    }
-    .panel {
-      width: min(100%, 520px);
-      text-align: center;
-      padding: 32px 24px;
-      border: 1px solid #245578;
-      border-radius: 24px;
-      background: rgba(5, 17, 31, .88);
-      box-shadow: 0 0 45px #087bb533;
-    }
-    .orb {
-      width: 130px;
-      height: 130px;
-      margin: 12px auto 28px;
-      border-radius: 50%;
-      border: 2px solid #53caff;
-      box-shadow: 0 0 20px #36bfff, inset 0 0 25px #36bfff66;
-      display: grid;
-      place-items: center;
-      color: #8cddff;
-      font-size: 34px;
-      letter-spacing: 4px;
-    }
-    h1 { letter-spacing: 5px; font-size: 25px; }
-    .subtitle { color: #8ab8d5; font-size: 13px; }
-    #status { color: #70d5ff; margin: 24px 0; }
-    input {
-      width: 100%;
-      padding: 15px;
-      border-radius: 12px;
-      border: 1px solid #245578;
-      background: #0c1b2b;
-      color: white;
-      font-size: 16px;
-    }
-    button {
-      margin-top: 12px;
-      padding: 13px 22px;
-      border: 1px solid #53caff;
-      border-radius: 12px;
-      background: #103957;
-      color: white;
-      font-size: 15px;
-      cursor: pointer;
-    }
-    #reply { color: #b7d9ed; line-height: 1.6; min-height: 48px; }
+    body { margin: 0; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 20px; color: #e8f5ff; background: radial-gradient(circle at 50% 8%, #173653, #050a12 65%); }
+    main { width: min(100%, 560px); padding: clamp(24px, 6vw, 38px); text-align: center; border: 1px solid #245578; border-radius: 24px; background: rgba(5,17,31,.94); box-shadow: 0 0 45px #087bb533; }
+    .orb { width: 112px; aspect-ratio: 1; margin: 8px auto 24px; border-radius: 50%; border: 2px solid #53caff; box-shadow: 0 0 20px #36bfff, inset 0 0 25px #36bfff66; display: grid; place-items: center; color: #8cddff; font-size: 34px; letter-spacing: 4px; }
+    h1 { margin: 0; letter-spacing: 5px; font-size: clamp(22px, 6vw, 28px); }
+    .subtitle { color: #8ab8d5; font-size: 12px; letter-spacing: 1.5px; }
+    .state { display: inline-block; margin: 18px 0; padding: 8px 12px; border: 1px solid #8b7337; border-radius: 999px; color: #f3d58a; font-size: 12px; }
+    label { display: block; margin: 8px 0; text-align: left; color: #b7d9ed; font-size: 14px; }
+    input { width: 100%; min-height: 48px; padding: 14px; border-radius: 12px; border: 1px solid #39708f; background: #0c1b2b; color: white; font-size: 16px; }
+    input:focus-visible, button:focus-visible { outline: 3px solid #8cddff; outline-offset: 3px; }
+    button { width: 100%; min-height: 48px; margin-top: 12px; padding: 13px 22px; border: 1px solid #53caff; border-radius: 12px; background: #103957; color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #164969; }
+    #reply { min-height: 48px; margin: 20px 0 0; color: #b7d9ed; line-height: 1.6; overflow-wrap: anywhere; }
+    .note { margin: 18px 0 0; color: #7898ad; font-size: 12px; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <main class="panel">
-    <div class="orb">J</div>
+  <main>
+    <div class="orb" aria-hidden="true">J</div>
     <h1>J.A.R.V.I.S.</h1>
     <p class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</p>
-    <p id="status">SYSTEM ONLINE · PREVIEW MODE</p>
-    <input id="command" placeholder="Enter a command, Sir..." />
-    <button onclick="respond()">Execute</button>
-    <p id="reply">Awaiting your command.</p>
+    <p class="state" role="status">PREVIEW · AI SERVICE NOT CONNECTED</p>
+    <form id="command-form">
+      <label for="command">Command (preview only)</label>
+      <input id="command" name="command" type="text" maxlength="500" autocomplete="off" placeholder="Enter a test command…" />
+      <button type="submit">Submit test command</button>
+    </form>
+    <p id="reply" role="status" aria-live="polite">The interface is ready for testing. No command will be sent or executed.</p>
+    <p class="note">This public preview does not have access to personal accounts, private memory, or device controls.</p>
   </main>
   <script>
-    function respond() {
-      const command = document.getElementById("command").value.trim();
-      const reply = document.getElementById("reply");
-      if (!command) {
-        reply.textContent = "Please enter a command, Sir.";
-        return;
-      }
-      reply.textContent =
-        "Command received, Sir: " + command +
-        ". This is the JARVIS visual prototype. AI connection is not yet configured.";
-    }
+    const form = document.getElementById("command-form");
+    const commandInput = document.getElementById("command");
+    const reply = document.getElementById("reply");
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const command = commandInput.value.trim();
+      reply.textContent = command
+        ? "Test input received locally. No AI service is connected, so nothing was sent or executed."
+        : "Please enter a test command.";
+    });
   </script>
 </body>
 </html>
