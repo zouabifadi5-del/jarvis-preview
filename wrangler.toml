@@ -3,9 +3,14 @@ main = "src/worker.js"
 compatibility_date = "2026-11-14"
 
 # Static owner-access shell is served from the same hostname as the API.
-# Static assets are free; no D1/KV/R2/DO resources or secrets are configured.
 [assets]
 directory = "./public"
 binding = "ASSETS"
+
+# Isolated owner-authentication database; this binding is only for this branch.
+[[d1_databases]]
+binding = "DB"
+database_name = "jarvis-owner-auth"
+database_id = "2bee8195-488a-4c73-ba42-d21950e890c4"
 
 # No account ID, routes, or paid resources are configured here.
