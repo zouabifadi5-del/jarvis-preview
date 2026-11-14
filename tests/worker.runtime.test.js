@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { exports } from "cloudflare:workers";
+import { handleAuthRequest } from "../src/auth/routes.js";
 
 const worker = exports.default;
 
@@ -106,7 +107,7 @@ describe("JARVIS Worker runtime contract", () => {
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_BOOTSTRAP_SECRET: "a".repeat(48)
     };
-    const response = await worker.fetch(request("/auth/register/options", {
+    const response = await handleAuthRequest(request("/auth/register/options", {
       method: "POST",
       headers: {
         Origin: "https://attacker.example",
@@ -123,7 +124,7 @@ describe("JARVIS Worker runtime contract", () => {
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "attacker.example"
     };
-    const response = await worker.fetch(request("/auth/login/options", {
+    const response = await handleAuthRequest(request("/auth/login/options", {
       method: "POST",
       headers: { Origin: "https://example.test" }
     }), env);
