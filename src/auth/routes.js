@@ -1,4 +1,9 @@
 import {
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyRegistrationResponse
+} from "@simplewebauthn/server";
+import {
   completeOwnerRecovery,
   consumeChallenge,
   consumeRecoveryChallenge,
