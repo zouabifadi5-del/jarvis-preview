@@ -400,7 +400,6 @@ export async function createOwnerWithCredential(db, {
  */
 export async function completeOwnerRecovery(db, {
   recoveryCodeHash,
-  challengeHash,
   id,
   publicKey,
   counter = 0,
@@ -411,8 +410,7 @@ export async function completeOwnerRecovery(db, {
 }) {
   assertD1(db);
   assertUnixSeconds(now, "now");
-  if (typeof recoveryCodeHash !== "string" || recoveryCodeHash.length < 32 ||
-      typeof challengeHash !== "string" || challengeHash.length < 32) {
+  if (typeof recoveryCodeHash !== "string" || recoveryCodeHash.length < 32) {
     throw new TypeError("Recovery claim is invalid");
   }
   if (typeof id !== "string" || id.length < 1 || id.length > 1024) {
@@ -430,11 +428,12 @@ export async function completeOwnerRecovery(db, {
 
   const recoveryCodes = Array.from({ length: 10 }, () => randomToken());
   const recoveryHashes = await Promise.all(recoveryCodes.map(sha256Base64Url));
-  const claimExists = "EXISTS (SELECT 1 FROM owner_recovery_codes WHERE code_hash = ? AND used_challenge_hash = ?)";
+  const claimHash = randomToken();
+  const claimExists = "EXISTS (SELECT 1 FROM owner_recovery_codes WHERE code_hash = ? AND used_claim_hash = ?)";
   const statements = [
     db.prepare(
-      "UPDATE owner_recovery_codes SET used_at = ?, used_challenge_hash = ? WHERE code_hash = ? AND used_at IS NULL"
-    ).bind(now, challengeHash, recoveryCodeHash),
+      "UPDATE owner_recovery_codes SET used_at = ?, used_claim_hash = ? WHERE code_hash = ? AND used_at IS NULL"
+    ).bind(now, claimHash, recoveryCodeHash),
     db.prepare(
       `UPDATE owner_credentials SET revoked_at = ? WHERE revoked_at IS NULL AND ${claimExists}`
     ).bind(now, recoveryCodeHash, challengeHash),
