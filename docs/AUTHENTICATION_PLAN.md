@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Authentication Implementation Plan
 
-**Status:** Engineering plan plus a non-functional static shell on the isolated test branch — no authentication code is enabled  
+**Status:** Initial server-side passkey routes and storage helpers are implemented on the isolated test branch; not deployed, not connected to a real D1 database, and not production-ready  
 **Owner model:** One enrolled owner, no public sign-up  
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
@@ -32,7 +32,7 @@ References:
 - Licence: MIT for both packages.
 - The server package's current JSR documentation explicitly lists Cloudflare Workers as a supported runtime. The browser package targets modern browsers.
 
-These are candidate versions, not installed dependencies. Pin exact versions and commit a lockfile only after a clean Worker-runtime compatibility test. Review release notes and advisories again at implementation time. Do not load a third-party CDN script on authenticated pages; bundle the browser package with the client.
+`@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes the current synthetic Worker-runtime compatibility suite. `@simplewebauthn/browser` has not yet been added; a lockfile, current advisory review, real D1 test, and real Safari/iPhone ceremony remain outstanding. Do not load a third-party CDN script on authenticated pages.
 
 References:
 - https://jsr.io/@simplewebauthn/server
@@ -76,19 +76,18 @@ Never store passkey private keys, biometric data, plaintext session tokens, prom
 7. Atomically mark the owner as enrolled and permanently close public enrollment. Do not add a public "register another user" endpoint.
 
 ### Owner sign-in
-1. Generate authentication options for the enrolled credential(s), with a new random five-minute challenge and user verification required.
-2. Verify the assertion server-side against the stored public key, expected challenge, exact origin, exact RP ID, and current credential counter.
-3. Atomically consume the challenge once (a replay must return no row); update the credential counter with a compare-and-set write so concurrent assertions cannot silently overwrite a newer counter.
-4. Generate a cryptographically random opaque session ID. Store only its hash and expiry.
-5. Set a host-only `Secure; HttpOnly; SameSite=Strict` cookie with `Path=/`; omit `Domain`. Use a short idle timeout and an absolute expiry. Rotate after authentication and privilege changes.
+1. `POST /auth/login/options` requires an enrolled owner and supplies only active credentials, with a random five-minute challenge and user verification required.
+2. `POST /auth/login/verify` consumes the challenge once and verifies the assertion against the stored public key, exact challenge, origin, RP ID, user-verification flag, and credential ID.
+3. The credential counter is updated with compare-and-set semantics.
+4. A random opaque session ID and CSRF token are generated; only their hashes are stored in D1.
+5. The session is issued in a host-only `Secure; HttpOnly; SameSite=Strict` cookie with `Path=/` and no `Domain`; current lifetime is eight hours.
 
 ### Session and logout
-- A session lookup must reject expired or revoked sessions.
-- Logout revokes the stored session and clears the cookie.
-- Provide a way to revoke all sessions if the device is lost.
-- Protect state-changing cookie-authenticated requests with CSRF tokens and strict Origin checks.
-- Restrict CORS to the exact trusted client origin; no wildcard credentialed CORS.
-- Never place tokens in URLs, browser storage, logs, or client JavaScript.
+- `GET /auth/me` rejects expired or revoked sessions.
+- `POST /auth/logout` verifies the CSRF token and exact Origin, revokes the session, and clears the cookie.
+- CSRF token persistence across browser reloads, credential management, and session management UI remain incomplete.
+- The intended client and API are same-origin; no wildcard credentialed CORS is configured.
+- Never place session IDs in URLs, browser storage, logs, or client JavaScript.
 
 ## 4. Proposed route contract
 
@@ -131,7 +130,13 @@ Unknown routes and methods remain rejected. No AI command endpoint is added in t
 - Confirm cancellation, unavailable passkeys, device restart, expired sessions, and logout fail safely.
 - Test a second supported authenticator/recovery route before relying on the system as the sole access method.
 
-## 6. Release gates
+## 6. Current implementation status
+
+Implemented on `jarvis-worker-runtime-tests`: initial first-owner registration, passkey login, session inspection, and logout handlers; exact configured origin/RP ID checks; bootstrap secret gate; JSON content-type/body-size validation; five-minute single-use challenges; D1-backed owner/credential/session helpers; hashed session and CSRF tokens; host-only Secure/HttpOnly/SameSite cookie; CSRF verification; and fail-closed behavior when D1 or origin settings are absent. Synthetic Worker tests cover registration/login options, origin rejection, bootstrap enforcement, content-type enforcement, and verifier behavior.
+
+Not complete: real D1 binding tests, browser passkey UI, multiple-device credential addition/revocation, CSRF persistence across reloads, rate limiting, recovery, full registration/login/logout route ceremony tests, lockfile/advisory review, live origin verification, and iPhone Safari acceptance. No Cloudflare database, secret, or deployment has been created.
+
+## 7. Release gates
 
 Do not enable authentication or store personal data until all are true:
 1. The production hostname, active branch, and deployed code hash are verified.
