@@ -655,13 +655,22 @@ describe("JARVIS Worker runtime contract", () => {
     });
     const loginResponse = await handleAuthRequest(request("/auth/login/verify", {
       method: "POST",
-      headers: { Origin: "https://example.test", "Content-Type": "application/json" },
+      headers: {
+        Origin: "https://example.test",
+        "Content-Type": "application/json",
+        Cookie: "__Host-jarvis_session=" + registrationSessionCookie
+      },
       body: JSON.stringify({ challenge: loginOptions.challenge, response: assertion })
     }), env);
     expect(loginResponse.status).toBe(200);
     const loggedIn = await loginResponse.json();
     expect(loggedIn.authenticated).toBe(true);
     expect(state.credentials[0].sign_count).toBe(1);
+    const oldSessionAfterRotation = await handleAuthRequest(request("/auth/me", {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + registrationSessionCookie }
+    }), env);
+    expect(oldSessionAfterRotation.status).toBe(401);
 
     const replay = await handleAuthRequest(request("/auth/login/verify", {
       method: "POST",
