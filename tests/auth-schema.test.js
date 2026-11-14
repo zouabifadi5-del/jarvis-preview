@@ -75,6 +75,7 @@ test("challenge purpose and expiry constraints reject invalid records", () => {
     assert.throws(() => insert.run("bad-purpose", "challenge", "delete-account", 10, 20));
     assert.throws(() => insert.run("bad-expiry", "challenge", "authentication", 20, 20));
     insert.run("valid", "synthetic-challenge", "authentication", 10, 310);
+    insert.run("credential-add", "synthetic-add-challenge", "credential_add", 10, 310);
   } finally {
     db.close();
   }
