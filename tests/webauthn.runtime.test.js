@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   generateAuthenticationOptions,
-  generateRegistrationOptions
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse
 } from "@simplewebauthn/server";
 
 describe("SimpleWebAuthn server runtime compatibility", () => {
@@ -34,5 +36,35 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
     expect(options.challenge).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(options.rpId).toBe("example.test");
     expect(options.userVerification).toBe("required");
+  });
+  
+  it("rejects a malformed synthetic registration response", async () => {
+    await expect(
+      verifyRegistrationResponse({
+        response: {},
+        expectedChallenge: "synthetic-challenge",
+        expectedOrigin: "https://example.test",
+        expectedRPID: "example.test",
+        requireUserVerification: true
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects a malformed synthetic authentication response", async () => {
+    await expect(
+      verifyAuthenticationResponse({
+        response: {},
+        expectedChallenge: "synthetic-challenge",
+        expectedOrigin: "https://example.test",
+        expectedRPID: "example.test",
+        credential: {
+          id: "synthetic-credential",
+          publicKey: new Uint8Array([1, 2, 3]),
+          counter: 0,
+          transports: []
+        },
+        requireUserVerification: true
+      })
+    ).rejects.toThrow();
   });
 });
