@@ -11,7 +11,7 @@ function assertD1(db) {
 }
 
 function assertPurpose(purpose) {
-  if (purpose !== "registration" && purpose !== "authentication" && purpose !== "credential_add") {
+  if (purpose !== "registration" && purpose !== "authentication" && purpose !== "credential_add" && purpose !== "recovery") {
     throw new TypeError("Unsupported WebAuthn challenge purpose");
   }
 }
@@ -47,11 +47,17 @@ function assertPositiveInteger(value, name) {
 
 export async function createChallenge(
   db,
-  { purpose, now = Math.floor(Date.now() / 1000), ttlSeconds = DEFAULT_CHALLENGE_TTL_SECONDS }
+  { purpose, recoveryCodeHash = null, now = Math.floor(Date.now() / 1000), ttlSeconds = DEFAULT_CHALLENGE_TTL_SECONDS }
 ) {
   assertD1(db);
   assertPurpose(purpose);
   assertUnixSeconds(now, "now");
+  if (purpose === "recovery" && (typeof recoveryCodeHash !== "string" || recoveryCodeHash.length < 32)) {
+    throw new TypeError("A valid recovery code hash is required for recovery challenges");
+  }
+  if (purpose !== "recovery" && recoveryCodeHash !== null) {
+    throw new TypeError("Recovery code hashes are only valid for recovery challenges");
+  }
   assertPositiveInteger(ttlSeconds, "ttlSeconds");
   if (ttlSeconds > DEFAULT_CHALLENGE_TTL_SECONDS) {
     throw new RangeError("WebAuthn challenge lifetime cannot exceed five minutes");
@@ -65,8 +71,8 @@ export async function createChallenge(
   const expiresAt = now + ttlSeconds;
 
   await db.prepare(
-    "INSERT INTO auth_challenges (challenge_hash, challenge, purpose, created_at, expires_at) VALUES (?, ?, ?, ?, ?)"
-  ).bind(challengeHash, challenge, purpose, now, expiresAt).run();
+    "INSERT INTO auth_challenges (challenge_hash, challenge, purpose, recovery_code_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(challengeHash, challenge, purpose, recoveryCodeHash, now, expiresAt).run();
 
   return { challenge, expiresAt };
 }
@@ -89,6 +95,33 @@ export async function consumeChallenge(db, { challenge, purpose, now = Math.floo
   ).bind(challengeHash, purpose, now).first();
 
   return row?.challenge === challenge ? row.challenge : null;
+}
+
+
+export async function findActiveRecoveryCode(db, recoveryCode) {
+  assertD1(db);
+  if (typeof recoveryCode !== "string" || recoveryCode.length < 40 || recoveryCode.length > 128) return null;
+  const codeHash = await sha256Base64Url(recoveryCode);
+  const row = await db.prepare(
+    "SELECT code_hash FROM owner_recovery_codes WHERE code_hash = ? AND used_at IS NULL LIMIT 1"
+  ).bind(codeHash).first();
+  return row ? codeHash : null;
+}
+
+export async function consumeRecoveryChallenge(db, { challenge, now = Math.floor(Date.now() / 1000) }) {
+  assertD1(db);
+  assertUnixSeconds(now, "now");
+  if (typeof challenge !== "string" || challenge.length < 20 || challenge.length > 256) return null;
+  const challengeHash = await sha256Base64Url(challenge);
+  const row = await db.prepare(
+    "DELETE FROM auth_challenges WHERE challenge_hash = ? AND purpose = 'recovery' AND expires_at > ? RETURNING challenge, challenge_hash, recovery_code_hash"
+  ).bind(challengeHash, now).first();
+  if (!row || row.challenge !== challenge || typeof row.recovery_code_hash !== "string") return null;
+  return {
+    challenge: row.challenge,
+    challengeHash: row.challenge_hash,
+    recoveryCodeHash: row.recovery_code_hash
+  };
 }
 
 export async function storeCredential(
@@ -343,15 +376,84 @@ export async function createOwnerWithCredential(db, {
     throw new TypeError("Credential transports must be an array of strings");
   }
 
+  const recoveryCodes = Array.from({ length: 10 }, () => randomToken());
+  const recoveryHashes = await Promise.all(recoveryCodes.map(sha256Base64Url));
   const statements = [
     db.prepare(
       "INSERT INTO jarvis_owner (id, created_at, enrollment_closed_at) VALUES (1, ?, ?)"
     ).bind(now, now),
     db.prepare(
       "INSERT INTO owner_credentials (credential_id, owner_id, public_key, sign_count, transports_json, device_type, backed_up, created_at) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
-    ).bind(id, publicKey, counter, JSON.stringify(transports), deviceType, backedUp ? 1 : 0, now)
+    ).bind(id, publicKey, counter, JSON.stringify(transports), deviceType, backedUp ? 1 : 0, now),
+    ...recoveryHashes.map((hash) => db.prepare(
+      "INSERT INTO owner_recovery_codes (code_hash, created_at) VALUES (?, ?)"
+    ).bind(hash, now))
   ];
   await db.batch(statements);
+  return { recoveryCodes };
+}
+
+/**
+ * Atomically consumes one recovery code, enrolls a replacement passkey,
+ * invalidates all previous recovery codes, and revokes every active session.
+ * The challenge hash is the unique claim marker, preventing concurrent reuse.
+ */
+export async function completeOwnerRecovery(db, {
+  recoveryCodeHash,
+  challengeHash,
+  id,
+  publicKey,
+  counter = 0,
+  transports = [],
+  deviceType = null,
+  backedUp = false,
+  now = Math.floor(Date.now() / 1000)
+}) {
+  assertD1(db);
+  assertUnixSeconds(now, "now");
+  if (typeof recoveryCodeHash !== "string" || recoveryCodeHash.length < 32 ||
+      typeof challengeHash !== "string" || challengeHash.length < 32) {
+    throw new TypeError("Recovery claim is invalid");
+  }
+  if (typeof id !== "string" || id.length < 1 || id.length > 1024) {
+    throw new TypeError("Credential ID is invalid");
+  }
+  if (!(publicKey instanceof Uint8Array) || publicKey.length < 1) {
+    throw new TypeError("Credential public key must be a non-empty Uint8Array");
+  }
+  if (!Number.isSafeInteger(counter) || counter < 0) {
+    throw new TypeError("Credential counter must be a non-negative integer");
+  }
+  if (!Array.isArray(transports) || transports.some((item) => typeof item !== "string")) {
+    throw new TypeError("Credential transports must be an array of strings");
+  }
+
+  const recoveryCodes = Array.from({ length: 10 }, () => randomToken());
+  const recoveryHashes = await Promise.all(recoveryCodes.map(sha256Base64Url));
+  const claimExists = "EXISTS (SELECT 1 FROM owner_recovery_codes WHERE code_hash = ? AND used_challenge_hash = ?)";
+  const statements = [
+    db.prepare(
+      "UPDATE owner_recovery_codes SET used_at = ?, used_challenge_hash = ? WHERE code_hash = ? AND used_at IS NULL"
+    ).bind(now, challengeHash, recoveryCodeHash),
+    db.prepare(
+      `INSERT INTO owner_credentials (credential_id, owner_id, public_key, sign_count, transports_json, device_type, backed_up, created_at) SELECT ?, 1, ?, ?, ?, ?, ?, ? WHERE ${claimExists}`
+    ).bind(id, publicKey, counter, JSON.stringify(transports), deviceType, backedUp ? 1 : 0, now, recoveryCodeHash, challengeHash),
+    db.prepare(
+      `DELETE FROM owner_recovery_codes WHERE used_at IS NULL AND ${claimExists}`
+    ).bind(recoveryCodeHash, challengeHash),
+    ...recoveryHashes.map((hash) => db.prepare(
+      `INSERT INTO owner_recovery_codes (code_hash, created_at) SELECT ?, ? WHERE ${claimExists}`
+    ).bind(hash, now, recoveryCodeHash, challengeHash)),
+    db.prepare(
+      `UPDATE auth_sessions SET revoked_at = ? WHERE revoked_at IS NULL AND ${claimExists}`
+    ).bind(now, recoveryCodeHash, challengeHash)
+  ];
+
+  const results = await db.batch(statements);
+  if ((results[0]?.meta?.changes || 0) !== 1 || (results[1]?.meta?.changes || 0) !== 1) {
+    throw new Error("Recovery code is invalid or has already been used");
+  }
+  return { recoveryCodes };
 }
 
 
