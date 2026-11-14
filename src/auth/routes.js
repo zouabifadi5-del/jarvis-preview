@@ -363,7 +363,9 @@ async function addCredentialOptions(request, cfg, now) {
 
 async function addCredentialVerify(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
-  if (!await authenticatedOwner(request, cfg, now, true)) return fail(request, 403, "session_or_csrf_invalid");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (now - auth.session.createdAt > 5 * 60) return fail(request, 403, "reauthentication_required");
   const body = await readJson(request);
   if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
@@ -409,7 +411,9 @@ async function addCredentialVerify(request, cfg, now) {
 
 async function removeCredential(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
-  if (!await authenticatedOwner(request, cfg, now, true)) return fail(request, 403, "session_or_csrf_invalid");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (now - auth.session.createdAt > 5 * 60) return fail(request, 403, "reauthentication_required");
   const body = await readJson(request);
   if (!body || typeof body.credentialId !== "string") return fail(request, 400, "invalid_request");
   const credentials = await listActiveCredentials(cfg.db);
