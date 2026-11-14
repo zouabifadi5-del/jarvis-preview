@@ -32,6 +32,22 @@
         <button id="enroll" type="button" class="secondary">Create owner passkey</button>
         <p class="muted">After the first owner credential is created, server-side enrollment closes.</p>
       </div>
+      <div class="panel">
+        <h2>Emergency recovery</h2>
+        <p>If you lose access to every registered passkey, use one unused recovery code to register a replacement passkey. Each code works once.</p>
+        <label for="recovery-code">One-time recovery code</label>
+        <input id="recovery-code" type="password" autocomplete="off" spellcheck="false" maxlength="128" placeholder="Paste one recovery code">
+        <button id="recover" type="button" class="secondary">Recover owner access</button>
+      </div>
+    </section>
+
+    <section id="recovery-panel" hidden class="panel">
+      <h2>Save your recovery codes now</h2>
+      <p>These ten codes are shown only once. Store them offline in a safe place. Anyone with a code can replace the owner passkey.</p>
+      <pre id="recovery-list"></pre>
+      <button id="copy-recovery" type="button" class="secondary">Copy recovery codes</button>
+      <button id="download-recovery" type="button" class="secondary">Download recovery codes</button>
+      <button id="acknowledge-recovery" type="button">I saved these codes</button>
     </section>
 
     <section id="signed-in" hidden>
