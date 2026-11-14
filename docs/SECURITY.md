@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Owner Security Design
 
-**Status:** Design only; not implemented or security-audited  
+**Status:** Partially implemented on an isolated test branch; not deployed, not connected to real storage, and not security-audited  
 **Scope:** Future private JARVIS service and its iPhone-first client  
 **Constraint:** Zero-cost only. Do not activate a paid service, billing, trial, or resource until its cost and limits have been checked.
 
@@ -10,8 +10,8 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 
 ## Proposed authentication
 
-- Use a standards-based WebAuthn passkey as the primary owner credential. On an iPhone, iOS may ask the owner to approve a passkey with Face ID or the device passcode. Face ID is the local device-unlock step; the server verifies the signed WebAuthn assertion, not a voice match or a claim that Face ID data was sent to JARVIS.
-- Do not create public registration, username/password login, shared hard-coded secrets, or a permanent bearer token in browser JavaScript.
+- Use a standards-based WebAuthn passkey as the primary owner credential. Initial registration, login, session inspection, and logout route handlers now exist on the isolated branch, but the browser ceremony and real D1 storage have not been exercised. On an iPhone, iOS may ask the owner to approve a passkey with Face ID or the device passcode. Face ID is the local device-unlock step; the server verifies the signed WebAuthn assertion, not a voice match or a claim that Face ID data was sent to JARVIS.
+- Do not create public registration, username/password login, shared hard-coded secrets, or a permanent bearer token in browser JavaScript. Initial owner registration requires a server-side bootstrap secret; it must be generated and configured only after explicit approval and must never be committed.
 - Enroll exactly one owner identity through a deliberate, one-time bootstrap procedure after the login page is served from the same HTTPS Worker origin as the API and secure persistent storage is verified. The planned origin is `https://jarvis-preview-api.zouabifadi5.workers.dev` with RP ID `jarvis-preview-api.zouabifadi5.workers.dev`; re-verify the live page origin before enrollment. The GitHub Pages preview is not an authentication origin. Close enrollment immediately after the first credential is registered.
 - Bind challenges to the expected origin and relying-party ID; use cryptographically random, short-lived, single-use challenges and verify the challenge, origin, RP ID hash, user-presence and user-verification flags, credential public key, and signature with a maintained WebAuthn implementation.
 - Do not write a custom WebAuthn cryptographic verifier. The current candidate is SimpleWebAuthn server 14.1.0 with browser 14.0.0; these are research candidates only, not installed or approved for production. See [Authentication Implementation Plan](AUTHENTICATION_PLAN.md). Test exact versions in the chosen Worker runtime before enabling enrollment.
@@ -29,7 +29,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 ## Data and memory protection
 
 - Keep the public `jarvis-preview` repository free of personal data, credentials, session material, and real owner memory. Keep `jarvis-core` private.
-- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed. A single Cloudflare D1 database is the selected storage design for credentials, challenges, and sessions only; its schema migration is unprovisioned, and the account's Free-plan/billing eligibility has not been verified.
+- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed. A single Cloudflare D1 database is the selected storage design for credentials, challenges, and sessions only; its schema migration is unprovisioned. The owner has confirmed Free plan and no paid Workers subscription/trial; this remains owner-provided confirmation.
 - Minimize stored data. Give the owner controls to inspect, correct, export, and delete memory. Deletion must cover derived indexes and backups according to a documented retention policy.
 - Encrypt sensitive records at rest with a key held only in server-side secret storage; never commit encryption keys or place them in client code. HTTPS protects data in transit.
 - Do not log prompts, message bodies, memory contents, tokens, recovery codes, or provider secrets. Keep only minimal operational metadata with a defined retention period.
