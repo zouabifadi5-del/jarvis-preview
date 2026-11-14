@@ -24,6 +24,8 @@
 - [ ] Add rate limiting and safe error handling.
 
 ## Milestone 3 — Owner security and memory (current phase)
+
+**Current position:** The local authentication implementation and synthetic route tests are complete. The next gated step is creating one remote D1 database for a real binding smoke test; this requires explicit owner approval and does not include deployment.
 - [x] Document and implement the initial single-owner passkey, session, privacy, and command-approval foundation (not production-ready or security-audited).
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify compatibility in the Cloudflare Workers runtime.
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
