@@ -29,7 +29,8 @@
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
 - [x] Add a zero-cost, staged authentication test plan: [Authentication Free-Tier Test Plan](AUTHENTICATION_FREE_TIER_TEST_PLAN.md).
 - [x] Expand the local Worker scaffold suite to cover security headers, strict route matching, method rejection, no CORS, and HTTP/HSTS behavior.
-- [ ] Verify the actual Cloudflare account is on the Free plan before provisioning SQLite Durable Object storage.
+- [x] Select D1 (rather than Durable Objects) for the small relational auth store; add an unprovisioned SQL schema migration on the isolated test branch.
+- [ ] Verify the actual Cloudflare account is on the Free plan and billing is safe before creating a D1 database.
 - [ ] Complete local request, challenge, origin, session, CSRF, and error-handling tests for the future auth implementation.
 - [ ] Pin dependencies and prove the selected versions work in the exact Worker runtime.
 - [ ] Owner authentication.
