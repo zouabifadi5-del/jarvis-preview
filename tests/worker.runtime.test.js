@@ -108,7 +108,7 @@ async function makeRouteAssertion({ keyPair, credentialId, challenge, counter = 
   };
 }
 function makeRouteD1() {
-  const state = { owner: null, credentials: [], challenges: [], sessions: [], recoveryCodes: [] };
+  const state = { owner: null, credentials: [], challenges: [], sessions: [], recoveryCodes: [], rateLimits: [] };
   function statement(sql, values = []) {
     return {
       bind(...bound) { return statement(sql, bound); },
