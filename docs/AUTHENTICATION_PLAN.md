@@ -89,17 +89,20 @@ Never store passkey private keys, biometric data, plaintext session tokens, prom
 - The intended client and API are same-origin; no wildcard credentialed CORS is configured.
 - Never place session IDs in URLs, browser storage, logs, or client JavaScript.
 
-## 4. Proposed route contract
+## 4. Implemented route contract (isolated branch only)
 
-All routes are JSON over HTTPS, with strict body-size and schema validation:
-- `POST /auth/enroll/options` — available only during controlled bootstrap.
-- `POST /auth/enroll/verify` — validates and consumes the one-time enrollment challenge.
-- `POST /auth/login/options` — issues a short-lived authentication challenge.
-- `POST /auth/login/verify` — verifies the assertion and issues the session cookie.
-- `GET /auth/session` — returns only whether the owner session is valid; no secrets.
-- `POST /auth/logout` — revokes the current session and clears its cookie.
+All routes are same-origin HTTPS. JSON bodies are content-type checked and capped at 16 KiB:
+- `POST /auth/register/options` — creates one-time owner registration options; requires the server-side bootstrap secret.
+- `POST /auth/register/verify` — verifies the attestation and atomically creates the singleton owner and first credential; requires the bootstrap secret again.
+- `POST /auth/login/options` — issues a short-lived authentication challenge for active owner credentials.
+- `POST /auth/login/verify` — verifies the assertion, compare-and-set updates the counter, and issues a session.
+- `GET /auth/me` — returns only whether the owner session is active and its expiry.
+- `POST /auth/logout` — verifies Origin and CSRF, revokes the session, and clears cookies.
+- `GET /auth/credentials` — returns limited metadata for active owner passkeys.
+- `POST /auth/credentials/options` and `POST /auth/credentials/verify` — add another passkey to the existing owner account, requiring an authenticated session and CSRF token.
+- `POST /auth/credentials/revoke` — revokes a selected credential only when another active credential remains.
 
-Unknown routes and methods remain rejected. No AI command endpoint is added in this phase.
+Unknown routes and methods remain rejected. No AI command, memory, or external-account endpoint is implemented in this phase. These routes have not been deployed or tested against a real D1 database.
 
 ## 5. Required security tests
 
