@@ -2,4 +2,10 @@ name = "jarvis-preview-api"
 main = "src/worker.js"
 compatibility_date = "2026-11-14"
 
-# No account ID, routes, secrets, or paid resources are configured here.
+# Static owner-access shell is served from the same hostname as the API.
+# Static assets are free; no D1/KV/R2/DO resources or secrets are configured.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# No account ID, routes, or paid resources are configured here.
