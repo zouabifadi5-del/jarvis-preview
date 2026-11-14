@@ -343,6 +343,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: { prepare() { throw new Error("storage must not be touched"); } },
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_DEBUG_AUTH: "true",
       JARVIS_BOOTSTRAP_SECRET: "a".repeat(48)
     };
     const response = await handleAuthRequest(request("/auth/register/options", {
@@ -395,6 +396,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: { prepare() { throw new Error("unauthorized bootstrap must not touch storage"); } },
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_DEBUG_AUTH: "true",
       JARVIS_BOOTSTRAP_SECRET: "b".repeat(48)
     };
     const response = await handleAuthRequest(request("/auth/register/options", {
@@ -432,6 +434,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_DEBUG_AUTH: "true",
       JARVIS_BOOTSTRAP_SECRET: secret
     };
     const response = await handleAuthRequest(request("/auth/register/options", {
@@ -686,6 +689,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_DEBUG_AUTH: "true",
       JARVIS_BOOTSTRAP_SECRET: secret
     };
     const bootstrapHeaders = { Origin: "https://example.test", "X-Jarvis-Bootstrap": secret };
@@ -978,6 +982,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_DEBUG_AUTH: "true",
       JARVIS_BOOTSTRAP_SECRET: "r".repeat(64)
     };
     const origin = "https://example.test";
