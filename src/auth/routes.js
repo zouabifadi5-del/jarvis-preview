@@ -4,7 +4,9 @@ import {
   verifyRegistrationResponse
 } from "@simplewebauthn/server";
 import {
+  completeOwnerRecovery,
   consumeChallenge,
+  consumeRecoveryChallenge,
   createChallenge,
   createOwnerWithCredential,
   completeOwnerRecovery,
@@ -12,6 +14,7 @@ import {
   findActiveRecoveryCode,
   createSession,
   findActiveCredential,
+  findActiveRecoveryCode,
   findActiveSession,
   findOwner,
   listActiveCredentials,
@@ -126,7 +129,7 @@ function clearCsrfCookie() {
   return `${CSRF_COOKIE}=; Path=/; Secure; SameSite=Strict; Max-Age=0`;
 }
 
-async function issueSession(request, db, now) {
+async function issueSession(request, db, now, additionalBody = {}) {
   // Rotate an existing browser session after every successful passkey ceremony.
   const previousToken = getCookie(request, SESSION_COOKIE);
   if (previousToken) await revokeSession(db, { sessionToken: previousToken, now });
@@ -134,7 +137,8 @@ async function issueSession(request, db, now) {
   const issued = response(request, {
     authenticated: true,
     csrfToken: session.csrfToken,
-    expiresAt: session.expiresAt
+    expiresAt: session.expiresAt,
+    ...additionalBody
   }, 200, { "Set-Cookie": sessionCookie(session.sessionToken, SESSION_TTL_SECONDS) });
   issued.headers.append("Set-Cookie", csrfCookie(session.csrfToken, SESSION_TTL_SECONDS));
   return issued;
@@ -301,6 +305,95 @@ async function recoveryVerify(request, cfg, now) {
       backedUp: verification.registrationInfo.credentialBackedUp || false,
       now
     }));
+  } catch {
+    return fail(request, 401, "recovery_failed");
+  }
+  return issueSession(request, cfg.db, now, { recoveryCodes });
+}
+
+
+async function recoveryOptions(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const body = await readJson(request);
+  if (!body || typeof body.recoveryCode !== "string") return fail(request, 400, "invalid_request");
+  const recoveryCodeHash = await findActiveRecoveryCode(cfg.db, body.recoveryCode);
+  if (!recoveryCodeHash || !await findOwner(cfg.db)) return fail(request, 401, "recovery_failed");
+
+  const challenge = await createChallenge(cfg.db, {
+    purpose: "recovery",
+    recoveryCodeHash,
+    now,
+    ttlSeconds: CHALLENGE_TTL_SECONDS
+  });
+  const credentials = await listActiveCredentials(cfg.db);
+  const userID = new Uint8Array(await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode("JARVIS single-owner WebAuthn user handle v1")
+  ));
+  const options = await generateRegistrationOptions({
+    rpName: "J.A.R.V.I.S.",
+    rpID: cfg.rpID,
+    userName: "owner",
+    userDisplayName: "JARVIS Owner",
+    userID,
+    attestationType: "none",
+    authenticatorSelection: {
+      residentKey: "required",
+      userVerification: "required"
+    },
+    excludeCredentials: credentials.map((item) => ({
+      id: item.id,
+      transports: item.transports
+    })),
+    timeout: 60000
+  });
+  options.challenge = challenge.challenge;
+  return response(request, options);
+}
+
+async function recoveryVerify(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const body = await readJson(request);
+  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+    return fail(request, 400, "invalid_request");
+  }
+  const consumed = await consumeRecoveryChallenge(cfg.db, {
+    challenge: body.challenge,
+    now
+  });
+  if (!consumed) return fail(request, 400, "recovery_failed");
+
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: body.response,
+      expectedChallenge: consumed.challenge,
+      expectedOrigin: cfg.origin,
+      expectedRPID: cfg.rpID,
+      requireUserVerification: true
+    });
+  } catch {
+    return fail(request, 400, "recovery_failed");
+  }
+  if (!verification.verified || !verification.registrationInfo?.credential) {
+    return fail(request, 400, "recovery_failed");
+  }
+
+  const credential = verification.registrationInfo.credential;
+  let recoveryCodes;
+  try {
+    const recovered = await completeOwnerRecovery(cfg.db, {
+      recoveryCodeHash: consumed.recoveryCodeHash,
+      challengeHash: consumed.challengeHash,
+      id: credential.id,
+      publicKey: credential.publicKey,
+      counter: credential.counter,
+      transports: credential.transports || [],
+      deviceType: verification.registrationInfo.credentialDeviceType || null,
+      backedUp: verification.registrationInfo.credentialBackedUp || false,
+      now
+    });
+    recoveryCodes = recovered.recoveryCodes;
   } catch {
     return fail(request, 401, "recovery_failed");
   }
@@ -563,6 +656,12 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/register/verify" && request.method === "POST") {
       return await registrationVerify(request, env, cfg, now);
+    }
+    if (pathname === "/auth/recovery/options" && request.method === "POST") {
+      return await recoveryOptions(request, cfg, now);
+    }
+    if (pathname === "/auth/recovery/verify" && request.method === "POST") {
+      return await recoveryVerify(request, cfg, now);
     }
     if (pathname === "/auth/recovery/options" && request.method === "POST") {
       return await recoveryOptions(request, cfg, now);
