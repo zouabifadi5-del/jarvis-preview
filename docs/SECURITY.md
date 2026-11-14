@@ -14,7 +14,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 - Do not create public registration, username/password login, shared hard-coded secrets, or a permanent bearer token in browser JavaScript.
 - Enroll exactly one owner credential through a deliberate, one-time bootstrap procedure after the service has a verified HTTPS origin and secure persistent storage. Close enrollment immediately after the first credential is registered.
 - Bind challenges to the expected origin and relying-party ID; use cryptographically random, short-lived, single-use challenges and verify the challenge, origin, RP ID hash, user-presence and user-verification flags, credential public key, and signature with a maintained WebAuthn implementation.
-- Do not write a custom WebAuthn cryptographic verifier. Select a maintained, reviewed implementation and test its compatibility with the chosen Worker runtime before enabling enrollment.
+- Do not write a custom WebAuthn cryptographic verifier. The current candidate is SimpleWebAuthn server 14.1.0 with browser 14.0.0; these are research candidates only, not installed or approved for production. See [Authentication Implementation Plan](AUTHENTICATION_PLAN.md). Test exact versions in the chosen Worker runtime before enabling enrollment.
 - Provide a small set of one-time recovery codes only if a safe offline recovery process is designed. Store only salted hashes; show the codes once and never send them by email or log them.
 
 ## Session and request protection
@@ -29,7 +29,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 ## Data and memory protection
 
 - Keep the public `jarvis-preview` repository free of personal data, credentials, session material, and real owner memory. Keep `jarvis-core` private.
-- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed.
+- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed. A SQLite-backed Durable Object is the current storage candidate for credentials, challenges, and sessions only; it is not yet provisioned or account-verified.
 - Minimize stored data. Give the owner controls to inspect, correct, export, and delete memory. Deletion must cover derived indexes and backups according to a documented retention policy.
 - Encrypt sensitive records at rest with a key held only in server-side secret storage; never commit encryption keys or place them in client code. HTTPS protects data in transit.
 - Do not log prompts, message bodies, memory contents, tokens, recovery codes, or provider secrets. Keep only minimal operational metadata with a defined retention period.
