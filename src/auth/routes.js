@@ -317,7 +317,6 @@ async function recoveryVerify(request, cfg, now) {
   try {
     const recovered = await completeOwnerRecovery(cfg.db, {
       recoveryCodeHash: consumed.recoveryCodeHash,
-      challengeHash: consumed.challengeHash,
       id: credential.id,
       publicKey: credential.publicKey,
       counter: credential.counter,
