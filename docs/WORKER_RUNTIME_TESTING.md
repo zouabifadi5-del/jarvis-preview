@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status:** The latest verified run #78 passed 31 Workers runtime tests and 14 local SQLite/Node checks, plus a Wrangler dry-run build/config validation. Initial auth route code is present but not production-ready.  
+**Status:** The latest verified run #124 passed 34 Workers runtime tests and 15 local SQLite/Node checks, plus browser JavaScript syntax validation and a Wrangler dry-run build/config validation. Initial auth routes and a native browser passkey UI are present but not production-ready.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
