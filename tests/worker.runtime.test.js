@@ -56,13 +56,13 @@ function derEcdsa(raw) {
   const body = joinBytes(encodeInteger(raw.slice(0, 32)), encodeInteger(raw.slice(32, 64)));
   return joinBytes(new Uint8Array([0x30, body.length]), body);
 }
-async function makeRouteRegistration(challenge) {
+async function makeRouteRegistration(challenge, credentialIdBytes = new Uint8Array([0x4a,0x41,0x52,0x56,0x49,0x53,0x2d,0x52,0x4f,0x55,0x54,0x45,0x2d,0x54,0x45,0x53])) {
   const keyPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
   const jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
   const x = fromB64Url(jwk.x);
   const y = fromB64Url(jwk.y);
   const publicKey = isoCBOR.encode(new Map([[1, 2], [3, -7], [-1, 1], [-2, x], [-3, y]]));
-  const credentialId = new Uint8Array([0x4a,0x41,0x52,0x56,0x49,0x53,0x2d,0x52,0x4f,0x55,0x54,0x45,0x2d,0x54,0x45,0x53]);
+  const credentialId = credentialIdBytes;
   const credentialIdB64 = toB64Url(credentialId);
   const rpHash = new Uint8Array(await crypto.subtle.digest("SHA-256", testEncoder.encode("example.test")));
   const clientData = testEncoder.encode(JSON.stringify({ type: "webauthn.create", challenge, origin: "https://example.test", crossOrigin: false }));
@@ -108,36 +108,41 @@ async function makeRouteAssertion({ keyPair, credentialId, challenge, counter = 
   };
 }
 function makeRouteD1() {
-  const state = { owner: null, credentials: [], challenges: [], sessions: [] };
+  const state = { owner: null, credentials: [], challenges: [], sessions: [], recoveryCodes: [] };
   function statement(sql, values = []) {
     return {
       bind(...bound) { return statement(sql, bound); },
       async first() {
         if (sql.includes("SELECT id, created_at, enrollment_closed_at")) return state.owner;
         if (sql.includes("DELETE FROM auth_challenges")) {
+          let index;
+          if (sql.includes("purpose = 'recovery'")) {
+            const [hash, now] = values;
+            index = state.challenges.findIndex((item) => item.hash === hash && item.purpose === "recovery" && item.expiresAt > now);
+            if (index < 0) return null;
+            const [item] = state.challenges.splice(index, 1);
+            return { challenge: item.challenge, challenge_hash: item.hash, recovery_code_hash: item.recoveryCodeHash };
+          }
           const [hash, purpose, now] = values;
-          const index = state.challenges.findIndex((item) => item.hash === hash && item.purpose === purpose && item.expiresAt > now);
+          index = state.challenges.findIndex((item) => item.hash === hash && item.purpose === purpose && item.expiresAt > now);
           if (index < 0) return null;
           const [item] = state.challenges.splice(index, 1);
           return { challenge: item.challenge };
         }
-        if (sql.includes("SELECT credential_id, public_key, sign_count") && sql.includes("WHERE credential_id = ?")) {
-          const item = state.credentials.find((row) => row.credential_id === values[0] && row.revoked_at === null);
-          return item || null;
+        if (sql.includes("SELECT code_hash FROM owner_recovery_codes")) {
+          const item = state.recoveryCodes.find((row) => row.code_hash === values[0] && row.used_at === null);
+          return item ? { code_hash: item.code_hash } : null;
         }
-        if (sql.startsWith("DELETE FROM auth_challenges")) {
-          return { bind() { return { async run() { return { success: true, meta: { changes: 0 } }; } }; } };
+        if (sql.includes("SELECT credential_id, public_key, sign_count") && sql.includes("WHERE credential_id = ?")) {
+          return state.credentials.find((row) => row.credential_id === values[0] && row.revoked_at === null) || null;
         }
         if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
-          const [hash, now] = values;
-          const item = state.sessions.find((row) => row.session_hash === hash && row.expires_at > now && row.revoked_at === null);
-          return item ? { created_at: item.created_at, expires_at: item.expires_at, last_seen_at: null } : null;
-        }
-        if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
-          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
-        }
-        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
-          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+          const [hash, now, idleCutoff] = values;
+          const item = state.sessions.find((row) =>
+            row.session_hash === hash && row.expires_at > now && row.revoked_at === null &&
+            (row.last_seen_at ?? row.created_at) > idleCutoff
+          );
+          return item ? { created_at: item.created_at, expires_at: item.expires_at, last_seen_at: item.last_seen_at ?? null } : null;
         }
         if (sql.includes("SELECT csrf_token_hash")) {
           const [hash, now] = values;
@@ -153,32 +158,80 @@ function makeRouteD1() {
         return { results: [] };
       },
       async run() {
+        if (sql.includes("DELETE FROM auth_challenges")) {
+          const cutoff = values[0];
+          const before = state.challenges.length;
+          state.challenges = state.challenges.filter((row) => row.expiresAt > cutoff);
+          return { success: true, meta: { changes: before - state.challenges.length } };
+        }
         if (sql.includes("INSERT INTO auth_challenges")) {
-          const [hash, challenge, purpose, createdAt, expiresAt] = values;
-          state.challenges.push({ hash, challenge, purpose, createdAt, expiresAt });
+          const [hash, challenge, purpose, recoveryCodeHash, createdAt, expiresAt] = values;
+          state.challenges.push({ hash, challenge, purpose, recoveryCodeHash, createdAt, expiresAt });
         } else if (sql.includes("INSERT INTO jarvis_owner")) {
           state.owner = { id: 1, created_at: values[0], enrollment_closed_at: values[1] };
         } else if (sql.includes("INSERT INTO owner_credentials")) {
+          if (sql.includes("SELECT ?")) {
+            const [id, publicKey, counter, transportsJson, deviceType, backedUp, createdAt, recoveryHash, challengeHash] = values;
+            const claim = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_challenge_hash === challengeHash);
+            if (!claim) return { success: true, meta: { changes: 0 } };
+            state.credentials.push({
+              credential_id: id, owner_id: 1, public_key: publicKey, sign_count: counter,
+              transports_json: transportsJson, device_type: deviceType, backed_up: backedUp,
+              created_at: createdAt, last_used_at: null, revoked_at: null
+            });
+            return { success: true, meta: { changes: 1 } };
+          }
           const [id, publicKey, counter, transportsJson, deviceType, backedUp, createdAt] = values;
           state.credentials.push({
             credential_id: id, owner_id: 1, public_key: publicKey, sign_count: counter,
             transports_json: transportsJson, device_type: deviceType, backed_up: backedUp,
             created_at: createdAt, last_used_at: null, revoked_at: null
           });
+        } else if (sql.includes("INSERT INTO owner_recovery_codes")) {
+          if (sql.includes("SELECT ?, ?")) {
+            const [hash, createdAt, recoveryHash, challengeHash] = values;
+            const claim = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_challenge_hash === challengeHash);
+            if (!claim) return { success: true, meta: { changes: 0 } };
+            state.recoveryCodes.push({ code_hash: hash, created_at: createdAt, used_at: null, used_challenge_hash: null });
+            return { success: true, meta: { changes: 1 } };
+          }
+          const [hash, createdAt] = values;
+          state.recoveryCodes.push({ code_hash: hash, created_at: createdAt, used_at: null, used_challenge_hash: null });
+        } else if (sql.includes("UPDATE owner_recovery_codes SET used_at")) {
+          const [now, challengeHash, recoveryHash] = values;
+          const item = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_at === null);
+          if (item) { item.used_at = now; item.used_challenge_hash = challengeHash; }
+          return { success: true, meta: { changes: item ? 1 : 0 } };
+        } else if (sql.includes("DELETE FROM owner_recovery_codes")) {
+          const [recoveryHash, challengeHash] = values;
+          const claim = state.recoveryCodes.some((row) => row.code_hash === recoveryHash && row.used_challenge_hash === challengeHash);
+          if (!claim) return { success: true, meta: { changes: 0 } };
+          const before = state.recoveryCodes.length;
+          state.recoveryCodes = state.recoveryCodes.filter((row) => row.used_at !== null);
+          return { success: true, meta: { changes: before - state.recoveryCodes.length } };
         } else if (sql.includes("INSERT INTO auth_sessions")) {
           const [sessionHash, csrfHash, createdAt, expiresAt] = values;
-          state.sessions.push({ session_hash: sessionHash, csrf_token_hash: csrfHash, created_at: createdAt, expires_at: expiresAt, revoked_at: null });
+          state.sessions.push({ session_hash: sessionHash, csrf_token_hash: csrfHash, created_at: createdAt, expires_at: expiresAt, last_seen_at: null, revoked_at: null });
         } else if (sql.includes("UPDATE owner_credentials SET sign_count")) {
           const [newCounter, now, id, oldCounter] = values;
           const item = state.credentials.find((row) => row.credential_id === id && row.sign_count === oldCounter && row.revoked_at === null);
           if (item) { item.sign_count = newCounter; item.last_used_at = now; }
           return { success: true, meta: { changes: item ? 1 : 0 } };
-        } else if (sql.includes("UPDATE auth_sessions SET revoked_at")) {
+        } else if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
           const [now, hash] = values;
+          const item = state.sessions.find((row) => row.session_hash === hash && row.revoked_at === null);
+          if (item) item.last_seen_at = now;
+          return { success: true, meta: { changes: item ? 1 : 0 } };
+        } else if (sql.includes("UPDATE auth_sessions SET revoked_at")) {
+          const [now, hash, challengeHash] = values;
           if (sql.includes("WHERE session_hash = ?")) {
             const item = state.sessions.find((row) => row.session_hash === hash && row.revoked_at === null);
             if (item) item.revoked_at = now;
             return { success: true, meta: { changes: item ? 1 : 0 } };
+          }
+          if (sql.includes("EXISTS (SELECT 1 FROM owner_recovery_codes")) {
+            const claim = state.recoveryCodes.some((row) => row.code_hash === hash && row.used_challenge_hash === challengeHash);
+            if (!claim) return { success: true, meta: { changes: 0 } };
           }
           const active = state.sessions.filter((row) => row.revoked_at === null);
           for (const item of active) item.revoked_at = now;
@@ -200,7 +253,6 @@ function makeRouteD1() {
     }
   };
 }
-
 describe("JARVIS Worker runtime contract", () => {
   it("serves the honest health-only scaffold with hardened headers", async () => {
     const response = await worker.fetch(request());
