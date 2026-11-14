@@ -56,7 +56,7 @@ GitHub documents standard GitHub-hosted runners as free for public repositories.
 
 1. Confirm the GitHub Actions run completed successfully; the GitHub connector currently does not expose the push-triggered run listing.
 2. If it fails, inspect the exact install/runtime error and correct the harness before adding authentication code. The first observed failure was an npm Arborist `edgesOut` crash during dependency installation; the workflow was moved to Node.js 24 to avoid the affected older npm resolver.
-3. After the smoke test passes, add negative tests around WebAuthn verification with synthetic fixtures.
+3. Run the newly added malformed-response rejection tests; then build valid synthetic ceremony fixtures to test challenge, origin, RP ID, signature, and user-verification failures.
 4. Separately test the browser package and passkey ceremony in Safari on the owner's iPhone.
 5. Only then consider a reviewed authentication implementation. No deployment or personal-data storage is authorized by this test.
 
