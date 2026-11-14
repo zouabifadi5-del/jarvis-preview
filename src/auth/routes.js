@@ -1,17 +1,9 @@
 import {
-  generateAuthenticationOptions,
-  generateRegistrationOptions,
-  verifyRegistrationResponse
-} from "@simplewebauthn/server";
-import {
   completeOwnerRecovery,
   consumeChallenge,
   consumeRecoveryChallenge,
   createChallenge,
   createOwnerWithCredential,
-  completeOwnerRecovery,
-  consumeRecoveryChallenge,
-  findActiveRecoveryCode,
   createSession,
   findActiveCredential,
   findActiveRecoveryCode,
@@ -20,8 +12,8 @@ import {
   listActiveCredentials,
   revokeAllSessions,
   revokeCredential,
-  storeCredential,
   revokeSession,
+  storeCredential,
   updateCredentialCounter,
   verifySessionCsrf
 } from "./d1-store.js";
@@ -576,12 +568,6 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/register/verify" && request.method === "POST") {
       return await registrationVerify(request, env, cfg, now);
-    }
-    if (pathname === "/auth/recovery/options" && request.method === "POST") {
-      return await recoveryOptions(request, cfg, now);
-    }
-    if (pathname === "/auth/recovery/verify" && request.method === "POST") {
-      return await recoveryVerify(request, cfg, now);
     }
     if (pathname === "/auth/recovery/options" && request.method === "POST") {
       return await recoveryOptions(request, cfg, now);
