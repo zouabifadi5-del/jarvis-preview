@@ -448,7 +448,6 @@ test("recovery codes are hashed, single-use, and replace all previous codes atom
 
     const replacement = await completeOwnerRecovery(binding, {
       recoveryCodeHash,
-      challengeHash: consumed.challengeHash,
       id: "recovery-replacement",
       publicKey: new Uint8Array([2, 4, 6, 8]),
       counter: 0,
@@ -466,7 +465,6 @@ test("recovery codes are hashed, single-use, and replace all previous codes atom
 
     await assert.rejects(completeOwnerRecovery(binding, {
       recoveryCodeHash,
-      challengeHash: consumed.challengeHash,
       id: "recovery-replay",
       publicKey: new Uint8Array([9, 9, 9]),
       now: 1006
