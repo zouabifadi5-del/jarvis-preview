@@ -2,10 +2,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
-  verifyAuthenticationResponse,
   verifyRegistrationResponse
 } from "@simplewebauthn/server";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
+import { verifyStoredCredentialAuthentication } from "../src/auth/webauthn.js";
 
 const RP_ID = "example.test";
 const ORIGIN = "https://example.test";
@@ -289,7 +289,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
 
   it("rejects a malformed synthetic authentication response", async () => {
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response: {},
         expectedChallenge: "synthetic-challenge",
         expectedOrigin: ORIGIN,
@@ -355,7 +355,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
   });
 
   it("verifies a valid synthetic authentication ceremony and signature", async () => {
-    const result = await verifyAuthenticationResponse({
+    const result = await verifyStoredCredentialAuthentication({
       response: fixtures.authenticationResponse,
       expectedChallenge: fixtures.authenticationOptions.challenge,
       expectedOrigin: ORIGIN,
@@ -371,7 +371,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
 
   it("rejects authentication with the wrong challenge", async () => {
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response: fixtures.authenticationResponse,
         expectedChallenge: "a-different-challenge",
         expectedOrigin: ORIGIN,
@@ -384,7 +384,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
 
   it("rejects authentication from the wrong origin", async () => {
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response: fixtures.authenticationResponse,
         expectedChallenge: fixtures.authenticationOptions.challenge,
         expectedOrigin: "https://attacker.example",
@@ -397,7 +397,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
 
   it("rejects authentication for the wrong relying-party ID", async () => {
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response: fixtures.authenticationResponse,
         expectedChallenge: fixtures.authenticationOptions.challenge,
         expectedOrigin: ORIGIN,
@@ -419,7 +419,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
       }
     };
 
-    const result = await verifyAuthenticationResponse({
+    const result = await verifyStoredCredentialAuthentication({
       response: tamperedResponse,
       expectedChallenge: fixtures.authenticationOptions.challenge,
       expectedOrigin: ORIGIN,
@@ -440,7 +440,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
     });
 
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response,
         expectedChallenge: fixtures.authenticationOptions.challenge,
         expectedOrigin: ORIGIN,
@@ -460,7 +460,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
     });
 
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response,
         expectedChallenge: fixtures.authenticationOptions.challenge,
         expectedOrigin: ORIGIN,
@@ -473,7 +473,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
 
   it("rejects an authentication counter rollback", async () => {
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response: fixtures.authenticationResponse,
         expectedChallenge: fixtures.authenticationOptions.challenge,
         expectedOrigin: ORIGIN,
@@ -486,7 +486,7 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
 
   it("rejects an authentication response bound to a different credential ID", async () => {
     await expect(
-      verifyAuthenticationResponse({
+      verifyStoredCredentialAuthentication({
         response: fixtures.authenticationResponse,
         expectedChallenge: fixtures.authenticationOptions.challenge,
         expectedOrigin: ORIGIN,
