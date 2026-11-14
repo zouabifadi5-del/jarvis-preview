@@ -666,4 +666,25 @@ describe("JARVIS Worker runtime contract", () => {
     expect(afterLogout.status).toBe(401);
   });
 
+  it("does not disclose whether an owner has completed enrollment", async () => {
+    const db = {
+      prepare(sql) {
+        if (sql.includes("SELECT id, created_at, enrollment_closed_at")) {
+          return { async first() { return null; } };
+        }
+        throw new Error("no further query should be made without an owner");
+      }
+    };
+    const response = await handleAuthRequest(request("/auth/login/options", {
+      method: "POST",
+      headers: { Origin: "https://example.test" }
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test"
+    });
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "authentication_failed" });
+  });
+
 });
