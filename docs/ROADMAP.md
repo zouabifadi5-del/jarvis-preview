@@ -13,9 +13,12 @@
 - [x] No simulated AI responses or misleading online claims; test input stays local.
 
 ## Milestone 2 — Minimal service
-- [x] Select Cloudflare Workers Free as the provisional backend candidate; deployment still requires owner account setup and a no-billing check.
+- [x] Select Cloudflare Workers as the provisional backend candidate.
+- [x] Connect the public preview repository and configure Cloudflare's production branch as `jarvis-foundation`.
+- [x] Complete a successful deployment build of the health-only worker scaffold.
+- [ ] Verify the live `/health` response and independently confirm zero-cost account/billing status.
 - [ ] Keep credentials on the server only.
-- [ ] Deploy and verify the scaffold health endpoint; add request validation before accepting commands.
+- [ ] Add request validation before accepting commands.
 - [ ] Add rate limiting and safe error handling.
 
 ## Milestone 3 — Owner security and memory
