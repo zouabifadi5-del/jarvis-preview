@@ -6,6 +6,7 @@ import {
 import {
   completeOwnerRecovery,
   consumeChallenge,
+  consumeRateLimit,
   consumeRecoveryChallenge,
   createChallenge,
   createOwnerWithCredential,
@@ -560,7 +561,58 @@ async function logout(request, cfg, now) {
   return cleared;
 }
 
-export async function handleAuthRequest(request, env) {
+
+
+async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) {
+  const groups = {
+    "/auth/login/options": { name: "login", limit: 20, windowSeconds: 15 * 60 },
+    "/auth/login/verify": { name: "login", limit: 20, windowSeconds: 15 * 60 },
+    "/auth/register/options": { name: "registration", limit: 6, windowSeconds: 60 * 60 },
+    "/auth/register/verify": { name: "registration", limit: 6, windowSeconds: 60 * 60 },
+    "/auth/recovery/options": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
+    "/auth/recovery/verify": { name: "recovery", limit: 10, windowSeconds: 60 * 60 }
+  };
+  const policy = groups[pathname];
+  if (!policy || request.method !== "POST") return null;
+
+  const secret = env?.JARVIS_RATE_LIMIT_HMAC_SECRET;
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (typeof secret !== "string" || secret.length < 32 ||
+      typeof ip !== "string" || ip.length < 3 || ip.length > 64 || /[\\s,]/.test(ip)) {
+    return fail(request, 503, "rate_limit_not_configured");
+  }
+
+  const windowStart = Math.floor(now / policy.windowSeconds) * policy.windowSeconds;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(policy.name + "\\n" + ip)
+  );
+  let binary = "";
+  for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
+  const bucketHash = btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  const result = await consumeRateLimit(cfg.db, {
+    bucketHash,
+    windowStart,
+    windowSeconds: policy.windowSeconds,
+    limit: policy.limit,
+    now
+  });
+  if (!result.allowed) {
+    return response(request, { error: "rate_limit_exceeded", retryAfter: result.resetAt - now }, 429, {
+      "Retry-After": String(Math.max(1, result.resetAt - now))
+    });
+  }
+  return null;
+}
+\nexport async function handleAuthRequest(request, env) {
   const cfg = configuration(request, env);
   if (!cfg) return fail(request, 503, "authentication_not_configured");
   const now = Math.floor(Date.now() / 1000);
