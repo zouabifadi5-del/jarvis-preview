@@ -17,18 +17,20 @@
 - [x] Connect the public preview repository and configure Cloudflare's production branch as `jarvis-foundation`.
 - [ ] Verify the active deployment was built from `jarvis-foundation` and serves the health-only worker scaffold.
 - [ ] Verify the live `/health` response and independently confirm zero-cost account/billing status.
-- [x] Add zero-dependency tests for the worker health route, unknown routes, and non-GET requests; previously verified locally with Node.js v22.16.0 (3 passed, 0 failed).
+- [x] Add zero-dependency tests for health, unknown routes, and rejected methods; expanded suite verified locally with Node.js v22.16.0 (6 passed, 0 failed).
+- [x] Add no-store, anti-sniffing, frame, referrer, permissions, and HTTPS-only HSTS response headers to the health-only Worker.
 - [ ] Keep credentials on the server only.
 - [ ] Add request validation before accepting commands.
 - [ ] Add rate limiting and safe error handling.
 
 ## Milestone 3 — Owner security and memory
-- [x] Document a single-owner passkey, session, privacy, and command-approval design (design only; not implemented or audited).
+- [x] Document a single-owner passkey, session, privacy, and command-approval design (design only; not implemented or security-audited).
 - [x] Research WebAuthn library candidates; exact versions remain uninstalled and must be rechecked before implementation.
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
 - [x] Add a zero-cost, staged authentication test plan: [Authentication Free-Tier Test Plan](AUTHENTICATION_FREE_TIER_TEST_PLAN.md).
+- [x] Expand the local Worker scaffold suite to cover security headers, strict route matching, method rejection, no CORS, and HTTP/HSTS behavior.
 - [ ] Verify the actual Cloudflare account is on the Free plan before provisioning SQLite Durable Object storage.
-- [ ] Complete local request, challenge, origin, session, CSRF, and error-handling tests.
+- [ ] Complete local request, challenge, origin, session, CSRF, and error-handling tests for the future auth implementation.
 - [ ] Pin dependencies and prove the selected versions work in the exact Worker runtime.
 - [ ] Owner authentication.
 - [ ] Session protection and logout.
