@@ -17,8 +17,8 @@
 ## Initial architecture
 
 - **Backend candidate:** Cloudflare Workers is the provisional host for a small stateless API. The account's billing status and free-plan eligibility have not yet been independently verified; do not enable paid services, billing, or trials.
-- **Deployment status:** The owner connected the public `jarvis-preview` repository to a Cloudflare Workers project named `jarvis-preview-api`, configured its production branch as `jarvis-foundation`, and observed a successful deployment build. GitHub's repository default branch remains `main`; Cloudflare's production-branch setting is separate.
-- **Service scaffold:** `src/worker.js` exposes only a non-sensitive `/health` response. The deployment build succeeded, but the live `/health` response has not yet been verified. The worker does not process commands, authenticate users, store memory, or call an AI provider.
+- **Deployment status:** The owner connected the public `jarvis-preview` repository to a Cloudflare Workers project named `jarvis-preview-api` and reported setting its production branch to `jarvis-foundation`. GitHub's repository default branch remains `main`; Cloudflare's production-branch setting is separate. A deployment build was reported as complete, but the branch used by the active version has not been independently verified.
+- **Service scaffold:** `src/worker.js` exposes only a non-sensitive `/health` response. The live `/health` response has not yet been verified. The worker does not process commands, authenticate users, store memory, or call an AI provider.
 
 
 - **iPhone client:** responsive web app/PWA, designed for Safari on iPhone. A PWA can provide an app-like home-screen entry point, but iOS does not permit an ordinary website to continuously listen for a custom wake word in the background.
