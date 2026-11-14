@@ -6,15 +6,15 @@
 
 ## Purpose
 
-Prove the owner-authentication design can work safely in the selected runtime before JARVIS stores credentials or personal data. Tests are staged so that local and isolated checks happen first. Cloud account eligibility is a separate manual verification gate; a verbal assumption is not proof of the account's billing state.
+Prove the owner-authentication design can work safely in the selected runtime before JARVIS stores credentials or personal data. Tests are staged so that local and isolated checks happen first. Cloud account eligibility is a separate manual verification gate; the owner has confirmed the account is on Free with no paid Workers subscription or trial; this remains owner-provided confirmation rather than an independent account inspection.
 
 ## Stage 0 — Preserve the safe baseline
 
 - Keep the current health-only Worker behavior as the public baseline.
 - Do not add login, enrollment, memory, AI, or command routes yet.
-- Do not provision a D1 database, Durable Object, bucket, or other cloud resource. Do not configure/deploy Workers Static Assets yet; the same-origin login page is a planned architecture, not a live feature.
+- Do not provision a D1 database, Durable Object, bucket, or other cloud resource. A non-functional static owner-access shell and Workers Static Assets config may be prepared on the isolated test branch, but must not be deployed without separate approval. The shell is not a login page and has no authentication behavior.
 - Do not change Cloudflare billing, plan, production branch, DNS, or deployment settings.
-- Confirm work is on `jarvis-foundation`; never modify `jarvis-core`.
+- Keep work isolated on `jarvis-worker-runtime-tests`; do not merge or deploy without approval, and never modify `jarvis-core`.
 - Record the current branch commit and ensure no secrets, credentials, or personal data are present in the public repository.
 
 **Pass condition:** Existing health, unknown-route, and method tests continue to pass; no production behavior changes.
@@ -56,13 +56,13 @@ Before provisioning anything, verify in the actual Cloudflare account:
 
 Record the date and the relevant plan/feature evidence in the project notes without recording payment details or other sensitive account information.
 
-**Pass condition:** Every item is confirmed from the account and current official documentation. If any item is unclear, stop; do not create the resource and do not enable billing.
+**Current state:** The owner has confirmed Free plan and no paid Workers subscription/trial. Do not ask the owner to repeat this. The account was not independently inspected through an authorized Cloudflare connection. If a paid prompt or unexpected charge risk appears during any later step, stop; do not enable billing.
 
 ## Stage 4 — Isolated cloud smoke test (only after Stage 3 passes)
 
 - First confirm the intended branch, production hostname, and currently deployed code identity.
 - Use a separate preview/test environment, not the production owner service. Apply `migrations/0001_owner_auth.sql` only to that isolated D1 database.
-- Create only one isolated D1 database if and only if Free eligibility and billing safety are confirmed; record its ID in the non-secret environment configuration, never in source code.
+- Create only one isolated D1 database only after a separate explicit owner approval; record its ID in non-secret environment configuration, never in source code.
 - Store synthetic test records only; no personal memory, real passkey, or production credential.
 - Test create/read/update/delete, atomic challenge consumption/replay rejection, credential counter compare-and-set, session revocation, expiry cleanup, and behavior at safe request limits.
 - Confirm that exceeding a Free quota fails closed and does not trigger paid usage or automatic upgrade.
@@ -92,9 +92,9 @@ Stop immediately if:
 
 ## Current verified project state
 
-- The Worker currently exposes only a health endpoint and a generic 404 response.
+- The live Worker remains unchanged and currently exposes only a health endpoint and a generic 404 response. The isolated test branch now contains a non-functional same-origin static shell, restrictive `_headers`, and Workers Static Assets configuration; none of these changes are deployed.
 - The baseline has zero-dependency Node scaffold tests; the isolated `jarvis-worker-runtime-tests` branch additionally has a Cloudflare Workers runtime suite with 24 passing tests at its last verified CI run.
-- The WebAuthn packages remain research candidates and are not installed. The D1 schema and storage helper module exist only in the isolated test branch; 12 local SQLite tests pass. No database has been created, and no authentication route is enabled.
+- The WebAuthn packages remain research candidates and are not installed. The D1 schema and storage helper module exist only in the isolated test branch; 12 local SQLite tests pass. No database has been created, no authentication route is enabled, and no passkey is registered.
 - Authentication, owner memory, and AI integration are not implemented.
 - No deployment or billing change is part of this plan.
 
