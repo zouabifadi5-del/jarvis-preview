@@ -7,7 +7,9 @@ import { createSession } from "../src/auth/d1-store.js";
 const worker = exports.default;
 
 function request(path = "/health", options = {}, protocol = "https:") {
-  return new Request(`${protocol}//example.test${path}`, options);
+  const headers = new Headers(options.headers || {});
+  if (!headers.has("CF-Connecting-IP")) headers.set("CF-Connecting-IP", "192.0.2.10");
+  return new Request(`${protocol}//example.test${path}`, { ...options, headers });
 }
 
 function expectHardenedHeaders(response, { https = true } = {}) {
@@ -113,6 +115,16 @@ function makeRouteD1() {
     return {
       bind(...bound) { return statement(sql, bound); },
       async first() {
+        if (sql.includes("INSERT INTO auth_rate_limits")) {
+          const [bucketHash, windowStart, expiresAt] = values;
+          let bucket = state.rateLimits.find((row) => row.bucketHash === bucketHash && row.windowStart === windowStart);
+          if (!bucket) {
+            bucket = { bucketHash, windowStart, expiresAt, requestCount: 0 };
+            state.rateLimits.push(bucket);
+          }
+          bucket.requestCount += 1;
+          return { request_count: bucket.requestCount };
+        }
         if (sql.includes("SELECT id, created_at, enrollment_closed_at")) return state.owner;
         if (sql.includes("DELETE FROM auth_challenges")) {
           let index;
@@ -158,6 +170,12 @@ function makeRouteD1() {
         return { results: [] };
       },
       async run() {
+        if (sql.includes("DELETE FROM auth_rate_limits")) {
+          const cutoff = values[0];
+          const before = state.rateLimits.length;
+          state.rateLimits = state.rateLimits.filter((row) => row.expiresAt > cutoff);
+          return { success: true, meta: { changes: before - state.rateLimits.length } };
+        }
         if (sql.includes("DELETE FROM auth_challenges")) {
           const cutoff = values[0];
           const before = state.challenges.length;
@@ -343,6 +361,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: { prepare() { throw new Error("storage must not be touched"); } },
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_BOOTSTRAP_SECRET: "a".repeat(48)
     };
     const response = await handleAuthRequest(request("/auth/register/options", {
