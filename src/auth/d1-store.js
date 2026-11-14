@@ -177,7 +177,7 @@ export async function revokeCredential(db, { credentialId, now = Math.floor(Date
   assertD1(db);
   assertUnixSeconds(now, "now");
   const result = await db.prepare(
-    "UPDATE owner_credentials SET revoked_at = ? WHERE credential_id = ? AND revoked_at IS NULL"
+    "UPDATE owner_credentials SET revoked_at = ? WHERE credential_id = ? AND revoked_at IS NULL AND (SELECT COUNT(*) FROM owner_credentials WHERE owner_id = 1 AND revoked_at IS NULL) > 1"
   ).bind(now, credentialId).run();
   return result.meta?.changes === 1;
 }
