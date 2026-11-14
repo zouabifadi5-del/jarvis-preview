@@ -321,3 +321,27 @@ test("credential revocation atomically refuses to remove the final active passke
     sqlite.close();
   }
 });
+
+
+test("new challenges and sessions prune expired or revoked rows", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    sqlite.prepare(
+      "INSERT INTO auth_challenges(challenge_hash, challenge, purpose, created_at, expires_at) VALUES(?, ?, ?, ?, ?)"
+    ).run("old-challenge", "old-challenge-value", "authentication", 1, 2);
+    const challenge = await createChallenge(binding, { purpose: "authentication", now: 10 });
+    assert.ok(challenge.challenge);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM auth_challenges WHERE challenge_hash = ?").get("old-challenge").n, 0);
+
+    sqlite.prepare(
+      "INSERT INTO auth_sessions(session_hash, csrf_token_hash, created_at, expires_at) VALUES(?, ?, ?, ?)"
+    ).run("expired-session", "expired-csrf", 1, 2);
+    sqlite.prepare(
+      "INSERT INTO auth_sessions(session_hash, csrf_token_hash, created_at, expires_at, revoked_at) VALUES(?, ?, ?, ?, ?)"
+    ).run("revoked-session", "revoked-csrf", 1, 100, 5);
+    await createSession(binding, { now: 10 });
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM auth_sessions WHERE session_hash IN ('expired-session', 'revoked-session')").get().n, 0);
+  } finally {
+    sqlite.close();
+  }
+});
