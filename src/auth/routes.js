@@ -326,7 +326,9 @@ async function credentialList(request, cfg, now) {
 
 async function addCredentialOptions(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
-  if (!await authenticatedOwner(request, cfg, now, true)) return fail(request, 403, "session_or_csrf_invalid");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (now - auth.session.createdAt > 5 * 60) return fail(request, 403, "reauthentication_required");
   if (!await findOwner(cfg.db)) return fail(request, 401, "owner_not_enrolled");
   const credentials = await listActiveCredentials(cfg.db);
   if (credentials.length >= 10) return fail(request, 409, "credential_limit_reached");
