@@ -5,6 +5,21 @@
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
 
+## 1. Selected WebAuthn identity
+
+The owner has selected the existing Cloudflare Worker hostname; no custom domain is owned or required for this development phase.
+
+- **Canonical origin:** `https://jarvis-preview-api.zouabifadi5.workers.dev`
+- **WebAuthn RP ID:** `jarvis-preview-api.zouabifadi5.workers.dev` (hostname only; no scheme, path, or trailing slash)
+- **Allowed origin:** exact match to the canonical HTTPS origin above
+- **Cookie scope:** host-only; omit the `Domain` attribute
+
+Treat this hostname as fixed before the first real passkey is enrolled. A later hostname/RP ID change generally requires owners to enroll new passkeys. Never accept arbitrary origins or RP IDs from request data.
+
+Cloudflare documents `workers.dev` as a free subdomain intended for getting started and personal/hobby projects, and recommends a Workers route or custom domain rather than `workers.dev` for business-critical production workloads. This is therefore the zero-cost development choice, not a claim that the service is production-hardened. Reassess the hostname before storing sensitive personal data or relying on JARVIS for critical operations.
+
+Reference: https://developers.cloudflare.com/workers/configuration/routing/workers-dev/
+
 ## 1. Library selection
 
 **Preferred candidate:**
