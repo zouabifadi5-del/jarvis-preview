@@ -908,6 +908,9 @@ describe("JARVIS Worker runtime contract", () => {
             return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
           } }; } };
         }
+        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
         if (sql.startsWith("DELETE FROM auth_challenges")) challengeIssued = true;
         throw new Error("stale sessions must be rejected before credential storage is touched");
       }
