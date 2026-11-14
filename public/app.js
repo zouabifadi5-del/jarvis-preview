@@ -103,6 +103,9 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       not_authenticated: "Your session has expired. Sign in again.",
       session_or_csrf_invalid: "Your session security check failed. Refresh and sign in again."
     };
+    if (response.status === 503 && payload.error === "authentication_not_configured") {
+      throw new Error("The authentication service is not configured yet.");
+    }
     throw new Error(messages[payload.error] || "Request failed (" + response.status + ").");
   }
   return payload;
@@ -125,6 +128,28 @@ async function loadCredentials() {
     details.className = "muted";
     details.textContent = "Added " + new Date(credential.createdAt * 1000).toLocaleDateString();
     item.append(title, details);
+    if (result.credentials.length > 1) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "danger";
+      remove.textContent = "Remove this passkey";
+      remove.addEventListener("click", async () => {
+        if (!window.confirm("Remove this passkey from your JARVIS owner account?")) return;
+        remove.disabled = true;
+        try {
+          await api("/auth/credentials/revoke", {
+            method: "POST",
+            body: { credentialId: credential.id }
+          });
+          await loadCredentials();
+          setStatus("Passkey removed.", "success");
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "Could not remove this passkey.", "error");
+          remove.disabled = false;
+        }
+      });
+      item.append(remove);
+    }
     credentialsNode.append(item);
   }
 }
@@ -137,6 +162,7 @@ async function requireWebAuthn() {
 async function enrollOwner() {
   await requireWebAuthn();
   const secret = secretInput.value.trim();
+  secretInput.value = "";
   if (secret.length < 32) throw new Error("Enter the one-time bootstrap secret (at least 32 characters).");
   const headers = { "X-Jarvis-Bootstrap": secret };
   const options = await api("/auth/register/options", { method: "POST", headers });
@@ -192,6 +218,13 @@ async function initialize() {
   } catch (error) {
     showSignedOut();
     if (error instanceof Error && error.message.includes("Passkeys are not available")) {
+      setStatus(error.message, "error");
+      return;
+    }
+    if (error instanceof Error && error.message === "The authentication service is not configured yet.") {
+      loginButton.hidden = true;
+      enrollButton.hidden = true;
+      secretInput.hidden = true;
       setStatus(error.message, "error");
       return;
     }
