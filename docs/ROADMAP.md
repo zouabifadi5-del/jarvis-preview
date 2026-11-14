@@ -36,7 +36,7 @@
 - [x] Add a synthetic end-to-end success-path test for owner registration, login, session inspection, and logout.
 - [x] Add negative route tests for replayed ceremonies, wrong origin, tampered signatures, CSRF failure, and owner-enrollment enumeration.
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
-- [ ] Add a reviewed lockfile and dependency-advisory review.
+- [x] Add a CI production-dependency advisory audit (`npm audit --omit=dev --audit-level=moderate`); a committed, reviewed lockfile and full transitive dependency review remain outstanding.
 - [x] Pass 19 local SQLite/Node checks, 39 Workers runtime tests, production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI (58 test cases total).
 - [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add-passkey, and sign-out.
 - [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey; the browser interface is not deployed or device-tested.
