@@ -9,7 +9,7 @@ function assertD1(db) {
 }
 
 function assertPurpose(purpose) {
-  if (purpose !== "registration" && purpose !== "authentication") {
+  if (purpose !== "registration" && purpose !== "authentication" && purpose !== "credential_add") {
     throw new TypeError("Unsupported WebAuthn challenge purpose");
   }
 }
