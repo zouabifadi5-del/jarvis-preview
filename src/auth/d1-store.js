@@ -57,6 +57,9 @@ export async function createChallenge(
 
   // Opportunistic bounded cleanup keeps expired challenge rows from accumulating.
   await db.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now).run();
+  // Opportunistically prune expired one-time challenges before issuing another.
+  await db.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now).run();
+
   const challenge = randomToken();
   const challengeHash = await sha256Base64Url(challenge);
   const expiresAt = now + ttlSeconds;
@@ -197,6 +200,9 @@ export async function createSession(
 
   // Remove expired/revoked session rows when issuing a new session.
   await db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ? OR revoked_at IS NOT NULL").bind(now).run();
+  // Bound stale session storage without retaining old session identifiers.
+  await db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ? OR (revoked_at IS NOT NULL AND revoked_at <= ?)").bind(now, now - 7 * 24 * 60 * 60).run();
+
   const sessionToken = randomToken();
   const csrfToken = randomToken();
   const sessionHash = await sha256Base64Url(sessionToken);
