@@ -36,8 +36,8 @@
 - [ ] Complete end-to-end registration verification, login verification, session, CSRF, and logout route tests.
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
 - [ ] Add a reviewed lockfile and dependency-advisory review.
-- [ ] Complete owner authentication end to end, including browser passkey UI and actual D1 binding.
-- [ ] Add multiple-device passkey management, recovery, login rate limits, and CSRF persistence across reloads.
+- [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add-passkey, and sign-out.\n- [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey.
+- [x] Add multi-device credential listing/addition/revocation with last-passkey protection and a reload-persistent CSRF cookie.\n- [ ] Add offline recovery, login rate limits, and complete end-to-end tests.
 - [ ] Explicit memory review, correction, export, and deletion.
 - [ ] Encrypt sensitive data at rest and in transit.
 
