@@ -54,6 +54,10 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 - Worker runtime job: successful.
 - The run is associated with commit `ebfad80` on the isolated test branch.
 
+### Static shell and Wrangler validation
+
+The isolated branch now contains `public/index.html` and `public/_headers`, with a Workers Static Assets binding in `wrangler.toml`. The page is intentionally informational only: it has no script, form, sign-in, or enrollment flow. Its headers deny framing, disable caching, and apply a restrictive Content Security Policy. CI runs `wrangler deploy --dry-run`, which compiles and validates the Worker/assets configuration without uploading or deploying; this was successful in run #54.
+
 ## CI safety boundaries
 
 The workflow:
@@ -68,7 +72,7 @@ The Worker test harness is not a hardened security sandbox. Only trusted project
 
 ## D1 schema validation added alongside this harness
 
-The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow before adding the static-shell checks passed all 12 local SQLite tests plus all 24 Worker-runtime tests (36 tests total across the two test commands). A new workflow run has been triggered by the static-shell test additions; its result is pending. This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 helper code is not wired into the Worker routes and does not make authentication operational. A non-functional static owner-access shell is configured on the isolated branch via Workers Static Assets; it has no scripts, forms, sign-in, or enrollment, and has not been deployed.
+The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow run #54 passed all 19 local SQLite/Node tests, the Wrangler 4.148.0 `deploy --dry-run` build/config validation, and all 24 Workers runtime tests (43 tests total). The dry run read both static files and reported the `ASSETS` binding; it did not upload or deploy anything. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43613735127 This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 helper code is not wired into the Worker routes and does not make authentication operational. A non-functional static owner-access shell is configured on the isolated branch via Workers Static Assets; it has no scripts, forms, sign-in, or enrollment, and has not been deployed.
 
 ## Remaining gates
 
