@@ -17,6 +17,7 @@ test("same-origin owner access shell uses only its bundled passkey client and re
   assert.ok(css.includes("color-scheme: dark"));
   assert.ok(html.includes('id="bootstrap-secret"'));
   assert.ok(html.includes('id="login"'));
+  assert.ok(html.includes('id="reauthenticate"'));
   assert.ok(html.includes('id="logout-all"'));
   assert.ok(app.includes("navigator.credentials.create"));
   assert.ok(app.includes("navigator.credentials.get"));
