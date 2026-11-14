@@ -136,13 +136,13 @@ Unknown routes and methods remain rejected. No AI command, memory, or external-a
 - Test the full flow in Safari on the owner's iPhone over the final HTTPS origin.
 - Confirm passkey creation and sign-in invoke iOS's native passkey sheet and require user verification.
 - Confirm cancellation, unavailable passkeys, device restart, expired sessions, and logout fail safely.
-- Test a second supported authenticator/recovery route before relying on the system as the sole access method.
+- Test a second physical authenticator and the recovery-code ceremony on the owner's iPhone before relying on the system as the sole access method.
 
 ## 6. Current implementation status
 
 Implemented on `jarvis-worker-runtime-tests`: first-owner passkey registration, passkey login, session inspection, logout and sign-out-everywhere; multi-device credential listing/addition/revocation with last-credential protection; exact configured origin/RP ID checks; bootstrap secret gate; JSON content-type/body-size validation; five-minute single-use challenges with cleanup; D1-backed owner/credential/session helpers; hashed session and CSRF tokens; host-only Secure/HttpOnly session cookie plus reload-persistent CSRF cookie; CSRF verification; 30-minute idle expiry; session rotation after passkey sign-in; five-minute recent-passkey requirement for credential changes; and fail-closed behavior when D1 or origin settings are absent. A same-origin native WebAuthn UI is included. The synthetic route suite now exercises a successful registration/login/session/logout ceremony and negative paths including replay, wrong origin, tampered signatures, CSRF rejection, and owner-enrollment enumeration.
 
-Latest verified CI run #261 passed 23 local SQLite/Node checks and 39 Workers-runtime tests (62 tests total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run configuration validation. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43617600817 Still incomplete: real D1 binding tests, rate limiting, committed dependency lockfile review, live origin verification, and iPhone Safari acceptance. Offline recovery codes are implemented and synthetically tested, but need owner-device acceptance testing. No Cloudflare database, secret, or deployment has been created. See [Remote D1 Provisioning Gate](REMOTE_D1_PROVISIONING_GATE.md) for the approval-gated next step.
+Latest verified CI run #263 passed 23 local SQLite/Node checks and 39 Workers-runtime tests (62 tests total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run configuration validation. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43617630912 Still incomplete: real D1 binding tests, rate limiting, committed dependency lockfile review, live origin verification, and iPhone Safari acceptance. Offline recovery codes are implemented and synthetically tested, but need owner-device acceptance testing. No Cloudflare database, secret, or deployment has been created. See [Remote D1 Provisioning Gate](REMOTE_D1_PROVISIONING_GATE.md) for the approval-gated next step.
 
 ## 7. Release gates
 
