@@ -467,7 +467,7 @@ describe("JARVIS Worker runtime contract", () => {
         }
         if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
           return { bind(...values) { return { async first() {
-            return values[0] === sessionHash ? { created_at: 1000, expires_at: 9999999999 } : null;
+            return values[0] === sessionHash ? { created_at: Math.floor(Date.now() / 1000), expires_at: 9999999999 } : null;
           } }; } };
         }
         if (sql.includes("SELECT csrf_token_hash")) {
@@ -543,7 +543,7 @@ describe("JARVIS Worker runtime contract", () => {
         }
         if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
           return { bind(...values) { return { async first() {
-            return values[0] === sessionHash ? { created_at: 1000, expires_at: 9999999999 } : null;
+            return values[0] === sessionHash ? { created_at: Math.floor(Date.now() / 1000), expires_at: 9999999999 } : null;
           } }; } };
         }
         if (sql.includes("SELECT csrf_token_hash")) {
