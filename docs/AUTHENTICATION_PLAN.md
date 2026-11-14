@@ -17,7 +17,7 @@ The owner supplied this Worker URL. To make it a valid WebAuthn identity without
 
 Cloudflare documents Workers Static Assets as free and unlimited for asset requests, with no additional asset storage charge. Requests that invoke the Worker script remain subject to the Workers Free request limit. A non-functional static owner-access shell and Workers Static Assets configuration have been added to the isolated test branch only. They have not been deployed; the live Worker remains unchanged.
 
-The RP ID and exact origin must be rechecked against the actual served login page before the first real passkey is enrolled. Never accept origin or RP ID values supplied by a request. Changing the hostname after enrollment generally requires enrolling new passkeys.
+The RP ID and exact origin must be rechecked against the actual served login page before the first real passkey is enrolled. Wrangler's non-deploying build validation has passed for the current static asset configuration, but that does not prove the page is live or validate a real browser ceremony. Never accept origin or RP ID values supplied by a request. Changing the hostname after enrollment generally requires enrolling new passkeys.
 
 References:
 - https://www.w3.org/TR/2026/REC-webauthn-3-20260825/
