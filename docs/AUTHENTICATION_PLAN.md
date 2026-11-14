@@ -97,6 +97,7 @@ Never store passkey private keys, biometric data, plaintext session tokens, prom
 All routes are same-origin HTTPS. JSON bodies are content-type checked and capped at 16 KiB:
 - `POST /auth/register/options` — creates one-time owner registration options; requires the server-side bootstrap secret.
 - `POST /auth/register/verify` — verifies the attestation and atomically creates the singleton owner and first credential; requires the bootstrap secret again.
+- `POST /auth/recovery/options` and `POST /auth/recovery/verify` — use one unused 256-bit recovery code to register a replacement passkey. On success, all previous passkeys, active sessions, and unused recovery codes are invalidated; ten new recovery codes are issued once.
 - `POST /auth/login/options` — issues a short-lived authentication challenge for active owner credentials.
 - `POST /auth/login/verify` — verifies the assertion, compare-and-set updates the counter, and issues a session.
 - `GET /auth/me` — returns only whether the owner session is active and its expiry.
