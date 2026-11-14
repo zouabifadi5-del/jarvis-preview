@@ -2,7 +2,7 @@
 -- D1 migration only: this file does not create or bind a Cloudflare database.
 -- Apply only after the account's Free-plan and billing status are verified.
 
-PRAGMA foreign_keys = ON;
+-- D1 enforces declared foreign keys by default; no PRAGMA toggle is needed.
 
 CREATE TABLE IF NOT EXISTS jarvis_owner (
   id INTEGER PRIMARY KEY CHECK (id = 1),
