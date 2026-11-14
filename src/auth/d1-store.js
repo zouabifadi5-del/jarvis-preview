@@ -1,6 +1,7 @@
 const DEFAULT_CHALLENGE_TTL_SECONDS = 5 * 60;
 const DEFAULT_SESSION_TTL_SECONDS = 8 * 60 * 60;
 const MAX_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+const SESSION_IDLE_TIMEOUT_SECONDS = 30 * 60;
 
 function assertD1(db) {
   if (!db || typeof db.prepare !== "function") {
@@ -225,14 +226,19 @@ export async function findActiveSession(db, { sessionToken, now = Math.floor(Dat
 
   const sessionHash = await sha256Base64Url(sessionToken);
   const row = await db.prepare(
-    "SELECT created_at, expires_at, last_seen_at FROM auth_sessions WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL LIMIT 1"
-  ).bind(sessionHash, now).first();
+    "SELECT created_at, expires_at, last_seen_at FROM auth_sessions WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL AND COALESCE(last_seen_at, created_at) > ? LIMIT 1"
+  ).bind(sessionHash, now, now - SESSION_IDLE_TIMEOUT_SECONDS).first();
 
-  return row ? {
+  if (!row) return null;
+  await db.prepare(
+    "UPDATE auth_sessions SET last_seen_at = ? WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL"
+  ).bind(now, sessionHash, now).run();
+
+  return {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
-    lastSeenAt: row.last_seen_at
-  } : null;
+    lastSeenAt: now
+  };
 }
 
 export async function verifySessionCsrf(
@@ -248,8 +254,8 @@ export async function verifySessionCsrf(
 
   const sessionHash = await sha256Base64Url(sessionToken);
   const row = await db.prepare(
-    "SELECT csrf_token_hash FROM auth_sessions WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL LIMIT 1"
-  ).bind(sessionHash, now).first();
+    "SELECT csrf_token_hash FROM auth_sessions WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL AND COALESCE(last_seen_at, created_at) > ? LIMIT 1"
+  ).bind(sessionHash, now, now - SESSION_IDLE_TIMEOUT_SECONDS).first();
   if (!row || typeof row.csrf_token_hash !== "string") return false;
 
   const suppliedHash = await sha256Base64Url(csrfToken);
