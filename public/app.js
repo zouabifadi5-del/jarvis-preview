@@ -141,7 +141,7 @@ async function copyRecoveryCodes() {
   setStatus("Recovery codes copied. Store them somewhere secure and offline.", "success");
 }
 function downloadRecoveryCodes() {
-  const blob = new Blob(["JARVIS owner recovery codes\\nKeep offline. Each code works once.\\n\\n", recoveryList.textContent, "\\n"], { type: "text/plain;charset=utf-8" });
+  const blob = new Blob(["JARVIS owner recovery codes\nKeep offline. Each code works once.\n\n", recoveryList.textContent, "\\n"], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
