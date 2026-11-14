@@ -134,4 +134,37 @@ describe("JARVIS Worker runtime contract", () => {
     });
   });
 
+  it("requires a valid JSON content type for authentication payloads", async () => {
+    const env = {
+      DB: { prepare() { throw new Error("invalid bodies must not touch storage"); } },
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test"
+    };
+    const response = await handleAuthRequest(request("/auth/login/verify", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        "Content-Type": "text/plain"
+      },
+      body: "{}"
+    }), env);
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "invalid_request" });
+  });
+
+  it("rejects a missing bootstrap secret before touching storage", async () => {
+    const env = {
+      DB: { prepare() { throw new Error("unauthorized bootstrap must not touch storage"); } },
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_BOOTSTRAP_SECRET: "b".repeat(48)
+    };
+    const response = await handleAuthRequest(request("/auth/register/options", {
+      method: "POST",
+      headers: { Origin: "https://example.test" }
+    }), env);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "bootstrap_not_authorized" });
+  });
+
 });
