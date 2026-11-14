@@ -55,6 +55,8 @@ export async function createChallenge(
     throw new RangeError("WebAuthn challenge lifetime cannot exceed five minutes");
   }
 
+  // Opportunistic bounded cleanup keeps expired challenge rows from accumulating.
+  await db.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now).run();
   const challenge = randomToken();
   const challengeHash = await sha256Base64Url(challenge);
   const expiresAt = now + ttlSeconds;
@@ -193,6 +195,8 @@ export async function createSession(
     throw new RangeError("Session lifetime cannot exceed seven days");
   }
 
+  // Remove expired/revoked session rows when issuing a new session.
+  await db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ? OR revoked_at IS NOT NULL").bind(now).run();
   const sessionToken = randomToken();
   const csrfToken = randomToken();
   const sessionHash = await sha256Base64Url(sessionToken);
