@@ -1,5 +1,14 @@
 # J.A.R.V.I.S. — Authentication Implementation Plan
 
+## Selected WebAuthn identity
+
+- **Canonical HTTPS origin:** `https://jarvis-preview-api.zouabifadi5.workers.dev`
+- **WebAuthn RP ID:** `jarvis-preview-api.zouabifadi5.workers.dev` (hostname only; no scheme, path, or trailing slash)
+- **Allowed origin:** exact match to the canonical HTTPS origin above
+- **Session cookie:** host-only; omit the `Domain` attribute
+
+This is the owner's chosen identity for the first passkey enrollment. Treat it as fixed once real passkeys are enrolled; changing the hostname/RP ID later generally requires enrolling new passkeys. Never accept origin or RP ID values supplied by a request. The `workers.dev` hostname is acceptable for this zero-cost personal development phase, not a claim of business-critical production readiness. Reassess before storing sensitive personal data or relying on JARVIS for critical operations.
+
 **Status:** Engineering plan only — no authentication code is enabled  
 **Owner model:** One enrolled owner, no public sign-up  
 **Client:** Safari on iPhone 17 Pro Max  
