@@ -268,4 +268,135 @@ describe("JARVIS Worker runtime contract", () => {
     expect(issued[0].values[2]).toBe("authentication");
   });
 
+  it("requires an authenticated CSRF-protected owner session to add another passkey", async () => {
+    const encode = (bytes) => {
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+    };
+    const hash = async (value) => encode(new Uint8Array(await crypto.subtle.digest(
+      "SHA-256", new TextEncoder().encode(value)
+    )));
+    const sessionToken = "s".repeat(48);
+    const csrfToken = "c".repeat(48);
+    const sessionHash = await hash(sessionToken);
+    const csrfHash = await hash(csrfToken);
+    const challenges = [];
+    const db = {
+      prepare(sql) {
+        if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
+          return { bind(...values) { return { async first() {
+            return values[0] === sessionHash ? { created_at: 1000, expires_at: 9999999999 } : null;
+          } }; } };
+        }
+        if (sql.includes("SELECT csrf_token_hash")) {
+          return { bind(...values) { return { async first() {
+            return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
+          } }; } };
+        }
+        if (sql.includes("SELECT id, created_at, enrollment_closed_at")) {
+          return { async first() { return { id: 1, created_at: 1000, enrollment_closed_at: 1000 }; } };
+        }
+        if (sql.includes("SELECT credential_id, public_key, sign_count")) {
+          return { async all() { return { results: [{
+            credential_id: "existing-passkey",
+            public_key: new Uint8Array([1, 2, 3]),
+            sign_count: 0,
+            transports_json: '["internal"]',
+            device_type: "singleDevice",
+            backed_up: 0,
+            created_at: 1000,
+            last_used_at: null
+          }] }; } };
+        }
+        return { bind(...values) { return { async run() {
+          challenges.push(values);
+          return { success: true, meta: { changes: 1 } };
+        } }; } };
+      }
+    };
+    const response = await handleAuthRequest(request("/auth/credentials/options", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: `__Host-jarvis_session=${sessionToken}`,
+        "X-CSRF-Token": csrfToken
+      }
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test"
+    });
+    expect(response.status).toBe(200);
+    const options = await response.json();
+    expect(options.excludeCredentials).toContainEqual({
+      id: "existing-passkey",
+      transports: ["internal"],
+      type: "public-key"
+    });
+    expect(options.challenge).toMatch(/^[A-Za-z0-9_-]{40,}$/);
+    expect(challenges[0][2]).toBe("credential_add");
+  });
+
+  it("refuses to revoke the owner's final active passkey", async () => {
+    const encode = (bytes) => {
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+    };
+    const hash = async (value) => encode(new Uint8Array(await crypto.subtle.digest(
+      "SHA-256", new TextEncoder().encode(value)
+    )));
+    const sessionToken = "s".repeat(48);
+    const csrfToken = "c".repeat(48);
+    const sessionHash = await hash(sessionToken);
+    const csrfHash = await hash(csrfToken);
+    let revoked = false;
+    const db = {
+      prepare(sql) {
+        if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
+          return { bind(...values) { return { async first() {
+            return values[0] === sessionHash ? { created_at: 1000, expires_at: 9999999999 } : null;
+          } }; } };
+        }
+        if (sql.includes("SELECT csrf_token_hash")) {
+          return { bind(...values) { return { async first() {
+            return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
+          } }; } };
+        }
+        if (sql.includes("SELECT credential_id, public_key, sign_count")) {
+          return { async all() { return { results: [{
+            credential_id: "only-passkey",
+            public_key: new Uint8Array([1, 2, 3]),
+            sign_count: 0,
+            transports_json: "[]",
+            device_type: "singleDevice",
+            backed_up: 0,
+            created_at: 1000,
+            last_used_at: null
+          }] }; } };
+        }
+        if (sql.includes("UPDATE owner_credentials SET revoked_at")) revoked = true;
+        return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+      }
+    };
+    const response = await handleAuthRequest(request("/auth/credentials/revoke", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: `__Host-jarvis_session=${sessionToken}`,
+        "X-CSRF-Token": csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ credentialId: "only-passkey" })
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test"
+    });
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ error: "cannot_revoke_last_credential" });
+    expect(revoked).toBe(false);
+  });
+
 });
