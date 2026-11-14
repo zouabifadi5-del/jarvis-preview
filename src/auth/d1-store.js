@@ -2,6 +2,7 @@ const DEFAULT_CHALLENGE_TTL_SECONDS = 5 * 60;
 const DEFAULT_SESSION_TTL_SECONDS = 8 * 60 * 60;
 const MAX_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SESSION_IDLE_TIMEOUT_SECONDS = 30 * 60;
+const SESSION_TOUCH_INTERVAL_SECONDS = 60;
 
 function assertD1(db) {
   if (!db || typeof db.prepare !== "function") {
@@ -226,14 +227,19 @@ export async function findActiveSession(db, { sessionToken, now = Math.floor(Dat
   ).bind(sessionHash, now, now - SESSION_IDLE_TIMEOUT_SECONDS).first();
 
   if (!row) return null;
-  await db.prepare(
-    "UPDATE auth_sessions SET last_seen_at = ? WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL"
-  ).bind(now, sessionHash, now).run();
+  const previousActivity = row.last_seen_at ?? row.created_at;
+  let lastSeenAt = previousActivity;
+  if (now - previousActivity >= SESSION_TOUCH_INTERVAL_SECONDS) {
+    await db.prepare(
+      "UPDATE auth_sessions SET last_seen_at = ? WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL"
+    ).bind(now, sessionHash, now).run();
+    lastSeenAt = now;
+  }
 
   return {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
-    lastSeenAt: now
+    lastSeenAt
   };
 }
 
