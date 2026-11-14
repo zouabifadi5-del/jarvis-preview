@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status:** The latest completed Workers runtime run passed 24 of 24 tests. The isolated branch also has local SQLite and Node scaffold/static-shell checks. This is a compatibility and verifier test harness, not a production authentication implementation.  
+**Status:** The latest verified run #78 passed 31 Workers runtime tests and 14 local SQLite/Node checks, plus a Wrangler dry-run build/config validation. Initial auth route code is present but not production-ready.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -12,12 +12,12 @@ Cloudflare recommends its Workers Vitest integration for this purpose. The `@clo
 
 ## Candidate versions for this compatibility experiment
 
-- `@simplewebauthn/server@14.1.0`: JSR release selected for this test; its official package listing explicitly names Cloudflare Workers as a supported runtime.
+- `@simplewebauthn/server@14.1.0`: pinned in `package.json`; synthetic WebAuthn and route option tests pass in the Workers runtime.
 - `@simplewebauthn/browser@14.0.0`: browser package candidate; browser behavior still needs separate Safari/iPhone testing.
 - `vitest@4.1.0`: version selected for the test harness.
 - `@cloudflare/vitest-plugin@1.8.2`: plugin version selected for this experiment.
 
-These are test candidates, not production approvals. The CI job uses Node.js 24 with Node-24-compatible GitHub Actions releases, then installs exact direct package versions temporarily with `--no-save`; no dependencies or lockfile are committed by this experiment. The initial npm `edgesOut` resolver crash was avoided by moving the harness to Node.js 24. A production dependency lockfile is created only after successful compatibility and security review.
+The server package is now a declared runtime dependency. CI uses Node.js 24 and installs exact test tooling temporarily. There is still no lockfile or completed dependency-advisory review; passing compatibility tests do not constitute production approval.
 
 ## Tests prepared
 
@@ -49,10 +49,12 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 
 ### Current CI result
 
-- Test files: 2 passed.
-- Test cases: 24 passed.
-- Worker runtime job: successful.
-- The run is associated with commit `ebfad80` on the isolated test branch.
+- Local SQLite/Node checks: 14 passed.
+- Workers runtime test files: 2 passed.
+- Workers runtime test cases: 31 passed.
+- Wrangler `deploy --dry-run`: successful; it validated the static assets and `ASSETS` binding without uploading or deploying.
+- Total test cases: 45 passed.
+- Run #78: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43614569630
 
 ### Static shell and Wrangler validation
 
@@ -72,15 +74,15 @@ The Worker test harness is not a hardened security sandbox. Only trusted project
 
 ## D1 schema validation added alongside this harness
 
-The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow run #54 passed all 19 local SQLite/Node tests, the Wrangler 4.148.0 `deploy --dry-run` build/config validation, and all 24 Workers runtime tests (43 tests total). The dry run read both static files and reported the `ASSETS` binding; it did not upload or deploy anything. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43613735127 This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 helper code is not wired into the Worker routes and does not make authentication operational. A non-functional static owner-access shell is configured on the isolated branch via Workers Static Assets; it has no scripts, forms, sign-in, or enrollment, and has not been deployed.
+The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow run #54 passed all 19 local SQLite/Node tests, the Wrangler 4.148.0 `deploy --dry-run` build/config validation, and all 24 Workers runtime tests (43 tests total). The dry run read both static files and reported the `ASSETS` binding; it did not upload or deploy anything. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43613735127 This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 storage helpers are now wired into initial registration, login, session-inspection, and logout route handlers on the isolated branch. Synthetic tests cover registration/login option generation, origin enforcement, bootstrap secret checks, and request content-type enforcement. The routes fail closed until D1 and origin settings are configured. No D1 database, secret, deployment, or real passkey has been created. The static owner-access shell remains informational only, with no scripts, forms, sign-in, or enrollment.
 
 ## Remaining gates
 
-1. Add a separate, reviewed server-side authentication design: origin/RP ID allowlists, one-time challenge storage and expiry, credential persistence, replay/counter policy, session issuance, CSRF protections where applicable, rate limits, and recovery procedures.
-2. Test additional credential lifecycle cases, including counter semantics for synced passkeys, credential revocation, duplicate registration, and challenge one-time use/expiry.
-3. Test the browser package and actual passkey ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior and recovery paths.
-4. Design and review persistence, one-time challenge storage, session issuance, recovery, and rate limiting before any real authentication route or personal-data storage is introduced.
-5. Only after those gates, consider a separately approved deployment. No deployment or personal-data storage is authorized by this test.
+1. Add end-to-end route tests for registration verification, login verification, session cookie flags, CSRF, logout, replay, and error handling using a local D1-compatible test adapter.
+2. Add multiple-device passkey enrollment and revocation, plus a safe recovery path and login rate limiting.
+3. Add browser-side passkey UI and test the actual ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior.
+4. Review the pinned dependency and commit a lockfile after advisory review.
+5. Only after those gates and separate explicit approval, create an isolated D1 database and perform a real D1 smoke test. No deployment or personal-data storage is authorized by this test.
 
 ## References
 
