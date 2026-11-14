@@ -18,11 +18,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "22.16.0"
+          node-version: "24"
+          package-manager-cache: false
       - name: Install temporary test tooling and WebAuthn candidate
         run: npm install --no-save --no-audit --no-fund vitest@4.1.0 @cloudflare/vitest-plugin@1.8.2 @simplewebauthn/server@14.1.0
       - name: Run tests inside the Cloudflare Workers runtime
