@@ -49,12 +49,17 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 
 ### Current CI result
 
-The current suite is being extended to cover the native browser client and static-asset routing. Check the latest GitHub Actions run on `jarvis-worker-runtime-tests` for the result; do not treat the older #78 run as validation of the new browser client.
+- Local SQLite/Node checks: 15 passed.
+- Workers runtime test files: 2 passed.
+- Workers runtime test cases: 35 passed, including a synthetic end-to-end first-owner registration, login, session inspection, and logout flow.
+- Browser client syntax check: passed with Node.js 24.
+- Wrangler `deploy --dry-run`: successful; it validated the Worker and static assets without uploading or deploying.
+- Total test cases: 50 passed.
+- Verified run #132: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43615565790
 
 ### Static shell and Wrangler validation
 
-The isolated branch now contains `public/index.html`, `public/app.js`, and `public/_headers`, with a Workers Static Assets binding in `wrangler.toml`. The first-party browser client uses native WebAuthn APIs (no third-party CDN, localStorage, or sessionStorage) for first-owner enrollment, sign-in, additional passkey enrollment, credential listing, and logout. The CSP allows only same-origin scripts and API calls. The Worker routes the root page, HTML, JS, and CSS to static assets. CI syntax-checks the browser script and dry-runs Wrangler without uploading or deploying.
-
+The isolated branch now contains `public/index.html`, `public/app.js`, and `public/style.css`, with a Workers Static Assets binding in `wrangler.toml`. The first-party browser client uses native WebAuthn APIs for first-owner enrollment, sign-in, additional passkey enrollment, credential listing/revocation, and logout. It does not use third-party scripts, localStorage, or sessionStorage. The Content Security Policy permits only same-origin scripts, styles, and API calls, and blocks inline script attributes. The Worker explicitly routes the root page and static files to Workers Static Assets. The browser client is syntax-checked in CI; Wrangler dry-run and workerd tests validate asset routing. These checks do not replace a real Safari/iPhone ceremony.
 ## CI safety boundaries
 
 The workflow:
@@ -73,7 +78,7 @@ The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite m
 
 ## Remaining gates
 
-1. Add end-to-end route tests for registration verification, login verification, session cookie flags, CSRF, logout, replay, and error handling using a local D1-compatible test adapter.
+1. Expand end-to-end route tests for negative registration/login verification, replay, session-cookie flags, CSRF failure, and error handling using a local D1-compatible test adapter.
 2. Add multiple-device passkey enrollment and revocation, plus a safe recovery path and login rate limiting.
 3. Test the first-party browser passkey client and actual ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior.
 4. Review the pinned dependency and commit a lockfile after advisory review.
