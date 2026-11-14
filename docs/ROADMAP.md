@@ -23,18 +23,21 @@
 - [ ] Add request validation before accepting commands.
 - [ ] Add rate limiting and safe error handling.
 
-## Milestone 3 — Owner security and memory
+## Milestone 3 — Owner security and memory (current phase)
 - [x] Document a single-owner passkey, session, privacy, and command-approval design (design only; not implemented or security-audited).
 - [x] Research WebAuthn library candidates; exact versions remain uninstalled and must be rechecked before implementation.
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
 - [x] Add a zero-cost, staged authentication test plan: [Authentication Free-Tier Test Plan](AUTHENTICATION_FREE_TIER_TEST_PLAN.md).
 - [x] Expand the local Worker scaffold suite to cover security headers, strict route matching, method rejection, no CORS, and HTTP/HSTS behavior.
 - [x] Select D1 (rather than Durable Objects) for the small relational auth store; add an unprovisioned SQL schema migration on the isolated test branch.
-- [ ] Verify the actual Cloudflare account is on the Free plan and billing is safe before creating a D1 database.
-- [ ] Complete local request, challenge, origin, session, CSRF, and error-handling tests for the future auth implementation.
-- [ ] Pin dependencies and prove the selected versions work in the exact Worker runtime.
-- [ ] Owner authentication.
-- [ ] Session protection and logout.
+- [x] Owner confirmed Cloudflare Free plan and no paid Workers subscription/trial; separate approval is still required before creating D1.
+- [x] Add initial passkey registration/login/session/logout handlers and fail-closed behavior on the isolated branch.
+- [x] Add synthetic Worker tests for origin checks, bootstrap secret, registration/login options, and content-type enforcement.
+- [ ] Complete end-to-end registration verification, login verification, session, CSRF, and logout route tests.
+- [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
+- [ ] Add a reviewed lockfile and dependency-advisory review.
+- [ ] Complete owner authentication end to end, including browser passkey UI and actual D1 binding.
+- [ ] Add multiple-device passkey management, recovery, login rate limits, and CSRF persistence across reloads.
 - [ ] Explicit memory review, correction, export, and deletion.
 - [ ] Encrypt sensitive data at rest and in transit.
 
