@@ -8,6 +8,7 @@ const enrollButton = document.querySelector("#enroll");
 const addButton = document.querySelector("#add-credential");
 const logoutButton = document.querySelector("#logout");
 const logoutAllButton = document.querySelector("#logout-all");
+const logoutAllButton = document.querySelector("#logout-all");
 const secretInput = document.querySelector("#bootstrap-secret");
 const credentialsNode = document.querySelector("#credentials");
 
@@ -199,6 +200,12 @@ async function signOut() {
   showSignedOut();
   setStatus("You have signed out.", "success");
 }
+async function signOutEverywhere() {
+  if (!window.confirm("End every active JARVIS session on all devices? You will need your passkey to sign in again.")) return;
+  const result = await api("/auth/logout-all", { method: "POST", body: {} });
+  showSignedOut();
+  setStatus("Signed out on all devices. " + result.revokedCount + " session(s) revoked.", "success");
+}
 
 async function signOutAll() {
   if (!window.confirm("Sign out of JARVIS on every device? You will need a passkey to sign in again.")) return;
@@ -216,6 +223,7 @@ loginButton.addEventListener("click", () => runAction(signIn));
 enrollButton.addEventListener("click", () => runAction(enrollOwner));
 addButton.addEventListener("click", () => runAction(addPasskey));
 logoutButton.addEventListener("click", () => runAction(signOut));
+logoutAllButton.addEventListener("click", () => runAction(signOutEverywhere));
 logoutAllButton.addEventListener("click", () => runAction(signOutAll));
 async function initialize() {
   try {
