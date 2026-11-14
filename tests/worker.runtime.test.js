@@ -411,12 +411,12 @@ describe("JARVIS Worker runtime contract", () => {
         }
       }
     };
-    for (const path of ["/", "/index.html", "/app.js"]) {
+    for (const path of ["/", "/index.html", "/app.js", "/style.css"]) {
       const response = await worker.fetch(request(path), env);
       expect(response.status, path).toBe(200);
       await expect(response.text()).resolves.toBe("static asset");
     }
-    expect(requested).toEqual(["/", "/index.html", "/app.js"]);
+    expect(requested).toEqual(["/", "/index.html", "/app.js", "/style.css"]);
   });
 
 });
