@@ -124,6 +124,9 @@ function clearCsrfCookie() {
 }
 
 async function issueSession(request, db, now) {
+  // Rotate an existing browser session after every successful passkey ceremony.
+  const previousToken = getCookie(request, SESSION_COOKIE);
+  if (previousToken) await revokeSession(db, { sessionToken: previousToken, now });
   const session = await createSession(db, { now, ttlSeconds: SESSION_TTL_SECONDS });
   const issued = response(request, {
     authenticated: true,
