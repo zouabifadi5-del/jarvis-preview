@@ -683,6 +683,26 @@ describe("JARVIS Worker runtime contract", () => {
     expect(wrongOriginResult.status).toBe(401);
     expect(state.credentials[0].sign_count).toBe(1);
 
+    const tamperOptionsResponse = await handleAuthRequest(request("/auth/login/options", {
+      method: "POST", headers: { Origin: "https://example.test" }
+    }), env);
+    const tamperOptions = await tamperOptionsResponse.json();
+    const tamperedAssertion = await makeRouteAssertion({
+      keyPair: fixture.keyPair,
+      credentialId: fixture.credentialId,
+      challenge: tamperOptions.challenge,
+      counter: 2
+    });
+    const originalSignature = tamperedAssertion.response.signature;
+    tamperedAssertion.response.signature = (originalSignature[0] === "A" ? "B" : "A") + originalSignature.slice(1);
+    const tamperedResult = await handleAuthRequest(request("/auth/login/verify", {
+      method: "POST",
+      headers: { Origin: "https://example.test", "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: tamperOptions.challenge, response: tamperedAssertion })
+    }), env);
+    expect(tamperedResult.status).toBe(401);
+    expect(state.credentials[0].sign_count).toBe(1);
+
     const cookies = loginResponse.headers.get("set-cookie");
     const sessionCookie = cookies.match(/__Host-jarvis_session=([^;,]+)/)?.[1];
     expect(sessionCookie).toBeTruthy();
