@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status:** The original Worker/WebAuthn smoke-test run passed 8 of 8 tests. Two malformed-response verifier tests have since been added; their new CI result is pending confirmation.  
+**Status:** The latest synthetic ceremony test run passed 19 of 19 tests across two test files on `jarvis-worker-runtime-tests`. This is a compatibility and verifier test harness, not a production authentication implementation.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -12,12 +12,12 @@ Cloudflare recommends its Workers Vitest integration for this purpose. The `@clo
 
 ## Candidate versions for this compatibility experiment
 
-- `@simplewebauthn/server@14.1.0`: current JSR release at the time of this test; its official package listing explicitly names Cloudflare Workers as a supported runtime.
-- `@simplewebauthn/browser@14.0.0`: current browser package release; browser behavior still needs separate Safari/iPhone testing.
-- `vitest@4.1.0`: minimum version named by Cloudflare's first-test guide used when this experiment was prepared.
+- `@simplewebauthn/server@14.1.0`: JSR release selected for this test; its official package listing explicitly names Cloudflare Workers as a supported runtime.
+- `@simplewebauthn/browser@14.0.0`: browser package candidate; browser behavior still needs separate Safari/iPhone testing.
+- `vitest@4.1.0`: version selected for the test harness.
 - `@cloudflare/vitest-plugin@1.8.2`: plugin version selected for this experiment.
 
-These are test candidates, not production approvals. The CI job uses Node.js 24 with the current Node-24-compatible GitHub Actions releases, then installs exact direct package versions temporarily with `--no-save`; no dependencies or lockfile are committed by this experiment. npm 10 has a documented Arborist peer-dependency resolution crash matching the initial `edgesOut` error, so the harness now uses Node.js 24 (with its newer bundled npm) rather than Node.js 22. A production dependency lockfile is created only after successful compatibility and security review.
+These are test candidates, not production approvals. The CI job uses Node.js 24 with Node-24-compatible GitHub Actions releases, then installs exact direct package versions temporarily with `--no-save`; no dependencies or lockfile are committed by this experiment. The initial npm `edgesOut` resolver crash was avoided by moving the harness to Node.js 24. A production dependency lockfile is created only after successful compatibility and security review.
 
 ## Tests prepared
 
@@ -31,20 +31,24 @@ These are test candidates, not production approvals. The CI job uses Node.js 24 
 - No permissive CORS header.
 - HSTS only for HTTPS requests.
 
-### SimpleWebAuthn runtime smoke test
+### SimpleWebAuthn runtime and ceremony tests
 
-- Import `generateRegistrationOptions` and `generateAuthenticationOptions`.
-- Generate both sets of options using Worker runtime cryptography.
-- Check challenge encoding, relying-party ID, and required user-verification settings.
-- Use synthetic test identifiers only; no real owner credential or passkey is created.
+- Import and run `generateRegistrationOptions` and `generateAuthenticationOptions` in the Worker runtime.
+- Generate a temporary P-256 key pair using WebCrypto.
+- Construct a synthetic CBOR/none-attestation registration response and a signed synthetic authentication assertion.
+- Verify successful registration and authentication against the expected challenge, origin, and RP ID.
+- Assert rejection when registration or authentication uses a wrong challenge, wrong origin, or wrong RP ID.
+- Tamper with the synthetic authentication signature and assert verification does not succeed.
+- Keep all credential identifiers and keys synthetic and generated during the test; no real owner credential or passkey is created.
 
-This smoke test does not prove that a real authenticator ceremony, credential verification, session handling, or iPhone Safari flow works. Those require separate tests later.
+The synthetic attestation uses the WebAuthn `none` format and is not evidence of hardware-backed attestation, trusted authenticator provenance, or a real device ceremony. The tests exercise the library's verifier paths with constructed fixtures, not a physical authenticator or Safari/iPhone passkey UI.
 
-### WebAuthn verifier negative tests
+### Current CI result
 
-- Pass an empty synthetic response to the registration verifier and assert that malformed input is rejected.
-- Pass an empty synthetic response and a synthetic credential record to the authentication verifier and assert that malformed input is rejected.
-- These checks cover malformed-input rejection only. They do not prove valid attestation/assertion verification, challenge/origin/RP binding, signature verification, counter handling, session security, or a complete authenticator ceremony.
+- Test files: 2 passed.
+- Test cases: 19 passed.
+- Worker runtime job: successful.
+- The run is associated with commit `ea38129` on the isolated test branch.
 
 ## CI safety boundaries
 
@@ -56,21 +60,20 @@ The workflow:
 - Does not run Wrangler deploy, create a Durable Object, or call Cloudflare account APIs.
 - Does not alter the production branch.
 
-GitHub documents standard GitHub-hosted runners as free for public repositories. Cloudflare documents that the Workers Vitest integration runs tests in the Worker runtime. Miniflare is not a hardened sandbox, so only trusted project code should be run in it.
+The Worker test harness is not a hardened security sandbox. Only trusted project code should be run in it.
 
 ## Remaining gates
 
-1. Confirm the GitHub Actions run completed successfully; the GitHub connector currently does not expose the push-triggered run listing.
-2. If it fails, inspect the exact install/runtime error and correct the harness before adding authentication code. The first observed failure was an npm Arborist `edgesOut` crash during dependency installation; the workflow was moved to Node.js 24 to avoid the affected older npm resolver.
-3. Run the newly added malformed-response rejection tests; then build valid synthetic ceremony fixtures to test challenge, origin, RP ID, signature, and user-verification failures.
-4. Separately test the browser package and passkey ceremony in Safari on the owner's iPhone.
-5. Only then consider a reviewed authentication implementation. No deployment or personal-data storage is authorized by this test.
+1. Add a separate, reviewed server-side authentication design: origin/RP ID allowlists, one-time challenge storage and expiry, credential persistence, replay/counter policy, session issuance, CSRF protections where applicable, rate limits, and recovery procedures.
+2. Add tests for user-verification and user-presence flag failures, counter rollback/replay, credential-ID binding, and malformed CBOR/credential edge cases.
+3. Test the browser package and actual passkey ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior and recovery paths.
+4. Perform a security review before any real authentication route, secret, database, or personal-data storage is introduced.
+5. Only after those gates, consider a separately approved deployment. No deployment or personal-data storage is authorized by this test.
 
 ## References
 
 - Cloudflare Workers testing: https://developers.cloudflare.com/workers/testing/
 - Cloudflare Vitest integration: https://developers.cloudflare.com/workers/testing/vitest-integration/
-- Cloudflare first test guide: https://developers.cloudflare.com/workers/testing/vitest-integration/write-your-first-test/
 - SimpleWebAuthn server package: https://jsr.io/@simplewebauthn/server
-- SimpleWebAuthn browser package: https://jsr.io/@simplewebauthn/browser
+- SimpleWebAuthn helpers: https://jsr.io/@simplewebauthn/server/doc/helpers
 - GitHub Actions billing: https://docs.github.com/en/actions/concepts/billing-and-usage
