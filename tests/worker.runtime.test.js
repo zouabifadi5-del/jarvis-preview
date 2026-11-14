@@ -86,8 +86,8 @@ async function makeRouteRegistration(challenge) {
     }
   };
 }
-async function makeRouteAssertion({ keyPair, credentialId, challenge, counter = 1 }) {
-  const clientData = testEncoder.encode(JSON.stringify({ type: "webauthn.get", challenge, origin: "https://example.test", crossOrigin: false }));
+async function makeRouteAssertion({ keyPair, credentialId, challenge, counter = 1, origin = "https://example.test" }) {
+  const clientData = testEncoder.encode(JSON.stringify({ type: "webauthn.get", challenge, origin, crossOrigin: false }));
   const rpHash = new Uint8Array(await crypto.subtle.digest("SHA-256", testEncoder.encode("example.test")));
   const authData = joinBytes(rpHash, new Uint8Array([0x05]), uint32Bytes(counter));
   const clientHash = new Uint8Array(await crypto.subtle.digest("SHA-256", clientData));
@@ -656,6 +656,33 @@ describe("JARVIS Worker runtime contract", () => {
     expect(loggedIn.authenticated).toBe(true);
     expect(state.credentials[0].sign_count).toBe(1);
 
+    const replay = await handleAuthRequest(request("/auth/login/verify", {
+      method: "POST",
+      headers: { Origin: "https://example.test", "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: loginOptions.challenge, response: assertion })
+    }), env);
+    expect(replay.status).toBe(400);
+    await expect(replay.json()).resolves.toEqual({ error: "challenge_invalid_or_expired" });
+
+    const wrongOriginOptionsResponse = await handleAuthRequest(request("/auth/login/options", {
+      method: "POST", headers: { Origin: "https://example.test" }
+    }), env);
+    const wrongOriginOptions = await wrongOriginOptionsResponse.json();
+    const wrongOriginAssertion = await makeRouteAssertion({
+      keyPair: fixture.keyPair,
+      credentialId: fixture.credentialId,
+      challenge: wrongOriginOptions.challenge,
+      counter: 2,
+      origin: "https://attacker.example"
+    });
+    const wrongOriginResult = await handleAuthRequest(request("/auth/login/verify", {
+      method: "POST",
+      headers: { Origin: "https://example.test", "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: wrongOriginOptions.challenge, response: wrongOriginAssertion })
+    }), env);
+    expect(wrongOriginResult.status).toBe(401);
+    expect(state.credentials[0].sign_count).toBe(1);
+
     const cookies = loginResponse.headers.get("set-cookie");
     const sessionCookie = cookies.match(/__Host-jarvis_session=([^;,]+)/)?.[1];
     expect(sessionCookie).toBeTruthy();
@@ -665,6 +692,18 @@ describe("JARVIS Worker runtime contract", () => {
     }), env);
     expect(me.status).toBe(200);
     await expect(me.json()).resolves.toMatchObject({ authenticated: true });
+
+    const badCsrfLogout = await handleAuthRequest(request("/auth/logout", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + sessionCookie,
+        "X-CSRF-Token": "x".repeat(48),
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    }), env);
+    expect(badCsrfLogout.status).toBe(403);
 
     const logoutResponse = await handleAuthRequest(request("/auth/logout", {
       method: "POST",
