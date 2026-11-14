@@ -22,7 +22,7 @@
 
 
 - **iPhone client:** responsive web app/PWA, designed for Safari on iPhone. A PWA can provide an app-like home-screen entry point, but iOS does not permit an ordinary website to continuously listen for a custom wake word in the background.
-- **Web interface:** the public demo preview may remain on GitHub Pages. A separate non-functional owner-access shell has now been added under `public/` on the isolated runtime-test branch, with Workers Static Assets configured in `wrangler.toml`; it is designed to share the API hostname and has not been deployed. It contains no sign-in or enrollment logic and must not be treated as a live authentication page.
+- **Web interface:** the public demo preview may remain on GitHub Pages. A first-party owner-access interface has now been added under `public/` on the isolated runtime-test branch, with native browser passkey flows and Workers Static Assets configured in `wrangler.toml`; it is designed to share the API hostname and has not been deployed or tested on a real device.
 - **Application service:** a separate server-side component will eventually handle AI requests and integration calls. It must keep provider credentials server-side; browser code must never contain secret keys.
 - **Identity and authorization:** the proposed design is a single-owner WebAuthn passkey, with server-verified assertions and protected sessions. The login page is planned as a Cloudflare Workers Static Asset on the same `workers.dev` origin as the API, so the browser origin and WebAuthn RP ID match without a custom domain; the existing GitHub Pages preview remains public demo-only. The selected persistence design is one Cloudflare D1 database for credential metadata, one-time challenges, and hashed sessions; the SQL migration is unprovisioned; the owner has confirmed the Cloudflare Free plan, but no remote database has been created. The current code has passed 31 synthetic Workers runtime tests and 14 local SQLite/Node checks, plus a Wrangler dry-run build. This is not an end-to-end or production security audit. On iPhone, a passkey may be unlocked locally with Face ID or the device passcode; biometric data is not sent to JARVIS. Voice recognition alone is not sufficient authorization. See [Owner Security Design](SECURITY.md) and [Authentication Implementation Plan](AUTHENTICATION_PLAN.md).
 - **Memory:** explicit, inspectable memory with correction and deletion controls. Sensitive records require encryption and stricter access controls.
@@ -54,7 +54,7 @@
 
 ## Current limitations
 
-The isolated branch contains initial passkey registration/login/session/logout code and D1 storage helpers, but no live D1 binding or deployment. Browser UI, multiple-device credential management, recovery, rate limiting, CSRF persistence across reloads, and iPhone Safari acceptance remain incomplete. The static owner-access shell is informational only.
+The isolated branch contains initial passkey registration/login/session/logout code and D1 storage helpers, but no live D1 binding or deployment. Browser UI, multiple-device credential management, recovery, rate limiting, iPhone Safari acceptance and end-to-end real D1 route testing remain incomplete. The static owner-access shell is informational only.
 
 
 This repository currently hosts a visual prototype. It is not yet an AI assistant, does not authenticate an owner, does not connect to personal accounts, and does not perform real-world actions. Those features must be implemented and tested before being described as operational.
