@@ -30,13 +30,24 @@ CREATE INDEX IF NOT EXISTS idx_owner_credentials_active
 CREATE TABLE IF NOT EXISTS auth_challenges (
   challenge_hash TEXT PRIMARY KEY,
   challenge TEXT NOT NULL,
-  purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'authentication', 'credential_add')),
+  purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'authentication', 'credential_add', 'recovery')),
+  recovery_code_hash TEXT,
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_auth_challenges_expiry
   ON auth_challenges(expires_at);
+
+CREATE TABLE IF NOT EXISTS owner_recovery_codes (
+  code_hash TEXT PRIMARY KEY,
+  created_at INTEGER NOT NULL,
+  used_at INTEGER,
+  used_challenge_hash TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_owner_recovery_codes_unused
+  ON owner_recovery_codes(used_at);
 
 CREATE TABLE IF NOT EXISTS auth_sessions (
   session_hash TEXT PRIMARY KEY,
