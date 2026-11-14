@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Authentication Implementation Plan
 
-**Status:** Engineering plan only — no authentication code is enabled  
+**Status:** Engineering plan plus a non-functional static shell on the isolated test branch — no authentication code is enabled  
 **Owner model:** One enrolled owner, no public sign-up  
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
@@ -15,7 +15,7 @@
 
 The owner supplied this Worker URL. To make it a valid WebAuthn identity without buying a domain, the authentication/login page will be served from the same Worker hostname using Cloudflare Workers Static Assets. The existing GitHub Pages preview, if enabled, remains a public demo and will not perform passkey ceremonies. This avoids cross-site cookies/CORS and ensures the browser page's effective domain matches the RP ID.
 
-Cloudflare documents Workers Static Assets as free and unlimited for asset requests, with no additional asset storage charge. Requests that invoke the Worker script remain subject to the Workers Free request limit. This configuration is planned only; static assets have not been added to the deployed Worker and no deployment has been made.
+Cloudflare documents Workers Static Assets as free and unlimited for asset requests, with no additional asset storage charge. Requests that invoke the Worker script remain subject to the Workers Free request limit. A non-functional static owner-access shell and Workers Static Assets configuration have been added to the isolated test branch only. They have not been deployed; the live Worker remains unchanged.
 
 The RP ID and exact origin must be rechecked against the actual served login page before the first real passkey is enrolled. Never accept origin or RP ID values supplied by a request. Changing the hostname after enrollment generally requires enrolling new passkeys.
 
@@ -50,7 +50,7 @@ Cloudflare's current Workers Free D1 limits are 5 million rows read/day, 100,000
 
 For comparison, SQLite-backed Durable Objects are also available on Workers Free, but add their own request and duration quotas (currently 100,000 requests/day and 13,000 GB-seconds/day) plus SQL storage quotas. They are designed for stateful coordination; we do not need that complexity for the current auth database.
 
-This is a technical selection, **not** proof that the user's Cloudflare account is on Free or that billing is disabled. Verify the actual account plan and billing controls before creating any database or applying this migration. Never upgrade or enable billing to overcome a quota. If Free eligibility is unclear, stop.
+The owner has confirmed that the Cloudflare account is on the Free plan and has no paid Workers subscription or trial. This is an owner-provided confirmation, not an independent inspection of account billing controls. No database has been created. Never upgrade or enable billing to overcome a quota; stop if any unexpected paid prompt or requirement appears.
 
 References:
 - https://developers.cloudflare.com/d1/platform/pricing/
