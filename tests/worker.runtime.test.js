@@ -1023,6 +1023,8 @@ describe("JARVIS Worker runtime contract", () => {
     expect(recovered.authenticated).toBe(true);
     expect(recovered.recoveryCodes).toHaveLength(10);
     expect(state.credentials).toHaveLength(2);
+    expect(state.credentials[0].revoked_at).toBeTruthy();
+    expect(state.credentials[1].revoked_at).toBeNull();
     expect(state.recoveryCodes.filter((row) => row.used_at === null)).toHaveLength(10);
     expect(await (async () => {
       const code = registered.recoveryCodes[1];
