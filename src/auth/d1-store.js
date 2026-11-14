@@ -436,19 +436,19 @@ export async function completeOwnerRecovery(db, {
     ).bind(now, claimHash, recoveryCodeHash),
     db.prepare(
       `UPDATE owner_credentials SET revoked_at = ? WHERE revoked_at IS NULL AND ${claimExists}`
-    ).bind(now, recoveryCodeHash, challengeHash),
+    ).bind(now, recoveryCodeHash, claimHash),
     db.prepare(
       `INSERT INTO owner_credentials (credential_id, owner_id, public_key, sign_count, transports_json, device_type, backed_up, created_at) SELECT ?, 1, ?, ?, ?, ?, ?, ? WHERE ${claimExists}`
-    ).bind(id, publicKey, counter, JSON.stringify(transports), deviceType, backedUp ? 1 : 0, now, recoveryCodeHash, challengeHash),
+    ).bind(id, publicKey, counter, JSON.stringify(transports), deviceType, backedUp ? 1 : 0, now, recoveryCodeHash, claimHash),
     db.prepare(
       `DELETE FROM owner_recovery_codes WHERE used_at IS NULL AND ${claimExists}`
-    ).bind(recoveryCodeHash, challengeHash),
+    ).bind(recoveryCodeHash, claimHash),
     ...recoveryHashes.map((hash) => db.prepare(
       `INSERT INTO owner_recovery_codes (code_hash, created_at) SELECT ?, ? WHERE ${claimExists}`
-    ).bind(hash, now, recoveryCodeHash, challengeHash)),
+    ).bind(hash, now, recoveryCodeHash, claimHash)),
     db.prepare(
       `UPDATE auth_sessions SET revoked_at = ? WHERE revoked_at IS NULL AND ${claimExists}`
-    ).bind(now, recoveryCodeHash, challengeHash)
+    ).bind(now, recoveryCodeHash, claimHash)
   ];
 
   const results = await db.batch(statements);
