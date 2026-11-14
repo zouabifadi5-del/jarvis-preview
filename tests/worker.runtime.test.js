@@ -12,6 +12,32 @@ function request(path = "/health", options = {}, protocol = "https:") {
   return new Request(`${protocol}//example.test${path}`, { ...options, headers });
 }
 
+function withRateLimitSupport(db) {
+  const originalPrepare = db.prepare.bind(db);
+  db.prepare = (sql) => {
+    if (sql.includes("INSERT INTO auth_rate_limits")) {
+      return {
+        bind() {
+          return {
+            async first() { return { request_count: 1 }; }
+          };
+        }
+      };
+    }
+    if (sql.includes("DELETE FROM auth_rate_limits")) {
+      return {
+        bind() {
+          return {
+            async run() { return { success: true, meta: { changes: 0 } }; }
+          };
+        }
+      };
+    }
+    return originalPrepare(sql);
+  };
+  return db;
+}
+
 function expectHardenedHeaders(response, { https = true } = {}) {
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(response.headers.get("x-content-type-options")).toBe("nosniff");
@@ -449,7 +475,7 @@ describe("JARVIS Worker runtime contract", () => {
     };
     const secret = "c".repeat(48);
     const env = {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
@@ -919,12 +945,12 @@ describe("JARVIS Worker runtime contract", () => {
     const noOwner = await handleAuthRequest(request("/auth/login/options", {
       method: "POST", headers: { Origin: "https://example.test" }
     }), {
-      DB: makeDb(null), AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test"
+      DB: withRateLimitSupport(makeDb(null)), AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test"
     });
     const ownerWithoutActiveCredentials = await handleAuthRequest(request("/auth/login/options", {
       method: "POST", headers: { Origin: "https://example.test" }
     }), {
-      DB: makeDb({ id: 1, created_at: 1, enrollment_closed_at: 1 }),
+      DB: withRateLimitSupport(makeDb({ id: 1, created_at: 1, enrollment_closed_at: 1 })),
       AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test"
     });
     expect(noOwner.status).toBe(401);
