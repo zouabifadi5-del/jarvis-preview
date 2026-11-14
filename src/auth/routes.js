@@ -603,7 +603,8 @@ export async function handleAuthRequest(request, env) {
       return await logout(request, cfg, now);
     }
     return fail(request, 404, "not_found");
-  } catch {
+  } catch (error) {
+    if (env?.JARVIS_TEST_DEBUG) console.error("JARVIS authentication test diagnostic", error);
     return fail(request, 503, "authentication_temporarily_unavailable");
   }
 }
