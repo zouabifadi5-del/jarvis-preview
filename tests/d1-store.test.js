@@ -302,3 +302,22 @@ test("first owner and first passkey are created atomically and enrollment closes
     sqlite.close();
   }
 });
+
+
+test("credential revocation atomically refuses to remove the final active passkey", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    await storeCredential(binding, {
+      id: "last-passkey",
+      publicKey: new Uint8Array([4, 3, 2, 1]),
+      now: 1000
+    });
+    assert.equal(await revokeCredential(binding, {
+      credentialId: "last-passkey",
+      now: 1001
+    }), false);
+    assert.notEqual(await findActiveCredential(binding, "last-passkey"), null);
+  } finally {
+    sqlite.close();
+  }
+});
