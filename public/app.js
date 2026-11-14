@@ -96,7 +96,6 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
   try { payload = await response.json(); } catch { /* handled below */ }
   if (!response.ok) {
     const messages = {
-      owner_not_enrolled: "No owner passkey is enrolled yet. Use first-time setup.",
       enrollment_closed: "Owner enrollment is already closed. Use passkey sign-in.",
       bootstrap_not_authorized: "The bootstrap secret was not accepted.",
       challenge_invalid_or_expired: "That passkey request expired. Please try again.",
