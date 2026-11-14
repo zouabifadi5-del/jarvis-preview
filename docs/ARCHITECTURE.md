@@ -54,7 +54,7 @@
 
 ## Current limitations
 
-The isolated branch contains initial passkey registration/login/session/logout code, additional credential management, and a native browser passkey UI, but no live D1 binding or deployment. Recovery, rate limiting, iPhone Safari acceptance, and real D1 integration remain incomplete.
+The isolated branch contains first-owner passkey registration, login, session rotation/idle expiry, individual/global logout, additional credential management with recent reauthentication, and a native browser UI with one-time recovery codes and replacement-passkey recovery. Synthetic recovery tests confirm old credentials, sessions, and unused recovery codes are invalidated. There is no live D1 binding or deployment. Rate limiting, real D1 integration, iPhone Safari acceptance, and a committed dependency lockfile remain incomplete.
 
 
 This repository currently hosts a visual prototype. It is not yet an AI assistant, does not authenticate an owner, does not connect to personal accounts, and does not perform real-world actions. Those features must be implemented and tested before being described as operational.
