@@ -1,6 +1,6 @@
 # Remote D1 provisioning and deployment gate
 
-**Status:** The owner-auth D1 database has been created on the Cloudflare Free plan, and the isolated branch's Wrangler config now contains its `DB` binding. The schema migration has not yet been applied. No Worker secrets or variables have been configured, and no Worker deployment has been performed.
+**Status:** The owner-auth D1 database has been created on the Cloudflare Free plan, and the isolated branch's Wrangler config contains its `DB` binding. The owner confirmed that migrations `0001_owner_auth.sql` and `0002_auth_rate_limits.sql` were both applied successfully in the remote D1 console. The read-only schema verification output and real D1 smoke tests remain unconfirmed. No Worker secrets or variables have been configured, and no Worker deployment has been performed.
 
 ## Provisioned database
 
@@ -17,12 +17,13 @@ The single D1 database is restricted to:
 - Short-lived WebAuthn challenges.
 - Hashed session and CSRF tokens, expiry, activity, and revocation metadata.
 - Hashed one-time recovery codes and their use/replacement metadata; plaintext codes are shown only once during enrollment or recovery.
+- HMAC-derived rate-limit bucket identifiers, fixed-window counters, and expiry metadata; raw client IP addresses are not stored.
 
 It must not store conversations, prompts, private memory, email, contact lists, or unrelated personal content.
 
 ## Required Worker configuration
 
-The isolated branch configures Workers Static Assets and the D1 binding above. The owner-auth schema migration `0001_owner_auth.sql` was confirmed applied by the owner. A follow-up migration `0002_auth_rate_limits.sql` has now been added on the isolated branch and must also be applied before deploying the updated code.
+The isolated branch configures Workers Static Assets and the D1 binding above.
 
 Required non-secret Worker variables:
 - `AUTH_ORIGIN`: the exact HTTPS origin serving the owner page and API.
@@ -38,11 +39,11 @@ For the currently documented Worker host, the intended values are:
 
 These values must be verified against the actual served owner page immediately before first enrollment.
 
-## Remaining approved sequence
+## Remaining approval-gated sequence
 
-1. Confirm `migrations/0001_owner_auth.sql` is applied (owner confirmed success); apply `migrations/0002_auth_rate_limits.sql` and run real D1 smoke tests for both migrations.
+1. Confirm the read-only schema query returns the six expected tables and the expiry index; perform real D1 smoke tests for both migrations.
 2. Configure `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, temporary `JARVIS_BOOTSTRAP_SECRET`, and persistent `JARVIS_RATE_LIMIT_HMAC_SECRET` through Cloudflare controls.
-3. Obtain separate explicit approval before deploying the isolated Worker branch.
+3. Obtain separate explicit owner approval before deploying the isolated Worker branch.
 4. Verify the served page origin, CSP, cookies, and static assets. Only then perform the first passkey enrollment on the owner's iPhone.
 5. Immediately after successful first-owner enrollment, remove the temporary `JARVIS_BOOTSTRAP_SECRET` from the Worker. The database's singleton owner marker permanently closes first-owner enrollment.
 6. Run the post-enrollment security checks and document the actual deployment version.
