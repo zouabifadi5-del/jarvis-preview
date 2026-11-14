@@ -5,20 +5,15 @@
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
 
-## 1. Selected WebAuthn identity
+## WebAuthn frontend identity — pending verification
 
-The owner has selected the existing Cloudflare Worker hostname; no custom domain is owned or required for this development phase.
+- **Confirmed backend/API URL:** `https://jarvis-preview-api.zouabifadi5.workers.dev`. This is the Worker endpoint only.
+- **Frontend origin:** not yet verified. The repository architecture describes a GitHub Pages frontend, but the exact live page URL has not been confirmed.
+- **WebAuthn RP ID and expected browser origin:** deliberately unset until the actual login page URL is confirmed.
 
-- **Canonical origin:** `https://jarvis-preview-api.zouabifadi5.workers.dev`
-- **WebAuthn RP ID:** `jarvis-preview-api.zouabifadi5.workers.dev` (hostname only; no scheme, path, or trailing slash)
-- **Allowed origin:** exact match to the canonical HTTPS origin above
-- **Cookie scope:** host-only; omit the `Domain` attribute
+Important correction: the Worker API hostname is **not automatically a valid WebAuthn RP ID**. The RP ID must equal the browser page's effective domain or be a registrable-domain suffix of it. The server must also validate the exact browser origin. If the login page is on GitHub Pages while the API is on `workers.dev`, the Worker hostname cannot be used as that page's RP ID. Do not generate real passkey options or enroll a credential until the page origin and matching RP ID are confirmed.
 
-Treat this hostname as fixed before the first real passkey is enrolled. A later hostname/RP ID change generally requires owners to enroll new passkeys. Never accept arbitrary origins or RP IDs from request data.
-
-Cloudflare documents `workers.dev` as a free subdomain intended for getting started and personal/hobby projects, and recommends a Workers route or custom domain rather than `workers.dev` for business-critical production workloads. This is therefore the zero-cost development choice, not a claim that the service is production-hardened. Reassess the hostname before storing sensitive personal data or relying on JARVIS for critical operations.
-
-Reference: https://developers.cloudflare.com/workers/configuration/routing/workers-dev/
+Reference: https://www.w3.org/TR/2026/REC-webauthn-3-20260825/
 
 ## 1. Library selection
 
