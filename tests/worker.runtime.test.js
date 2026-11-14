@@ -261,7 +261,7 @@ describe("JARVIS Worker runtime contract", () => {
     expect(options.rpId).toBe("example.test");
     expect(options.userVerification).toBe("required");
     expect(options.allowCredentials).toEqual([
-      { id: "owner-passkey", transports: ["internal"] }
+      { id: "owner-passkey", transports: ["internal"], type: "public-key" }
     ]);
     expect(issued).toHaveLength(1);
     expect(issued[0].values[1]).toBe(options.challenge);
