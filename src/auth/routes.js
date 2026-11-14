@@ -597,7 +597,7 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
   );
   let binary = "";
   for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
-  const bucketHash = btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  const bucketHash = btoa(binary).split("+").join("-").split("/").join("_").replace(/=+$/g, "");
   const result = await consumeRateLimit(cfg.db, {
     bucketHash,
     windowStart,
@@ -612,7 +612,8 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
   }
   return null;
 }
-\nexport async function handleAuthRequest(request, env) {
+
+export async function handleAuthRequest(request, env) {
   const cfg = configuration(request, env);
   if (!cfg) return fail(request, 503, "authentication_not_configured");
   const now = Math.floor(Date.now() / 1000);
