@@ -7,6 +7,7 @@ import {
   createChallenge,
   consumeChallenge,
   consumeRateLimit,
+  consumeRateLimit,
   storeCredential,
   findActiveCredential,
   updateCredentialCounter,
@@ -28,11 +29,16 @@ const migration = readFileSync(
   fileURLToPath(new URL("../migrations/0001_owner_auth.sql", import.meta.url)),
   "utf8"
 );
+const rateLimitMigration = readFileSync(
+  fileURLToPath(new URL("../migrations/0002_auth_rate_limits.sql", import.meta.url)),
+  "utf8"
+);
 
 function makeD1({ seedOwner = true } = {}) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("PRAGMA foreign_keys = ON");
   sqlite.exec(migration);
+  sqlite.exec(rateLimitMigration);
   if (seedOwner) sqlite.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
 
   return {
