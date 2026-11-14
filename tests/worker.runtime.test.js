@@ -1119,7 +1119,6 @@ describe("authentication rate limits", () => {
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
-      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_BOOTSTRAP_SECRET: "synthetic-bootstrap-secret-0123456789"
     };
     let last;
