@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status:** Harness prepared on `jarvis-worker-runtime-tests`; execution result still needs confirmation.  
+**Status:** The original Worker/WebAuthn smoke-test run passed 8 of 8 tests. Two malformed-response verifier tests have since been added; their new CI result is pending confirmation.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -39,6 +39,12 @@ These are test candidates, not production approvals. The CI job uses Node.js 24 
 - Use synthetic test identifiers only; no real owner credential or passkey is created.
 
 This smoke test does not prove that a real authenticator ceremony, credential verification, session handling, or iPhone Safari flow works. Those require separate tests later.
+
+### WebAuthn verifier negative tests
+
+- Pass an empty synthetic response to the registration verifier and assert that malformed input is rejected.
+- Pass an empty synthetic response and a synthetic credential record to the authentication verifier and assert that malformed input is rejected.
+- These checks cover malformed-input rejection only. They do not prove valid attestation/assertion verification, challenge/origin/RP binding, signature verification, counter handling, session security, or a complete authenticator ceremony.
 
 ## CI safety boundaries
 
