@@ -296,7 +296,6 @@ async function recoveryVerify(request, cfg, now) {
   try {
     ({ recoveryCodes } = await completeOwnerRecovery(cfg.db, {
       recoveryCodeHash: consumed.recoveryCodeHash,
-      challengeHash: consumed.challengeHash,
       id: credential.id,
       publicKey: credential.publicKey,
       counter: credential.counter,
