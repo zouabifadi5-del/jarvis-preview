@@ -13,6 +13,7 @@ import {
   findOwner,
   listActiveCredentials,
   revokeCredential,
+  storeCredential,
   revokeSession,
   updateCredentialCounter,
   verifySessionCsrf
