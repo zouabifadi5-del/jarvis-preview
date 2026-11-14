@@ -133,6 +133,9 @@ function makeRouteD1() {
           const item = state.sessions.find((row) => row.session_hash === hash && row.expires_at > now && row.revoked_at === null);
           return item ? { created_at: item.created_at, expires_at: item.expires_at, last_seen_at: null } : null;
         }
+        if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
         if (sql.includes("SELECT csrf_token_hash")) {
           const [hash, now] = values;
           const item = state.sessions.find((row) => row.session_hash === hash && row.expires_at > now && row.revoked_at === null);
@@ -471,6 +474,9 @@ describe("JARVIS Worker runtime contract", () => {
             return values[0] === sessionHash ? { created_at: Math.floor(Date.now() / 1000), expires_at: 9999999999 } : null;
           } }; } };
         }
+        if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
         if (sql.includes("SELECT csrf_token_hash")) {
           return { bind(...values) { return { async first() {
             return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
@@ -546,6 +552,9 @@ describe("JARVIS Worker runtime contract", () => {
           return { bind(...values) { return { async first() {
             return values[0] === sessionHash ? { created_at: Math.floor(Date.now() / 1000), expires_at: 9999999999 } : null;
           } }; } };
+        }
+        if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
         }
         if (sql.includes("SELECT csrf_token_hash")) {
           return { bind(...values) { return { async first() {
@@ -856,6 +865,9 @@ describe("JARVIS Worker runtime contract", () => {
             return values[0] === sessionHash ? { created_at: 1, expires_at: 9999999999 } : null;
           } }; } };
         }
+        if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
         if (sql.includes("SELECT csrf_token_hash")) {
           return { bind(...values) { return { async first() {
             return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
@@ -902,6 +914,9 @@ describe("JARVIS Worker runtime contract", () => {
               ? { created_at: Math.floor(Date.now() / 1000) - 600, expires_at: 9999999999 }
               : null;
           } }; } };
+        }
+        if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
         }
         if (sql.includes("SELECT csrf_token_hash")) {
           return { bind(...values) { return { async first() {
