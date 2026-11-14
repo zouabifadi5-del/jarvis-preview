@@ -36,11 +36,15 @@ export default {
       return handleAuthRequest(request, env);
     }
 
+    const isStaticAsset = url.pathname === "/" ||
+      url.pathname.endsWith(".html") ||
+      url.pathname.endsWith(".js") ||
+      url.pathname.endsWith(".css");
     const acceptsHtml = (request.headers.get("Accept") || "").includes("text/html");
     if (
       env?.ASSETS &&
       (request.method === "GET" || request.method === "HEAD") &&
-      (url.pathname === "/" || /\\.(?:html|js|css)$/.test(url.pathname) || acceptsHtml)
+      (isStaticAsset || acceptsHtml)
     ) {
       return env.ASSETS.fetch(request);
     }
