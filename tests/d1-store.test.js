@@ -420,7 +420,7 @@ test("sessions expire after 30 minutes of inactivity and active access refreshes
 });
 
 test("recovery codes are hashed, single-use, and replace all previous codes atomically", async () => {
-  const { sqlite, binding } = makeD1();
+  const { sqlite, binding } = makeD1({ seedOwner: false });
   try {
     const initial = await createOwnerWithCredential(binding, {
       id: "recovery-original",
