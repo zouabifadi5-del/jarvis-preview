@@ -23,6 +23,8 @@ test("same-origin owner access shell uses only its bundled passkey client and re
   assert.ok(html.includes('id="recovery-panel"'));
   assert.ok(html.includes('id="copy-recovery"'));
   assert.ok(html.includes('id="download-recovery"'));
+  const ids = [...html.matchAll(/\\bid="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(new Set(ids).size, ids.length, "HTML element IDs must be unique");
   assert.ok(app.includes("navigator.credentials.create"));
   assert.ok(app.includes("navigator.credentials.get"));
   assert.ok(app.includes("/auth/register/options"));
