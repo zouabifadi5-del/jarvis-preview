@@ -16,6 +16,10 @@
 
 ## Initial architecture
 
+- **Backend candidate:** Cloudflare Workers Free for a small stateless API, subject to account eligibility and a fresh zero-cost review before deployment. The current free documentation lists 100,000 requests/day and 10 ms CPU time per invocation. No account has been connected and no service has been deployed.
+- **Service scaffold:** `src/worker.js` currently exposes only a non-sensitive `/health` response. It does not process commands, authenticate users, store memory, or call an AI provider.
+
+
 - **iPhone client:** responsive web app/PWA, designed for Safari on iPhone. A PWA can provide an app-like home-screen entry point, but iOS does not permit an ordinary website to continuously listen for a custom wake word in the background.
 - **Web interface:** static HTML/CSS/JavaScript hosted through GitHub Pages for the public preview. The preview must contain no private user data or secrets.
 - **Application service:** a separate server-side component will eventually handle AI requests and integration calls. It must keep provider credentials server-side; browser code must never contain secret keys.
