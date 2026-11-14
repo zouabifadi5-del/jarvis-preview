@@ -20,6 +20,8 @@ This repository contains the public-facing prototype and non-sensitive project d
 
 The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`.
 
+Run the worker's zero-dependency tests with `npm test` using Node.js. The tests cover the health response, unknown routes, and rejected non-GET health requests.
+
 ## Constraints
 
 - iPhone-first development; no Mac is assumed.
