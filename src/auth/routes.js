@@ -12,6 +12,7 @@ import {
   findActiveSession,
   findOwner,
   listActiveCredentials,
+  revokeAllSessions,
   revokeCredential,
   storeCredential,
   revokeSession,
@@ -426,6 +427,22 @@ async function currentSession(request, cfg, now) {
   return response(request, { authenticated: true, expiresAt: session.expiresAt });
 }
 
+
+async function logoutAll(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const token = getCookie(request, SESSION_COOKIE);
+  const csrfToken = request.headers.get("X-CSRF-Token");
+  if (!token || !await verifySessionCsrf(cfg.db, { sessionToken: token, csrfToken, now })) {
+    return fail(request, 403, "csrf_check_failed");
+  }
+  const revokedCount = await revokeAllSessions(cfg.db, { now });
+  const cleared = response(request, { authenticated: false, revokedCount }, 200, {
+    "Set-Cookie": clearSessionCookie()
+  });
+  cleared.headers.append("Set-Cookie", clearCsrfCookie());
+  return cleared;
+}
+
 async function logout(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   const token = getCookie(request, SESSION_COOKIE);
@@ -474,6 +491,9 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/credentials/revoke" && request.method === "POST") {
       return await removeCredential(request, cfg, now);
+    }
+    if (pathname === "/auth/logout-all" && request.method === "POST") {
+      return await logoutAll(request, cfg, now);
     }
     if (pathname === "/auth/logout" && request.method === "POST") {
       return await logout(request, cfg, now);
