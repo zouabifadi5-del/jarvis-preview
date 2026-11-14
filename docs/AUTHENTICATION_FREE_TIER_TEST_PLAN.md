@@ -21,7 +21,7 @@ Prove the owner-authentication design can work safely in the selected runtime be
 
 ## Stage 1 — Local test harness (no Cloudflare account required)
 
-1. Keep the current zero-dependency Node test command working.
+1. Keep the current zero-dependency Node test command working. Validate the D1 schema migration with local SQLite tests, including single-owner constraints, foreign keys, challenge expiry, one-time challenge consumption, and session-hash-only storage.
 2. Add tests for request method, path, content type, malformed JSON, oversized bodies, and generic error responses before any auth route is introduced.
 3. Build WebAuthn tests around deterministic test fixtures and a local Worker runtime; never use a real owner credential or real passkey in automated tests.
 4. Test challenge lifecycle: random generation, five-minute expiry, one-time consumption, replay rejection, and concurrency/race behavior.
