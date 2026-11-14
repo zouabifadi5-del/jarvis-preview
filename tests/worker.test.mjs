@@ -17,11 +17,13 @@ test("same-origin owner access shell uses only its bundled passkey client and re
   assert.ok(css.includes("color-scheme: dark"));
   assert.ok(html.includes('id="bootstrap-secret"'));
   assert.ok(html.includes('id="login"'));
+  assert.ok(html.includes('id="logout-all"'));
   assert.ok(app.includes("navigator.credentials.create"));
   assert.ok(app.includes("navigator.credentials.get"));
   assert.ok(app.includes("/auth/register/options"));
   assert.ok(app.includes("/auth/login/verify"));
   assert.ok(app.includes("/auth/credentials/revoke"));
+  assert.ok(app.includes("/auth/logout-all"));
   assert.ok(!app.includes("localStorage") && !app.includes("sessionStorage"));
   assert.ok(!app.includes("eval("));
   assert.ok(headers.includes("Content-Security-Policy: default-src 'none'"));
