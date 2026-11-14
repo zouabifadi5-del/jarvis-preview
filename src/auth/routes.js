@@ -593,7 +593,7 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
   const digest = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(policy.name + "\\n" + ip)
+    encoder.encode(policy.name + "\n" + ip)
   );
   let binary = "";
   for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
