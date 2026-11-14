@@ -1,0 +1,92 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07111f">
+  <title>J.A.R.V.I.S. — Personal Assistant</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #142b46, #050a12 65%);
+      color: #e8f5ff;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .panel {
+      width: min(100%, 520px);
+      text-align: center;
+      padding: 32px 24px;
+      border: 1px solid #245578;
+      border-radius: 24px;
+      background: rgba(5, 17, 31, .88);
+      box-shadow: 0 0 45px #087bb533;
+    }
+    .orb {
+      width: 130px;
+      height: 130px;
+      margin: 12px auto 28px;
+      border-radius: 50%;
+      border: 2px solid #53caff;
+      box-shadow: 0 0 20px #36bfff, inset 0 0 25px #36bfff66;
+      display: grid;
+      place-items: center;
+      color: #8cddff;
+      font-size: 34px;
+      letter-spacing: 4px;
+    }
+    h1 { letter-spacing: 5px; font-size: 25px; }
+    .subtitle { color: #8ab8d5; font-size: 13px; }
+    #status { color: #70d5ff; margin: 24px 0; }
+    input {
+      width: 100%;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #245578;
+      background: #0c1b2b;
+      color: white;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 12px;
+      padding: 13px 22px;
+      border: 1px solid #53caff;
+      border-radius: 12px;
+      background: #103957;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    #reply { color: #b7d9ed; line-height: 1.6; min-height: 48px; }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <div class="orb">J</div>
+    <h1>J.A.R.V.I.S.</h1>
+    <p class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</p>
+    <p id="status">SYSTEM ONLINE · PREVIEW MODE</p>
+    <input id="command" placeholder="Enter a command, Sir..." />
+    <button onclick="respond()">Execute</button>
+    <p id="reply">Awaiting your command.</p>
+  </main>
+  <script>
+    function respond() {
+      const command = document.getElementById("command").value.trim();
+      const reply = document.getElementById("reply");
+      if (!command) {
+        reply.textContent = "Please enter a command, Sir.";
+        return;
+      }
+      reply.textContent =
+        "Command received, Sir: " + command +
+        ". This is the JARVIS visual prototype. AI connection is not yet configured.";
+    }
+  </script>
+</body>
+</html>
