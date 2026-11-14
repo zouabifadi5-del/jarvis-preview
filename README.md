@@ -12,6 +12,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Delivery roadmap](docs/ROADMAP.md)
 - [Owner security design](docs/SECURITY.md) (proposal only; no authentication is implemented)
 - [Authentication implementation plan](docs/AUTHENTICATION_PLAN.md) (candidate libraries, storage, flows, and security tests)
+- [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
 
 ## Repository boundaries
 
