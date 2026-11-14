@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Zero-Cost Authentication Test Plan
 
-**Status:** Initial authentication routes and storage helpers are implemented on the isolated test branch; no D1 resource, secret, or deployment has been created or authorized.
+**Status:** Initial authentication routes, a same-origin native passkey UI, and synthetic end-to-end route tests are implemented on the isolated test branch; no D1 resource, secret, or deployment has been created or authorized.
 **Target:** One owner, Safari on iPhone 17 Pro Max
 **Budget rule:** Free services only. Never enable billing, a paid plan, paid add-ons, or a trial.
 
@@ -12,7 +12,7 @@ Prove the owner-authentication design can work safely in the selected runtime be
 
 - Keep the current health-only Worker behavior as the public baseline.
 - Keep the live Worker health-only; auth route code on the isolated branch must fail closed until D1 and explicit origin settings are configured.
-- Do not provision a D1 database, Durable Object, bucket, or other cloud resource. A non-functional static owner-access shell and Workers Static Assets config may be prepared on the isolated test branch, but must not be deployed without separate approval. The shell is not a login page and has no authentication behavior.
+- Do not provision a D1 database, Durable Object, bucket, or other cloud resource. The isolated branch now has a native WebAuthn owner-access page and Worker route code, but neither may be deployed or connected to real storage without separate explicit approval.
 - Do not change Cloudflare billing, plan, production branch, DNS, or deployment settings.
 - Keep work isolated on `jarvis-worker-runtime-tests`; do not merge or deploy without approval, and never modify `jarvis-core`.
 - Record the current branch commit and ensure no secrets, credentials, or personal data are present in the public repository.
@@ -94,7 +94,7 @@ Stop immediately if:
 
 - The live Worker remains unchanged and currently exposes only a health endpoint and a generic 404 response. The isolated test branch now contains a same-origin native WebAuthn owner interface, restrictive `_headers`, and Workers Static Assets configuration; none of these changes are deployed.
 - Latest verified CI run #132 passed 15 local SQLite/Node checks, 35 Cloudflare Workers runtime tests, browser JavaScript syntax validation, and Wrangler dry-run build/config validation (50 test cases total). It includes a synthetic end-to-end owner registration/login/session/logout test. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43615565790
-- `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes synthetic Worker-runtime tests. Initial registration/login/session/logout and multi-device credential-management routes, a same-origin native WebAuthn browser UI, and D1 storage helpers exist only on the isolated test branch. No database has been created, no secret configured, no route deployed, and no passkey registered.
+- `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes synthetic Worker-runtime tests. First-owner registration, passkey login, session/logout, sign-out-everywhere, and multi-device credential-management routes, a same-origin native WebAuthn browser UI, and D1 storage helpers exist only on the isolated test branch. Synthetic route tests exercise registration, login, session, logout, replay, origin, signature, CSRF, and enrollment-enumeration cases. No database has been created, no secret configured, no route deployed, and no real passkey registered.
 - Authentication routes and a browser passkey UI are implemented and a synthetic registration/login/session/logout lifecycle passes in workerd, but this is not production-ready. Real D1 integration, full persistent ceremony tests, offline recovery, rate limiting, and iPhone acceptance remain incomplete. Owner memory and AI integration are not implemented.
 - No deployment or billing change is part of this plan.
 
