@@ -6,6 +6,7 @@ const signedIn = document.querySelector("#signed-in");
 const loginButton = document.querySelector("#login");
 const enrollButton = document.querySelector("#enroll");
 const addButton = document.querySelector("#add-credential");
+const reauthButton = document.querySelector("#reauthenticate");
 const logoutButton = document.querySelector("#logout");
 const logoutAllButton = document.querySelector("#logout-all");
 const secretInput = document.querySelector("#bootstrap-secret");
@@ -16,7 +17,7 @@ function setStatus(message, kind = "info") {
   statusNode.dataset.kind = kind;
 }
 function setBusy(busy) {
-  for (const button of [loginButton, enrollButton, addButton, logoutButton, logoutAllButton]) if (button) button.disabled = busy;
+  for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton]) if (button) button.disabled = busy;
 }
 function decodeBase64Url(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("The server returned invalid passkey options.");
@@ -102,7 +103,7 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       challenge_invalid_or_expired: "That passkey request expired. Please try again.",
       not_authenticated: "Your session has expired. Sign in again.",
       session_or_csrf_invalid: "Your session security check failed. Refresh and sign in again.",
-      reauthentication_required: "Please confirm your passkey again before changing owner credentials."
+      reauthentication_required: "Your sign-in is too old for this change. Tap Confirm passkey for security changes, then retry."
     };
     if (response.status === 503 && payload.error === "authentication_not_configured") {
       throw new Error("The authentication service is not configured yet.");
@@ -224,6 +225,7 @@ async function runAction(action) {
 loginButton.addEventListener("click", () => runAction(signIn));
 enrollButton.addEventListener("click", () => runAction(enrollOwner));
 addButton.addEventListener("click", () => runAction(addPasskey));
+reauthButton.addEventListener("click", () => runAction(signIn));
 logoutButton.addEventListener("click", () => runAction(signOut));
 logoutAllButton.addEventListener("click", () => runAction(signOutEverywhere));
 logoutAllButton.addEventListener("click", () => runAction(signOutAll));
