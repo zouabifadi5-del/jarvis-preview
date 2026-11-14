@@ -15,7 +15,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 - Enroll exactly one owner identity through a deliberate, one-time bootstrap procedure after the login page is served from the same HTTPS Worker origin as the API and secure persistent storage is verified. The planned origin is `https://jarvis-preview-api.zouabifadi5.workers.dev` with RP ID `jarvis-preview-api.zouabifadi5.workers.dev`; re-verify the live page origin before enrollment. The GitHub Pages preview is not an authentication origin. Close enrollment immediately after the first credential is registered.
 - Bind challenges to the expected origin and relying-party ID; use cryptographically random, short-lived, single-use challenges and verify the challenge, origin, RP ID hash, user-presence and user-verification flags, credential public key, and signature with a maintained WebAuthn implementation.
 - Do not write a custom WebAuthn cryptographic verifier. The current candidate is SimpleWebAuthn server 14.1.0 with browser 14.0.0; these are research candidates only, not installed or approved for production. See [Authentication Implementation Plan](AUTHENTICATION_PLAN.md). Test exact versions in the chosen Worker runtime before enabling enrollment.
-- Provide a small set of one-time recovery codes only if a safe offline recovery process is designed. Store only salted hashes; show the codes once and never send them by email or log them.
+- Generate ten high-entropy one-time recovery codes at first-owner enrollment. Store only SHA-256 hashes, show the plaintext codes once, and require the owner to save them offline. Recovery consumes one code and a new passkey ceremony, revokes all old passkeys and sessions, invalidates the remaining old codes, and issues ten replacement codes. Never email or log recovery codes. If all passkeys and all recovery codes are lost, there is no automated recovery path.
 
 ## Session and request protection
 
@@ -60,7 +60,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 2. Verify the hosting account remains on a genuinely zero-cost plan; do not enable billing or paid add-ons.
 3. Choose storage only after checking its current free limits, data location, access model, retention, and deletion semantics.
 4. Select and test a maintained WebAuthn verifier compatible with the runtime.
-5. Implement and test one-owner enrollment, passkey login, session rotation, logout, revocation, CSRF, CORS, rate limits, and recovery.
+5. Implement and test one-owner enrollment, passkey login, session rotation, logout, credential revocation, CSRF, recovery-code replacement, and sign-out-everywhere. Before production, complete rate limiting, real D1 validation, and owner-device acceptance.
 6. Complete a security review and negative tests before storing any personal information.
 
 Until every gate is met, the service must remain a non-sensitive scaffold. A successful health check is not proof of authentication, privacy, or production readiness.
