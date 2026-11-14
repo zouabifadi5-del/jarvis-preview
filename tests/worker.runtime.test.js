@@ -543,7 +543,7 @@ describe("JARVIS Worker runtime contract", () => {
       method: "POST",
       headers: { Origin: "https://example.test" }
     }), {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
@@ -627,9 +627,10 @@ describe("JARVIS Worker runtime contract", () => {
         "X-CSRF-Token": csrfToken
       }
     }), {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
-      WEBAUTHN_RP_ID: "example.test"
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
     });
     expect(response.status).toBe(200);
     const options = await response.json();
@@ -703,7 +704,7 @@ describe("JARVIS Worker runtime contract", () => {
       },
       body: JSON.stringify({ credentialId: "only-passkey" })
     }), {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test"
     });
@@ -731,7 +732,7 @@ describe("JARVIS Worker runtime contract", () => {
     const { db, state } = makeRouteD1();
     const secret = "r".repeat(64);
     const env = {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
@@ -921,7 +922,7 @@ describe("JARVIS Worker runtime contract", () => {
       method: "POST",
       headers: { Origin: "https://example.test" }
     }), {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test"
     });
@@ -945,13 +946,13 @@ describe("JARVIS Worker runtime contract", () => {
     const noOwner = await handleAuthRequest(request("/auth/login/options", {
       method: "POST", headers: { Origin: "https://example.test" }
     }), {
-      DB: withRateLimitSupport(makeDb(null)), AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test"
+      DB: withRateLimitSupport(makeDb(null)), AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test", JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
     });
     const ownerWithoutActiveCredentials = await handleAuthRequest(request("/auth/login/options", {
       method: "POST", headers: { Origin: "https://example.test" }
     }), {
       DB: withRateLimitSupport(makeDb({ id: 1, created_at: 1, enrollment_closed_at: 1 })),
-      AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test"
+      AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test", JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
     });
     expect(noOwner.status).toBe(401);
     expect(ownerWithoutActiveCredentials.status).toBe(401);
@@ -1011,7 +1012,7 @@ describe("JARVIS Worker runtime contract", () => {
         "X-CSRF-Token": csrfToken
       }
     }), {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test"
     });
@@ -1024,7 +1025,7 @@ describe("JARVIS Worker runtime contract", () => {
   it("recovers owner access with one recovery code and rotates every recovery code", async () => {
     const { db, state } = makeRouteD1();
     const env = {
-      DB: db,
+      DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
