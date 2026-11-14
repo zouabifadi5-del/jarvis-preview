@@ -9,6 +9,13 @@ const addButton = document.querySelector("#add-credential");
 const reauthButton = document.querySelector("#reauthenticate");
 const logoutButton = document.querySelector("#logout");
 const logoutAllButton = document.querySelector("#logout-all");
+const recoverButton = document.querySelector("#recover");
+const recoveryCodeInput = document.querySelector("#recovery-code");
+const recoveryPanel = document.querySelector("#recovery-panel");
+const recoveryList = document.querySelector("#recovery-list");
+const copyRecoveryButton = document.querySelector("#copy-recovery");
+const downloadRecoveryButton = document.querySelector("#download-recovery");
+const acknowledgeRecoveryButton = document.querySelector("#acknowledge-recovery");
 const secretInput = document.querySelector("#bootstrap-secret");
 const credentialsNode = document.querySelector("#credentials");
 
@@ -17,7 +24,7 @@ function setStatus(message, kind = "info") {
   statusNode.dataset.kind = kind;
 }
 function setBusy(busy) {
-  for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton]) if (button) button.disabled = busy;
+  for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton, recoverButton, copyRecoveryButton, downloadRecoveryButton, acknowledgeRecoveryButton]) if (button) button.disabled = busy;
 }
 function decodeBase64Url(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("The server returned invalid passkey options.");
@@ -103,6 +110,7 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       challenge_invalid_or_expired: "That passkey request expired. Please try again.",
       not_authenticated: "Your session has expired. Sign in again.",
       session_or_csrf_invalid: "Your session security check failed. Refresh and sign in again.",
+      recovery_failed: "That recovery code could not be used. Check it and try again, or use a different unused code.",
       reauthentication_required: "Your sign-in is too old for this change. Tap Confirm passkey for security changes, then retry."
     };
     if (response.status === 503 && payload.error === "authentication_not_configured") {
@@ -112,7 +120,42 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
   }
   return payload;
 }
-function showSignedOut() { signedOut.hidden = false; signedIn.hidden = true; }
+function showSignedOut() {
+  signedOut.hidden = false;
+  signedIn.hidden = true;
+  recoveryPanel.hidden = true;
+}
+function showRecoveryCodes(codes) {
+  if (!Array.isArray(codes) || codes.length !== 10 || codes.some((code) => typeof code !== "string")) {
+    throw new Error("The server did not return the expected recovery codes. Do not close this page; contact the owner support process.");
+  }
+  recoveryList.textContent = codes.join("\n");
+  signedOut.hidden = true;
+  signedIn.hidden = true;
+  recoveryPanel.hidden = false;
+  setStatus("Save these recovery codes before continuing.", "success");
+}
+async function copyRecoveryCodes() {
+  if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable. Use the download option instead.");
+  await navigator.clipboard.writeText(recoveryList.textContent);
+  setStatus("Recovery codes copied. Store them somewhere secure and offline.", "success");
+}
+function downloadRecoveryCodes() {
+  const blob = new Blob(["JARVIS owner recovery codes\\nKeep offline. Each code works once.\\n\\n", recoveryList.textContent, "\\n"], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "jarvis-recovery-codes.txt";
+  link.click();
+  URL.revokeObjectURL(url);
+  setStatus("Recovery-code file prepared. Keep it secure and offline.", "success");
+}
+function acknowledgeRecoveryCodes() {
+  recoveryPanel.hidden = true;
+  recoveryList.textContent = "";
+  signedIn.hidden = false;
+  setStatus("Recovery codes acknowledged. Owner session active.", "success");
+}
 async function showSignedIn() { signedOut.hidden = true; signedIn.hidden = false; await loadCredentials(); }
 async function loadCredentials() {
   credentialsNode.replaceChildren();
@@ -171,13 +214,34 @@ async function enrollOwner() {
   const options = await api("/auth/register/options", { method: "POST", headers });
   const credential = await navigator.credentials.create({ publicKey: registrationOptionsFromServer(options) });
   if (!credential) throw new Error("Passkey creation was cancelled.");
-  await api("/auth/register/verify", {
+  const result = await api("/auth/register/verify", {
     method: "POST", headers,
     body: { challenge: options.challenge, response: serializeRegistration(credential) }
   });
   secretInput.value = "";
   await showSignedIn();
-  setStatus("Owner passkey created. Enrollment is now closed.", "success");
+  showRecoveryCodes(result.recoveryCodes);
+}
+
+async function recoverOwner() {
+  await requireWebAuthn();
+  const recoveryCode = recoveryCodeInput.value.trim();
+  if (recoveryCode.length < 40) throw new Error("Enter one complete unused recovery code.");
+  const options = await api("/auth/recovery/options", {
+    method: "POST",
+    body: { recoveryCode }
+  });
+  const credential = await navigator.credentials.create({
+    publicKey: registrationOptionsFromServer(options)
+  });
+  if (!credential) throw new Error("Recovery passkey creation was cancelled.");
+  const result = await api("/auth/recovery/verify", {
+    method: "POST",
+    body: { challenge: options.challenge, response: serializeRegistration(credential) }
+  });
+  recoveryCodeInput.value = "";
+  await showSignedIn();
+  showRecoveryCodes(result.recoveryCodes);
 }
 async function signIn() {
   await requireWebAuthn();
@@ -210,12 +274,6 @@ async function signOutEverywhere() {
   setStatus("Signed out on all devices. " + result.revokedCount + " session(s) revoked.", "success");
 }
 
-async function signOutAll() {
-  if (!window.confirm("Sign out of JARVIS on every device? You will need a passkey to sign in again.")) return;
-  await api("/auth/logout-all", { method: "POST", body: {} });
-  showSignedOut();
-  setStatus("All JARVIS sessions have been revoked.", "success");
-}
 async function runAction(action) {
   setBusy(true);
   try { await action(); }
@@ -228,7 +286,11 @@ addButton.addEventListener("click", () => runAction(addPasskey));
 reauthButton.addEventListener("click", () => runAction(signIn));
 logoutButton.addEventListener("click", () => runAction(signOut));
 logoutAllButton.addEventListener("click", () => runAction(signOutEverywhere));
-logoutAllButton.addEventListener("click", () => runAction(signOutAll));
+recoverButton.addEventListener("click", () => runAction(recoverOwner));
+copyRecoveryButton.addEventListener("click", () => runAction(copyRecoveryCodes));
+downloadRecoveryButton.addEventListener("click", () => runAction(downloadRecoveryCodes));
+acknowledgeRecoveryButton.addEventListener("click", () => runAction(acknowledgeRecoveryCodes));
+
 async function initialize() {
   try {
     await requireWebAuthn();
@@ -245,6 +307,8 @@ async function initialize() {
       loginButton.hidden = true;
       enrollButton.hidden = true;
       secretInput.hidden = true;
+      recoverButton.hidden = true;
+      recoveryCodeInput.hidden = true;
       setStatus(error.message, "error");
       return;
     }
