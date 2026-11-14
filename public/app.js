@@ -7,6 +7,7 @@ const loginButton = document.querySelector("#login");
 const enrollButton = document.querySelector("#enroll");
 const addButton = document.querySelector("#add-credential");
 const logoutButton = document.querySelector("#logout");
+const logoutAllButton = document.querySelector("#logout-all");
 const secretInput = document.querySelector("#bootstrap-secret");
 const credentialsNode = document.querySelector("#credentials");
 
@@ -15,7 +16,7 @@ function setStatus(message, kind = "info") {
   statusNode.dataset.kind = kind;
 }
 function setBusy(busy) {
-  for (const button of [loginButton, enrollButton, addButton, logoutButton]) if (button) button.disabled = busy;
+  for (const button of [loginButton, enrollButton, addButton, logoutButton, logoutAllButton]) if (button) button.disabled = busy;
 }
 function decodeBase64Url(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("The server returned invalid passkey options.");
@@ -198,6 +199,13 @@ async function signOut() {
   showSignedOut();
   setStatus("You have signed out.", "success");
 }
+
+async function signOutAll() {
+  if (!window.confirm("Sign out of JARVIS on every device? You will need a passkey to sign in again.")) return;
+  await api("/auth/logout-all", { method: "POST", body: {} });
+  showSignedOut();
+  setStatus("All JARVIS sessions have been revoked.", "success");
+}
 async function runAction(action) {
   setBusy(true);
   try { await action(); }
@@ -208,6 +216,7 @@ loginButton.addEventListener("click", () => runAction(signIn));
 enrollButton.addEventListener("click", () => runAction(enrollOwner));
 addButton.addEventListener("click", () => runAction(addPasskey));
 logoutButton.addEventListener("click", () => runAction(signOut));
+logoutAllButton.addEventListener("click", () => runAction(signOutAll));
 async function initialize() {
   try {
     await requireWebAuthn();
