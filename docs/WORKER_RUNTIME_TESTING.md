@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status:** The latest synthetic ceremony test run passed 24 of 24 tests across two test files on `jarvis-worker-runtime-tests`. This is a compatibility and verifier test harness, not a production authentication implementation.  
+**Status:** The latest completed Workers runtime run passed 24 of 24 tests. The isolated branch also has local SQLite and Node scaffold/static-shell checks. This is a compatibility and verifier test harness, not a production authentication implementation.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -68,7 +68,7 @@ The Worker test harness is not a hardened security sandbox. Only trusted project
 
 ## D1 schema validation added alongside this harness
 
-The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest workflow run passed all 12 local SQLite tests plus all 24 Worker-runtime tests (36 tests total across the two test commands). This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on confirmed Free-plan eligibility and separate owner approval. The D1 helper code is not wired into the Worker routes and does not make authentication operational.
+The workflow also runs `tests/auth-schema.test.js` with Node's built-in SQLite module before the Workers runtime tests. This validates the unprovisioned D1 migration's table shape, single-owner constraint, credential foreign key and uniqueness, challenge purpose/expiry constraints, single-use challenge consumption via `DELETE ... RETURNING`, hash-only session storage, challenge issuance/consumption, credential retrieval/revocation/counter compare-and-set, and session expiry/CSRF/revocation. The latest completed workflow before adding the static-shell checks passed all 12 local SQLite tests plus all 24 Worker-runtime tests (36 tests total across the two test commands). A new workflow run has been triggered by the static-shell test additions; its result is pending. This local SQLite check is not a substitute for a real D1 binding smoke test; that remains gated on the owner's Free-plan confirmation and separate explicit owner approval. The D1 helper code is not wired into the Worker routes and does not make authentication operational. A non-functional static owner-access shell is configured on the isolated branch via Workers Static Assets; it has no scripts, forms, sign-in, or enrollment, and has not been deployed.
 
 ## Remaining gates
 
