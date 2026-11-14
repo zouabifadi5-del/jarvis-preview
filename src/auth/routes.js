@@ -12,6 +12,7 @@ import {
   findActiveSession,
   findOwner,
   listActiveCredentials,
+  revokeCredential,
   revokeSession,
   updateCredentialCounter,
   verifySessionCsrf
@@ -292,6 +293,130 @@ async function loginVerify(request, cfg, now) {
   return issueSession(request, cfg.db, now);
 }
 
+
+async function authenticatedOwner(request, cfg, now, requireCsrf = false) {
+  const token = getCookie(request, SESSION_COOKIE);
+  if (!token) return null;
+  const session = await findActiveSession(cfg.db, { sessionToken: token, now });
+  if (!session) return null;
+  if (requireCsrf) {
+    const csrfToken = request.headers.get("X-CSRF-Token");
+    if (!await verifySessionCsrf(cfg.db, { sessionToken: token, csrfToken, now })) return null;
+  }
+  return { token, session };
+}
+
+async function credentialList(request, cfg, now) {
+  const auth = await authenticatedOwner(request, cfg, now);
+  if (!auth) return fail(request, 401, "not_authenticated");
+  const credentials = await listActiveCredentials(cfg.db);
+  return response(request, {
+    credentials: credentials.map((item) => ({
+      id: item.id,
+      transports: item.transports,
+      deviceType: item.deviceType,
+      backedUp: item.backedUp,
+      createdAt: item.createdAt,
+      lastUsedAt: item.lastUsedAt
+    }))
+  });
+}
+
+async function addCredentialOptions(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  if (!await authenticatedOwner(request, cfg, now, true)) return fail(request, 403, "session_or_csrf_invalid");
+  if (!await findOwner(cfg.db)) return fail(request, 401, "owner_not_enrolled");
+  const credentials = await listActiveCredentials(cfg.db);
+  if (credentials.length >= 10) return fail(request, 409, "credential_limit_reached");
+
+  const challenge = await createChallenge(cfg.db, {
+    purpose: "credential_add",
+    now,
+    ttlSeconds: CHALLENGE_TTL_SECONDS
+  });
+  const userID = new Uint8Array(await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode("JARVIS single-owner WebAuthn user handle v1")
+  ));
+  const options = await generateRegistrationOptions({
+    rpName: "J.A.R.V.I.S.",
+    rpID: cfg.rpID,
+    userName: "owner",
+    userDisplayName: "JARVIS Owner",
+    userID,
+    attestationType: "none",
+    authenticatorSelection: {
+      residentKey: "required",
+      userVerification: "required"
+    },
+    excludeCredentials: credentials.map((item) => ({
+      id: item.id,
+      transports: item.transports
+    })),
+    timeout: 60000
+  });
+  options.challenge = challenge.challenge;
+  return response(request, options);
+}
+
+async function addCredentialVerify(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  if (!await authenticatedOwner(request, cfg, now, true)) return fail(request, 403, "session_or_csrf_invalid");
+  const body = await readJson(request);
+  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+    return fail(request, 400, "invalid_request");
+  }
+  const consumed = await consumeChallenge(cfg.db, {
+    challenge: body.challenge,
+    purpose: "credential_add",
+    now
+  });
+  if (!consumed) return fail(request, 400, "challenge_invalid_or_expired");
+
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: body.response,
+      expectedChallenge: consumed,
+      expectedOrigin: cfg.origin,
+      expectedRPID: cfg.rpID,
+      requireUserVerification: true
+    });
+  } catch {
+    return fail(request, 400, "registration_verification_failed");
+  }
+  if (!verification.verified || !verification.registrationInfo?.credential) {
+    return fail(request, 400, "registration_verification_failed");
+  }
+  const credential = verification.registrationInfo.credential;
+  try {
+    await storeCredential(cfg.db, {
+      id: credential.id,
+      publicKey: credential.publicKey,
+      counter: credential.counter,
+      transports: credential.transports || [],
+      deviceType: verification.registrationInfo.credentialDeviceType || null,
+      backedUp: verification.registrationInfo.credentialBackedUp || false,
+      now
+    });
+  } catch {
+    return fail(request, 409, "credential_already_registered_or_invalid");
+  }
+  return response(request, { registered: true });
+}
+
+async function removeCredential(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  if (!await authenticatedOwner(request, cfg, now, true)) return fail(request, 403, "session_or_csrf_invalid");
+  const body = await readJson(request);
+  if (!body || typeof body.credentialId !== "string") return fail(request, 400, "invalid_request");
+  const credentials = await listActiveCredentials(cfg.db);
+  if (credentials.length <= 1) return fail(request, 409, "cannot_revoke_last_credential");
+  const revoked = await revokeCredential(cfg.db, { credentialId: body.credentialId, now });
+  if (!revoked) return fail(request, 404, "credential_not_found");
+  return response(request, { revoked: true });
+}
+
 async function currentSession(request, cfg, now) {
   const token = getCookie(request, SESSION_COOKIE);
   if (!token) return fail(request, 401, "not_authenticated");
@@ -336,6 +461,18 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/me" && request.method === "GET") {
       return await currentSession(request, cfg, now);
+    }
+    if (pathname === "/auth/credentials" && request.method === "GET") {
+      return await credentialList(request, cfg, now);
+    }
+    if (pathname === "/auth/credentials/options" && request.method === "POST") {
+      return await addCredentialOptions(request, cfg, now);
+    }
+    if (pathname === "/auth/credentials/verify" && request.method === "POST") {
+      return await addCredentialVerify(request, cfg, now);
+    }
+    if (pathname === "/auth/credentials/revoke" && request.method === "POST") {
+      return await removeCredential(request, cfg, now);
     }
     if (pathname === "/auth/logout" && request.method === "POST") {
       return await logout(request, cfg, now);
