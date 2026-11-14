@@ -30,7 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_owner_credentials_active
 CREATE TABLE IF NOT EXISTS auth_challenges (
   challenge_hash TEXT PRIMARY KEY,
   challenge TEXT NOT NULL,
-  purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'authentication')),
+  purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'authentication', 'credential_add')),
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
 );
