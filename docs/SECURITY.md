@@ -29,7 +29,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 ## Data and memory protection
 
 - Keep the public `jarvis-preview` repository free of personal data, credentials, session material, and real owner memory. Keep `jarvis-core` private.
-- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed. A SQLite-backed Durable Object is the current storage candidate for credentials, challenges, and sessions only; it is not yet provisioned or account-verified.
+- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed. A single Cloudflare D1 database is the selected storage design for credentials, challenges, and sessions only; its schema migration is unprovisioned, and the account's Free-plan/billing eligibility has not been verified.
 - Minimize stored data. Give the owner controls to inspect, correct, export, and delete memory. Deletion must cover derived indexes and backups according to a documented retention policy.
 - Encrypt sensitive records at rest with a key held only in server-side secret storage; never commit encryption keys or place them in client code. HTTPS protects data in transit.
 - Do not log prompts, message bodies, memory contents, tokens, recovery codes, or provider secrets. Keep only minimal operational metadata with a defined retention period.
