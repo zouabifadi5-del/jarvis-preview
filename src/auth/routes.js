@@ -221,9 +221,9 @@ async function registrationVerify(request, env, cfg, now) {
 
 async function loginOptions(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
-  if (!await findOwner(cfg.db)) return fail(request, 401, "owner_not_enrolled");
+  if (!await findOwner(cfg.db)) return fail(request, 401, "authentication_failed");
   const credentials = await listActiveCredentials(cfg.db);
-  if (credentials.length === 0) return fail(request, 401, "no_active_credentials");
+  if (credentials.length === 0) return fail(request, 401, "authentication_failed");
 
   const challenge = await createChallenge(cfg.db, {
     purpose: "authentication",
