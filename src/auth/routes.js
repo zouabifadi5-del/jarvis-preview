@@ -576,10 +576,13 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
   if (!policy || request.method !== "POST") return null;
   // Bootstrap enrollment already has a high-entropy shared-secret gate;
   // reject missing/invalid bootstrap credentials before touching D1.
+  if (!sameOrigin(request, cfg.origin)) return null;
   if (policy.name === "registration" &&
       !equalSecret(request.headers.get("X-Jarvis-Bootstrap"), env?.JARVIS_BOOTSTRAP_SECRET)) {
     return null;
   }
+  const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (pathname.endsWith("/verify") && contentType !== "application/json") return null;
 
   const secret = env?.JARVIS_RATE_LIMIT_HMAC_SECRET;
   const ip = request.headers.get("CF-Connecting-IP");
