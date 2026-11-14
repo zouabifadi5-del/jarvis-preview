@@ -16,15 +16,15 @@
 
 ## Initial architecture
 
-- **Backend candidate:** Cloudflare Workers is the provisional host for a small stateless API. The account's billing status and free-plan eligibility have not yet been independently verified; do not enable paid services, billing, or trials.
+- **Backend candidate:** Cloudflare Workers is the provisional host for a small stateless API. The owner has confirmed the account is on Cloudflare Free with no paid Workers subscription or trial; no paid services, billing, or trials may be enabled.
 - **Deployment status:** The owner connected the public `jarvis-preview` repository to a Cloudflare Workers project named `jarvis-preview-api` and reported setting its production branch to `jarvis-foundation`. GitHub's repository default branch remains `main`; Cloudflare's production-branch setting is separate. A deployment build was reported as complete, but the branch used by the active version has not been independently verified.
 - **Service scaffold:** `src/worker.js` exposes only a non-sensitive `/health` response. The live `/health` response has not yet been verified. The worker does not process commands, authenticate users, store memory, or call an AI provider.
 
 
 - **iPhone client:** responsive web app/PWA, designed for Safari on iPhone. A PWA can provide an app-like home-screen entry point, but iOS does not permit an ordinary website to continuously listen for a custom wake word in the background.
-- **Web interface:** static HTML/CSS/JavaScript hosted through GitHub Pages for the public preview. The preview must contain no private user data or secrets.
+- **Web interface:** the public demo preview may remain on GitHub Pages. A separate non-functional owner-access shell has now been added under `public/` on the isolated runtime-test branch, with Workers Static Assets configured in `wrangler.toml`; it is designed to share the API hostname and has not been deployed. It contains no sign-in or enrollment logic and must not be treated as a live authentication page.
 - **Application service:** a separate server-side component will eventually handle AI requests and integration calls. It must keep provider credentials server-side; browser code must never contain secret keys.
-- **Identity and authorization:** the proposed design is a single-owner WebAuthn passkey, with server-verified assertions and protected sessions. The login page is planned as a Cloudflare Workers Static Asset on the same `workers.dev` origin as the API, so the browser origin and WebAuthn RP ID match without a custom domain; the existing GitHub Pages preview remains public demo-only. The selected persistence design is one Cloudflare D1 database for credential metadata, one-time challenges, and hashed sessions; the SQL migration is unprovisioned and account Free-plan eligibility is unverified. On iPhone, a passkey may be unlocked locally with Face ID or the device passcode; biometric data is not sent to JARVIS. Voice recognition alone is not sufficient authorization. See [Owner Security Design](SECURITY.md) and [Authentication Implementation Plan](AUTHENTICATION_PLAN.md).
+- **Identity and authorization:** the proposed design is a single-owner WebAuthn passkey, with server-verified assertions and protected sessions. The login page is planned as a Cloudflare Workers Static Asset on the same `workers.dev` origin as the API, so the browser origin and WebAuthn RP ID match without a custom domain; the existing GitHub Pages preview remains public demo-only. The selected persistence design is one Cloudflare D1 database for credential metadata, one-time challenges, and hashed sessions; the SQL migration is unprovisioned; the owner has confirmed the Cloudflare Free plan, but no remote database has been created. On iPhone, a passkey may be unlocked locally with Face ID or the device passcode; biometric data is not sent to JARVIS. Voice recognition alone is not sufficient authorization. See [Owner Security Design](SECURITY.md) and [Authentication Implementation Plan](AUTHENTICATION_PLAN.md).
 - **Memory:** explicit, inspectable memory with correction and deletion controls. Sensitive records require encryption and stricter access controls.
 - **Integrations:** add calendar, email, files, reminders, and other services one at a time using supported OAuth scopes and user-granted permissions.
 - **Automation:** use iOS Shortcuts for supported device-side actions. Background execution and wake-word behavior remain subject to iOS restrictions.
@@ -54,7 +54,7 @@
 
 ## Current limitations
 
-The owner-security document is a design proposal only. No passkey registration, session system, storage, encryption, or authorization middleware has been implemented or audited.
+The owner-security document is a design proposal only. No passkey registration, session system, live storage, encryption, or authorization middleware has been implemented or audited. The static owner-access shell is informational only.
 
 
 This repository currently hosts a visual prototype. It is not yet an AI assistant, does not authenticate an owner, does not connect to personal accounts, and does not perform real-world actions. Those features must be implemented and tested before being described as operational.
