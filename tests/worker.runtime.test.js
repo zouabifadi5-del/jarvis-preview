@@ -399,24 +399,18 @@ describe("JARVIS Worker runtime contract", () => {
     expect(revoked).toBe(false);
   });
 
-  it("routes the owner page and first-party JavaScript to the static asset binding", async () => {
-    const requested = [];
-    const env = {
-      ASSETS: {
-        async fetch(request) {
-          requested.push(new URL(request.url).pathname);
-          return new Response("static asset", {
-            headers: { "Cache-Control": "no-store" }
-          });
-        }
-      }
-    };
-    for (const path of ["/", "/index.html", "/app.js", "/style.css"]) {
-      const response = await worker.fetch(request(path), env);
+  it("serves the owner page, browser client, and stylesheet from Workers Static Assets", async () => {
+    for (const [path, expected] of [
+      ["/", "J.A.R.V.I.S."],
+      ["/index.html", "J.A.R.V.I.S."],
+      ["/app.js", "navigator.credentials.create"],
+      ["/style.css", "color-scheme: dark"]
+    ]) {
+      const response = await worker.fetch(request(path));
       expect(response.status, path).toBe(200);
-      await expect(response.text()).resolves.toBe("static asset");
+      await expect(response.text()).resolves.toContain(expected);
+      expect(response.headers.get("cache-control")).toBe("no-store");
     }
-    expect(requested).toEqual(["/", "/index.html", "/app.js", "/style.css"]);
   });
 
 });
