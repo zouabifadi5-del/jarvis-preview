@@ -453,7 +453,7 @@ export async function completeOwnerRecovery(db, {
   ];
 
   const results = await db.batch(statements);
-  if ((results[0]?.meta?.changes || 0) !== 1 || (results[1]?.meta?.changes || 0) !== 1) {
+  if ((results[0]?.meta?.changes || 0) !== 1 || (results[2]?.meta?.changes || 0) !== 1) {
     throw new Error("Recovery code is invalid or has already been used");
   }
   return { recoveryCodes };
