@@ -708,4 +708,36 @@ describe("JARVIS Worker runtime contract", () => {
     await expect(response.json()).resolves.toEqual({ error: "authentication_failed" });
   });
 
+
+  it("does not reveal whether an owner has been enrolled through login options", async () => {
+    const makeDb = (owner) => ({
+      prepare(sql) {
+        if (sql.includes("SELECT id, created_at, enrollment_closed_at")) {
+          return { async first() { return owner; } };
+        }
+        if (sql.includes("SELECT credential_id, public_key, sign_count")) {
+          return { async all() { return { results: [] }; } };
+        }
+        throw new Error("Unexpected database query");
+      }
+    });
+    const noOwner = await handleAuthRequest(request("/auth/login/options", {
+      method: "POST", headers: { Origin: "https://example.test" }
+    }), {
+      DB: makeDb(null), AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test"
+    });
+    const ownerWithoutActiveCredentials = await handleAuthRequest(request("/auth/login/options", {
+      method: "POST", headers: { Origin: "https://example.test" }
+    }), {
+      DB: makeDb({ id: 1, created_at: 1, enrollment_closed_at: 1 }),
+      AUTH_ORIGIN: "https://example.test", WEBAUTHN_RP_ID: "example.test"
+    });
+    expect(noOwner.status).toBe(401);
+    expect(ownerWithoutActiveCredentials.status).toBe(401);
+    const first = await noOwner.json();
+    const second = await ownerWithoutActiveCredentials.json();
+    expect(first).toEqual({ error: "authentication_unavailable" });
+    expect(second).toEqual(first);
+  });
+
 });
