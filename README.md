@@ -4,7 +4,7 @@
 
 This repository contains the public-facing prototype and non-sensitive project documentation.
 
-> The current website is a visual preview, not a functioning AI assistant. Initial owner-authentication routes and a first-party passkey browser client are being tested on an isolated branch; they are not deployed or connected to a real database. AI, memory, and account integrations are not connected.
+> The foundation website remains a visual preview, not a functioning AI assistant. The isolated `jarvis-worker-runtime-tests` branch now contains synthetic-tested owner passkey enrollment/login, session protection, multi-device credential management, and one-time recovery-code replacement. It is not deployed or connected to a real D1 database. AI, memory, and account integrations are not connected.
 
 ## Project documents
 
@@ -13,7 +13,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Owner security design](docs/SECURITY.md) (design and implementation in progress; not deployed or security-audited)
 - [Authentication implementation plan](docs/AUTHENTICATION_PLAN.md) (current route implementation, storage design, flows, and remaining security gates)
 - [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
-- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; latest verified run #259 has 39 runtime tests plus 23 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
+- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; latest verified run #261 has 39 runtime tests plus 23 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
 
 ## Repository boundaries
 
@@ -22,7 +22,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 
 ## Development
 
-The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments, the owner passkey interface, and Workers Static Assets configuration are isolated on `jarvis-worker-runtime-tests` and are not merged into the foundation branch or deployed.
+The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments, owner authentication/recovery routes, the browser interface, and Workers Static Assets configuration are isolated on `jarvis-worker-runtime-tests` and are not merged into the foundation branch or deployed.
 
 Run the worker's zero-dependency tests with `npm test` using Node.js. They cover the health response, strict route matching, unsupported methods, hardened response headers, cache prevention, HTTPS-only HSTS behavior, and static-shell safety/configuration.
 
