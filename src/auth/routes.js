@@ -498,6 +498,9 @@ export async function handleAuthRequest(request, env) {
     if (pathname === "/auth/logout" && request.method === "POST") {
       return await logout(request, cfg, now);
     }
+    if (pathname === "/auth/logout-all" && request.method === "POST") {
+      return await logoutAll(request, cfg, now);
+    }
     return fail(request, 404, "not_found");
   } catch {
     return fail(request, 503, "authentication_temporarily_unavailable");
