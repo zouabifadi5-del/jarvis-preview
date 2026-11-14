@@ -1,0 +1,331 @@
+import {
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyRegistrationResponse
+} from "@simplewebauthn/server";
+import {
+  consumeChallenge,
+  createChallenge,
+  createOwnerWithCredential,
+  createSession,
+  findActiveCredential,
+  findActiveSession,
+  findOwner,
+  listActiveCredentials,
+  revokeSession,
+  updateCredentialCounter,
+  verifySessionCsrf
+} from "./d1-store.js";
+import { verifyStoredCredentialAuthentication } from "./webauthn.js";
+
+const SESSION_COOKIE = "__Host-jarvis_session";
+const CHALLENGE_TTL_SECONDS = 5 * 60;
+const SESSION_TTL_SECONDS = 8 * 60 * 60;
+const MAX_BODY_BYTES = 16 * 1024;
+const encoder = new TextEncoder();
+
+function response(request, body, status = 200, extraHeaders = {}) {
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    ...extraHeaders
+  });
+  if (new URL(request.url).protocol === "https:") {
+    headers.set("Strict-Transport-Security", "max-age=31536000");
+  }
+  return Response.json(body, { status, headers });
+}
+
+function fail(request, status, error) {
+  return response(request, { error }, status);
+}
+
+function configuration(request, env) {
+  if (!env?.DB || typeof env.DB.prepare !== "function") return null;
+  if (typeof env.AUTH_ORIGIN !== "string" || typeof env.WEBAUTHN_RP_ID !== "string") return null;
+  let configured;
+  try {
+    configured = new URL(env.AUTH_ORIGIN);
+  } catch {
+    return null;
+  }
+  if (
+    configured.protocol !== "https:" ||
+    configured.origin !== env.AUTH_ORIGIN ||
+    configured.hostname !== env.WEBAUTHN_RP_ID ||
+    new URL(request.url).origin !== env.AUTH_ORIGIN
+  ) return null;
+  return { db: env.DB, origin: configured.origin, rpID: env.WEBAUTHN_RP_ID };
+}
+
+function sameOrigin(request, origin) {
+  return request.headers.get("Origin") === origin &&
+    new URL(request.url).origin === origin;
+}
+
+function equalSecret(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length < 32 || b.length < 32) return false;
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let i = 0; i < left.length; i += 1) difference |= left[i] ^ right[i];
+  return difference === 0;
+}
+
+async function readJson(request) {
+  const declaredLength = Number(request.headers.get("Content-Length") || 0);
+  if (declaredLength > MAX_BODY_BYTES) return null;
+  const raw = await request.text();
+  if (encoder.encode(raw).length > MAX_BODY_BYTES) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function getCookie(request, name) {
+  const cookieHeader = request.headers.get("Cookie") || "";
+  for (const part of cookieHeader.split(";")) {
+    const index = part.indexOf("=");
+    if (index < 0) continue;
+    if (part.slice(0, index).trim() === name) return part.slice(index + 1).trim();
+  }
+  return null;
+}
+
+function sessionCookie(token, maxAge) {
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+}
+
+function clearSessionCookie() {
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
+}
+
+async function issueSession(request, db, now) {
+  const session = await createSession(db, { now, ttlSeconds: SESSION_TTL_SECONDS });
+  const headers = { "Set-Cookie": sessionCookie(session.sessionToken, SESSION_TTL_SECONDS) };
+  return response(request, {
+    authenticated: true,
+    csrfToken: session.csrfToken,
+    expiresAt: session.expiresAt
+  }, 200, headers);
+}
+
+async function registrationOptions(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  if (!equalSecret(request.headers.get("X-Jarvis-Bootstrap"), env.JARVIS_BOOTSTRAP_SECRET)) {
+    return fail(request, 403, "bootstrap_not_authorized");
+  }
+  if (await findOwner(cfg.db)) return fail(request, 409, "enrollment_closed");
+
+  const challenge = await createChallenge(cfg.db, {
+    purpose: "registration",
+    now,
+    ttlSeconds: CHALLENGE_TTL_SECONDS
+  });
+  const userID = new Uint8Array(await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode("JARVIS single-owner WebAuthn user handle v1")
+  ));
+  const options = await generateRegistrationOptions({
+    rpName: "J.A.R.V.I.S.",
+    rpID: cfg.rpID,
+    userName: "owner",
+    userDisplayName: "JARVIS Owner",
+    userID,
+    attestationType: "none",
+    authenticatorSelection: {
+      residentKey: "required",
+      userVerification: "required"
+    },
+    timeout: 60000
+  });
+  // Persist the exact server-issued challenge in the D1 single-use store.
+  // The library challenge is replaced with the persisted random challenge.
+  options.challenge = challenge.challenge;
+  return response(request, options);
+}
+
+async function registrationVerify(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  if (!equalSecret(request.headers.get("X-Jarvis-Bootstrap"), env.JARVIS_BOOTSTRAP_SECRET)) {
+    return fail(request, 403, "bootstrap_not_authorized");
+  }
+  if (await findOwner(cfg.db)) return fail(request, 409, "enrollment_closed");
+  const body = await readJson(request);
+  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+    return fail(request, 400, "invalid_request");
+  }
+  const consumed = await consumeChallenge(cfg.db, {
+    challenge: body.challenge,
+    purpose: "registration",
+    now
+  });
+  if (!consumed) return fail(request, 400, "challenge_invalid_or_expired");
+
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: body.response,
+      expectedChallenge: consumed,
+      expectedOrigin: cfg.origin,
+      expectedRPID: cfg.rpID,
+      requireUserVerification: true
+    });
+  } catch {
+    return fail(request, 400, "registration_verification_failed");
+  }
+  if (!verification.verified || !verification.registrationInfo?.credential) {
+    return fail(request, 400, "registration_verification_failed");
+  }
+
+  const credential = verification.registrationInfo.credential;
+  try {
+    await createOwnerWithCredential(cfg.db, {
+      id: credential.id,
+      publicKey: credential.publicKey,
+      counter: credential.counter,
+      transports: credential.transports || [],
+      deviceType: verification.registrationInfo.credentialDeviceType || null,
+      backedUp: verification.registrationInfo.credentialBackedUp || false,
+      now
+    });
+  } catch {
+    // The singleton owner row makes first enrollment a one-time atomic operation.
+    return fail(request, 409, "enrollment_closed");
+  }
+  return issueSession(request, cfg.db, now);
+}
+
+async function loginOptions(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  if (!await findOwner(cfg.db)) return fail(request, 401, "owner_not_enrolled");
+  const credentials = await listActiveCredentials(cfg.db);
+  if (credentials.length === 0) return fail(request, 401, "no_active_credentials");
+
+  const challenge = await createChallenge(cfg.db, {
+    purpose: "authentication",
+    now,
+    ttlSeconds: CHALLENGE_TTL_SECONDS
+  });
+  const options = await generateAuthenticationOptions({
+    rpID: cfg.rpID,
+    allowCredentials: credentials.map((credential) => ({
+      id: credential.id,
+      transports: credential.transports
+    })),
+    userVerification: "required",
+    timeout: 60000
+  });
+  options.challenge = challenge.challenge;
+  return response(request, options);
+}
+
+async function loginVerify(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const body = await readJson(request);
+  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+    return fail(request, 400, "invalid_request");
+  }
+  const consumed = await consumeChallenge(cfg.db, {
+    challenge: body.challenge,
+    purpose: "authentication",
+    now
+  });
+  if (!consumed) return fail(request, 400, "challenge_invalid_or_expired");
+
+  const responseCredentialId = body.response.id;
+  if (typeof responseCredentialId !== "string") return fail(request, 401, "authentication_failed");
+  const stored = await findActiveCredential(cfg.db, responseCredentialId);
+  if (!stored) return fail(request, 401, "authentication_failed");
+
+  let verification;
+  try {
+    verification = await verifyStoredCredentialAuthentication({
+      response: body.response,
+      expectedChallenge: consumed,
+      expectedOrigin: cfg.origin,
+      expectedRPID: cfg.rpID,
+      credential: {
+        id: stored.id,
+        publicKey: stored.publicKey,
+        counter: stored.counter,
+        transports: stored.transports
+      },
+      requireUserVerification: true
+    });
+  } catch {
+    return fail(request, 401, "authentication_failed");
+  }
+  if (!verification.verified || !verification.authenticationInfo?.userVerified) {
+    return fail(request, 401, "authentication_failed");
+  }
+
+  const counterUpdated = await updateCredentialCounter(cfg.db, {
+    credentialId: stored.id,
+    expectedCounter: stored.counter,
+    newCounter: verification.authenticationInfo.newCounter,
+    now
+  });
+  if (!counterUpdated) return fail(request, 409, "credential_state_changed_retry");
+
+  return issueSession(request, cfg.db, now);
+}
+
+async function currentSession(request, cfg, now) {
+  const token = getCookie(request, SESSION_COOKIE);
+  if (!token) return fail(request, 401, "not_authenticated");
+  const session = await findActiveSession(cfg.db, { sessionToken: token, now });
+  if (!session) return fail(request, 401, "not_authenticated");
+  return response(request, { authenticated: true, expiresAt: session.expiresAt });
+}
+
+async function logout(request, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const token = getCookie(request, SESSION_COOKIE);
+  const csrfToken = request.headers.get("X-CSRF-Token");
+  if (!token || !await verifySessionCsrf(cfg.db, { sessionToken: token, csrfToken, now })) {
+    return fail(request, 403, "csrf_check_failed");
+  }
+  await revokeSession(cfg.db, { sessionToken: token, now });
+  return response(request, { authenticated: false }, 200, {
+    "Set-Cookie": clearSessionCookie()
+  });
+}
+
+export async function handleAuthRequest(request, env) {
+  const cfg = configuration(request, env);
+  if (!cfg) return fail(request, 503, "authentication_not_configured");
+  const now = Math.floor(Date.now() / 1000);
+  const { pathname } = new URL(request.url);
+
+  try {
+    if (pathname === "/auth/register/options" && request.method === "POST") {
+      return await registrationOptions(request, env, cfg, now);
+    }
+    if (pathname === "/auth/register/verify" && request.method === "POST") {
+      return await registrationVerify(request, env, cfg, now);
+    }
+    if (pathname === "/auth/login/options" && request.method === "POST") {
+      return await loginOptions(request, cfg, now);
+    }
+    if (pathname === "/auth/login/verify" && request.method === "POST") {
+      return await loginVerify(request, cfg, now);
+    }
+    if (pathname === "/auth/me" && request.method === "GET") {
+      return await currentSession(request, cfg, now);
+    }
+    if (pathname === "/auth/logout" && request.method === "POST") {
+      return await logout(request, cfg, now);
+    }
+    return fail(request, 404, "not_found");
+  } catch {
+    return fail(request, 503, "authentication_temporarily_unavailable");
+  }
+}
