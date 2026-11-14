@@ -94,7 +94,7 @@ Stop immediately if:
 
 - The Worker currently exposes only a health endpoint and a generic 404 response.
 - The baseline has zero-dependency Node scaffold tests; the isolated `jarvis-worker-runtime-tests` branch additionally has a Cloudflare Workers runtime suite with 24 passing tests at its last verified CI run.
-- The WebAuthn packages remain research candidates and are not installed. The D1 schema exists only as an unprovisioned SQL migration; no database has been created.
+- The WebAuthn packages remain research candidates and are not installed. The D1 schema and storage helper module exist only in the isolated test branch; 12 local SQLite tests pass. No database has been created, and no authentication route is enabled.
 - Authentication, owner memory, and AI integration are not implemented.
 - No deployment or billing change is part of this plan.
 
