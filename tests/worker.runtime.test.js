@@ -869,4 +869,53 @@ describe("JARVIS Worker runtime contract", () => {
     await expect(response.json()).resolves.toEqual({ error: "reauthentication_required" });
   });
 
+  it("requires a recent passkey login before credential management", async () => {
+    const encode = (bytes) => {
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+    };
+    const hash = async (value) => encode(new Uint8Array(await crypto.subtle.digest(
+      "SHA-256", new TextEncoder().encode(value)
+    )));
+    const sessionToken = "s".repeat(48);
+    const csrfToken = "c".repeat(48);
+    const sessionHash = await hash(sessionToken);
+    const csrfHash = await hash(csrfToken);
+    let challengeIssued = false;
+    const db = {
+      prepare(sql) {
+        if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
+          return { bind(...values) { return { async first() {
+            return values[0] === sessionHash
+              ? { created_at: Math.floor(Date.now() / 1000) - 600, expires_at: 9999999999 }
+              : null;
+          } }; } };
+        }
+        if (sql.includes("SELECT csrf_token_hash")) {
+          return { bind(...values) { return { async first() {
+            return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
+          } }; } };
+        }
+        if (sql.startsWith("DELETE FROM auth_challenges")) challengeIssued = true;
+        throw new Error("stale sessions must be rejected before credential storage is touched");
+      }
+    };
+    const response = await handleAuthRequest(request("/auth/credentials/options", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: `__Host-jarvis_session=${sessionToken}`,
+        "X-CSRF-Token": csrfToken
+      }
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test"
+    });
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "reauthentication_required" });
+    expect(challengeIssued).toBe(false);
+  });
+
 });
