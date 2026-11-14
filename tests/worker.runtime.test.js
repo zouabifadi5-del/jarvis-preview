@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { exports } from "cloudflare:workers";
 import { handleAuthRequest } from "../src/auth/routes.js";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
+import { createSession } from "../src/auth/d1-store.js";
 
 const worker = exports.default;
 
@@ -758,12 +759,13 @@ describe("JARVIS Worker runtime contract", () => {
     }), env);
     expect(afterLogout.status).toBe(401);
 
+    const otherDeviceSession = await createSession(db, { now: Math.floor(Date.now() / 1000) });
     const logoutAllResponse = await handleAuthRequest(request("/auth/logout-all", {
       method: "POST",
       headers: {
         Origin: "https://example.test",
-        Cookie: "__Host-jarvis_session=" + registrationSessionCookie,
-        "X-CSRF-Token": registered.csrfToken,
+        Cookie: "__Host-jarvis_session=" + otherDeviceSession.sessionToken,
+        "X-CSRF-Token": otherDeviceSession.csrfToken,
         "Content-Type": "application/json"
       },
       body: "{}"
@@ -772,7 +774,7 @@ describe("JARVIS Worker runtime contract", () => {
     await expect(logoutAllResponse.json()).resolves.toMatchObject({ authenticated: false, revokedCount: 1 });
     const afterLogoutAll = await handleAuthRequest(request("/auth/me", {
       method: "GET",
-      headers: { Cookie: "__Host-jarvis_session=" + registrationSessionCookie }
+      headers: { Cookie: "__Host-jarvis_session=" + otherDeviceSession.sessionToken }
     }), env);
     expect(afterLogoutAll.status).toBe(401);
   });
