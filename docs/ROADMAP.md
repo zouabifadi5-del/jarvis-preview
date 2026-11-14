@@ -17,12 +17,14 @@
 - [x] Connect the public preview repository and configure Cloudflare's production branch as `jarvis-foundation`.
 - [ ] Verify the active deployment was built from `jarvis-foundation` and serves the health-only worker scaffold.
 - [ ] Verify the live `/health` response and independently confirm zero-cost account/billing status.
-- [x] Add zero-dependency tests for the worker health route, unknown routes, and non-GET requests; all three pass locally with Node.js.
+- [x] Add zero-dependency tests for the worker health route, unknown routes, and non-GET requests; verified locally with Node.js v22.16.0 (3 passed, 0 failed).
 - [ ] Keep credentials on the server only.
 - [ ] Add request validation before accepting commands.
 - [ ] Add rate limiting and safe error handling.
 
 ## Milestone 3 — Owner security and memory
+- [x] Document a single-owner passkey, session, privacy, and command-approval design (design only; not implemented or audited).
+- [ ] Select and verify a maintained WebAuthn implementation compatible with the Worker runtime.
 - [ ] Owner authentication.
 - [ ] Session protection and logout.
 - [ ] Explicit memory review, correction, export, and deletion.
