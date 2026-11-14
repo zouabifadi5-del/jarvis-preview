@@ -24,7 +24,7 @@
 - **iPhone client:** responsive web app/PWA, designed for Safari on iPhone. A PWA can provide an app-like home-screen entry point, but iOS does not permit an ordinary website to continuously listen for a custom wake word in the background.
 - **Web interface:** static HTML/CSS/JavaScript hosted through GitHub Pages for the public preview. The preview must contain no private user data or secrets.
 - **Application service:** a separate server-side component will eventually handle AI requests and integration calls. It must keep provider credentials server-side; browser code must never contain secret keys.
-- **Identity and authorization:** authenticate the owner before accessing private features. Face ID can be used through supported iOS authentication flows, but voice recognition alone is not sufficient authorization for sensitive actions.
+- **Identity and authorization:** the proposed design is a single-owner WebAuthn passkey, with server-verified assertions and protected sessions. On iPhone, a passkey may be unlocked locally with Face ID or the device passcode; biometric data is not sent to JARVIS. Voice recognition alone is not sufficient authorization. See [Owner Security Design](SECURITY.md).
 - **Memory:** explicit, inspectable memory with correction and deletion controls. Sensitive records require encryption and stricter access controls.
 - **Integrations:** add calendar, email, files, reminders, and other services one at a time using supported OAuth scopes and user-granted permissions.
 - **Automation:** use iOS Shortcuts for supported device-side actions. Background execution and wake-word behavior remain subject to iOS restrictions.
@@ -53,5 +53,8 @@
 7. **iPhone experience:** add PWA installation guidance and supported Shortcuts-based activation.
 
 ## Current limitations
+
+The owner-security document is a design proposal only. No passkey registration, session system, storage, encryption, or authorization middleware has been implemented or audited.
+
 
 This repository currently hosts a visual prototype. It is not yet an AI assistant, does not authenticate an owner, does not connect to personal accounts, and does not perform real-world actions. Those features must be implemented and tested before being described as operational.
