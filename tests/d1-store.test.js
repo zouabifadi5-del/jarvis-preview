@@ -35,6 +35,9 @@ function makeD1({ seedOwner = true } = {}) {
     binding: {
       prepare(sql) {
         return {
+          async first() {
+            return sqlite.prepare(sql).get() ?? null;
+          },
           async all() {
             const result = sqlite.prepare(sql).all();
             return { success: true, results: result };
