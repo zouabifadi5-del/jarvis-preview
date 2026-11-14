@@ -385,3 +385,27 @@ test("new sessions prune expired session records", async () => {
     sqlite.close();
   }
 });
+
+
+test("sessions expire after 30 minutes of inactivity and active access refreshes activity", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const session = await createSession(binding, { now: 1000 });
+    const active = await findActiveSession(binding, {
+      sessionToken: session.sessionToken,
+      now: 1100
+    });
+    assert.equal(active.lastSeenAt, 1100);
+    const refreshed = await findActiveSession(binding, {
+      sessionToken: session.sessionToken,
+      now: 1100 + 29 * 60
+    });
+    assert.equal(refreshed.lastSeenAt, 1100 + 29 * 60);
+    assert.equal(await findActiveSession(binding, {
+      sessionToken: session.sessionToken,
+      now: 1100 + 59 * 60
+    }), null);
+  } finally {
+    sqlite.close();
+  }
+});
