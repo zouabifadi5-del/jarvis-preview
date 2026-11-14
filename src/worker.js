@@ -36,7 +36,12 @@ export default {
       return handleAuthRequest(request, env);
     }
 
-    if (env?.ASSETS && (request.method === "GET" || request.method === "HEAD")) {
+    const acceptsHtml = (request.headers.get("Accept") || "").includes("text/html");
+    if (
+      env?.ASSETS &&
+      (request.method === "GET" || request.method === "HEAD") &&
+      (url.pathname === "/" || url.pathname.endsWith(".html") || acceptsHtml)
+    ) {
       return env.ASSETS.fetch(request);
     }
 
