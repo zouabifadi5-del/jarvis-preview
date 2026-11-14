@@ -34,7 +34,7 @@ function joinBytes(...parts) {
 function toB64Url(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  return btoa(binary).split("+").join("-").split("/").join("_").split("=").join("");
 }
 function fromB64Url(value) {
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
