@@ -33,7 +33,11 @@ CREATE TABLE IF NOT EXISTS auth_challenges (
   purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'authentication', 'credential_add', 'recovery')),
   recovery_code_hash TEXT,
   created_at INTEGER NOT NULL,
-  expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
+  expires_at INTEGER NOT NULL CHECK (expires_at > created_at),
+  CHECK (
+    (purpose = 'recovery' AND recovery_code_hash IS NOT NULL) OR
+    (purpose <> 'recovery' AND recovery_code_hash IS NULL)
+  )
 );
 
 CREATE INDEX IF NOT EXISTS idx_auth_challenges_expiry
