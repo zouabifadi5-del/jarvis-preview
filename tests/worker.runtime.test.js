@@ -399,4 +399,24 @@ describe("JARVIS Worker runtime contract", () => {
     expect(revoked).toBe(false);
   });
 
+  it("routes the owner page and first-party JavaScript to the static asset binding", async () => {
+    const requested = [];
+    const env = {
+      ASSETS: {
+        async fetch(request) {
+          requested.push(new URL(request.url).pathname);
+          return new Response("static asset", {
+            headers: { "Cache-Control": "no-store" }
+          });
+        }
+      }
+    };
+    for (const path of ["/", "/index.html", "/app.js"]) {
+      const response = await worker.fetch(request(path), env);
+      expect(response.status, path).toBe(200);
+      await expect(response.text()).resolves.toBe("static asset");
+    }
+    expect(requested).toEqual(["/", "/index.html", "/app.js"]);
+  });
+
 });
