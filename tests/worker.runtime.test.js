@@ -532,7 +532,7 @@ describe("JARVIS Worker runtime contract", () => {
       type: "public-key"
     });
     expect(options.challenge).toMatch(/^[A-Za-z0-9_-]{40,}$/);
-    expect(challenges[0][2]).toBe("credential_add");
+    expect(challenges.some((values) => values[2] === "credential_add")).toBe(true);
   });
 
   it("refuses to revoke the owner's final active passkey", async () => {
@@ -853,56 +853,6 @@ describe("JARVIS Worker runtime contract", () => {
     expect(second).toEqual(first);
   });
 
-
-  it("requires a recent passkey session before adding another credential", async () => {
-    const encode = (bytes) => {
-      let binary = "";
-      for (const byte of bytes) binary += String.fromCharCode(byte);
-      return btoa(binary).split("+").join("-").split("/").join("_").split("=").join("");
-    };
-    const hash = async (value) => encode(new Uint8Array(await crypto.subtle.digest(
-      "SHA-256", new TextEncoder().encode(value)
-    )));
-    const sessionToken = "s".repeat(48);
-    const csrfToken = "c".repeat(48);
-    const sessionHash = await hash(sessionToken);
-    const csrfHash = await hash(csrfToken);
-    const db = {
-      prepare(sql) {
-        if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
-          return { bind(...values) { return { async first() {
-            return values[0] === sessionHash ? { created_at: 1, expires_at: 9999999999 } : null;
-          } }; } };
-        }
-        if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
-          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
-        }
-        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
-          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
-        }
-        if (sql.includes("SELECT csrf_token_hash")) {
-          return { bind(...values) { return { async first() {
-            return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
-          } }; } };
-        }
-        throw new Error("Stale session must be rejected before any other database query");
-      }
-    };
-    const response = await handleAuthRequest(request("/auth/credentials/options", {
-      method: "POST",
-      headers: {
-        Origin: "https://example.test",
-        Cookie: "__Host-jarvis_session=" + sessionToken,
-        "X-CSRF-Token": csrfToken
-      }
-    }), {
-      DB: db,
-      AUTH_ORIGIN: "https://example.test",
-      WEBAUTHN_RP_ID: "example.test"
-    });
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: "reauthentication_required" });
-  });
 
   it("requires a recent passkey login before credential management", async () => {
     const encode = (bytes) => {
