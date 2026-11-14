@@ -12,7 +12,7 @@ Prove the owner-authentication design can work safely in the selected runtime be
 
 - Keep the current health-only Worker behavior as the public baseline.
 - Do not add login, enrollment, memory, AI, or command routes yet.
-- Do not provision a Durable Object, database, bucket, or other cloud resource.
+- Do not provision a D1 database, Durable Object, bucket, or other cloud resource.
 - Do not change Cloudflare billing, plan, production branch, DNS, or deployment settings.
 - Confirm work is on `jarvis-foundation`; never modify `jarvis-core`.
 - Record the current branch commit and ensure no secrets, credentials, or personal data are present in the public repository.
@@ -50,8 +50,8 @@ Before provisioning anything, verify in the actual Cloudflare account:
 
 - The account is on the Free plan, not a paid plan or trial.
 - Billing/payment settings do not authorize automatic paid usage or an upgrade.
-- Workers and the proposed SQLite-backed Durable Object feature are available to this account on Free.
-- Current quotas, CPU limits, storage limits, request limits, and over-limit behavior are compatible with the expected single-owner workload.
+- Workers and D1 are available to this account on Free; confirm the current D1 database, storage, read, write, and per-invocation limits.
+- Current D1 quotas, database-size limits, Worker CPU limits, and over-limit behavior are compatible with the expected single-owner workload.
 - No paid add-on or paid resource is required for deployment, storage, logs, analytics, or domain configuration.
 
 Record the date and the relevant plan/feature evidence in the project notes without recording payment details or other sensitive account information.
@@ -61,10 +61,10 @@ Record the date and the relevant plan/feature evidence in the project notes with
 ## Stage 4 — Isolated cloud smoke test (only after Stage 3 passes)
 
 - First confirm the intended branch, production hostname, and currently deployed code identity.
-- Use a separate preview/test environment, not the production owner service.
-- Provision only the smallest eligible Free resource after checking its exact limits and deletion behavior.
+- Use a separate preview/test environment, not the production owner service. Apply `migrations/0001_owner_auth.sql` only to that isolated D1 database.
+- Create only one isolated D1 database if and only if Free eligibility and billing safety are confirmed; record its ID in the non-secret environment configuration, never in source code.
 - Store synthetic test records only; no personal memory, real passkey, or production credential.
-- Test create/read/update/delete, transaction rollback, concurrency, expiry cleanup, and behavior at safe request limits.
+- Test create/read/update/delete, atomic challenge consumption/replay rejection, credential counter compare-and-set, session revocation, expiry cleanup, and behavior at safe request limits.
 - Confirm that exceeding a Free quota fails closed and does not trigger paid usage or automatic upgrade.
 - Remove the test resource and verify deletion.
 
@@ -93,8 +93,8 @@ Stop immediately if:
 ## Current verified project state
 
 - The Worker currently exposes only a health endpoint and a generic 404 response.
-- The existing project has a zero-dependency Node test script and three scaffold tests.
-- The WebAuthn packages and Durable Object storage are research candidates only; they are not installed or provisioned.
+- The baseline has zero-dependency Node scaffold tests; the isolated `jarvis-worker-runtime-tests` branch additionally has a Cloudflare Workers runtime suite with 24 passing tests at its last verified CI run.
+- The WebAuthn packages remain research candidates and are not installed. The D1 schema exists only as an unprovisioned SQL migration; no database has been created.
 - Authentication, owner memory, and AI integration are not implemented.
 - No deployment or billing change is part of this plan.
 
