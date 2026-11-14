@@ -79,4 +79,58 @@ describe("JARVIS Worker runtime contract", () => {
     expect(response.status).toBe(200);
     expectHardenedHeaders(response, { https: false });
   });
+  it("fails closed on every authentication route until D1 and origin configuration exist", async () => {
+    const routes = [
+      ["/auth/register/options", "POST"],
+      ["/auth/register/verify", "POST"],
+      ["/auth/login/options", "POST"],
+      ["/auth/login/verify", "POST"],
+      ["/auth/me", "GET"],
+      ["/auth/logout", "POST"]
+    ];
+    for (const [path, method] of routes) {
+      const response = await worker.fetch(request(path, { method }), {});
+      expect(response.status, path).toBe(503);
+      expectHardenedHeaders(response);
+      await expect(response.json()).resolves.toEqual({
+        error: "authentication_not_configured"
+      });
+      expect(response.headers.get("set-cookie")).toBeNull();
+    }
+  });
+
+  it("rejects cross-origin bootstrap requests before touching storage", async () => {
+    const env = {
+      DB: { prepare() { throw new Error("storage must not be touched"); } },
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_BOOTSTRAP_SECRET: "a".repeat(48)
+    };
+    const response = await worker.fetch(request("/auth/register/options", {
+      method: "POST",
+      headers: {
+        Origin: "https://attacker.example",
+        "X-Jarvis-Bootstrap": "a".repeat(48)
+      }
+    }), env);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "origin_not_allowed" });
+  });
+
+  it("rejects an invalid relying-party/origin configuration", async () => {
+    const env = {
+      DB: { prepare() { throw new Error("storage must not be touched"); } },
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "attacker.example"
+    };
+    const response = await worker.fetch(request("/auth/login/options", {
+      method: "POST",
+      headers: { Origin: "https://example.test" }
+    }), env);
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "authentication_not_configured"
+    });
+  });
+
 });
