@@ -25,7 +25,7 @@
 
 ## Milestone 3 — Owner security and memory (current phase)
 
-**Current position:** The local authentication implementation and synthetic route tests are complete. The owner-auth D1 database has been created on Cloudflare Free and its binding is configured on this isolated branch. The base owner-auth migration `0001_owner_auth.sql` has been applied successfully (owner-confirmed). A second migration for rate-limit buckets has been added but still needs to be applied. No Worker variables/secrets are configured and no deployment has occurred.
+**Current position:** The local authentication implementation and synthetic route tests are complete. The owner-auth D1 database has been created on Cloudflare Free and its binding is configured on this isolated branch. The owner confirmed that both migrations, `0001_owner_auth.sql` and `0002_auth_rate_limits.sql`, were applied in the remote D1 console. The read-only schema verification output and real D1 smoke tests are not yet confirmed. No Worker variables/secrets are configured and no deployment has occurred.
 - [x] Document and implement the initial single-owner passkey, session, privacy, and command-approval foundation (not production-ready or security-audited).
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify compatibility in the Cloudflare Workers runtime.
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
@@ -34,7 +34,8 @@
 - [x] Select D1 (rather than Durable Objects) for the small relational auth store and add the SQL schema migration on the isolated test branch.
 - [x] Owner confirmed Cloudflare Free plan and created the `jarvis-owner-auth` D1 database; the isolated branch has the `DB` binding configured.
 - [x] Owner confirmed applying `migrations/0001_owner_auth.sql` successfully in the remote D1 console.
-- [ ] Apply `migrations/0002_auth_rate_limits.sql` and verify both migrations with real D1 smoke tests.
+- [x] Owner confirmed applying `migrations/0002_auth_rate_limits.sql` successfully in the remote D1 console.
+- [ ] Confirm the read-only schema query returns the six expected tables and the expiry index; run real D1 smoke tests for both migrations.
 - [x] Document the approval-gated D1 provisioning and first-owner enrollment sequence: [Remote D1 Provisioning Gate](REMOTE_D1_PROVISIONING_GATE.md).
 - [x] Add initial passkey registration/login/session/logout handlers and fail-closed behavior on the isolated branch.
 - [x] Add synthetic Worker tests for origin checks, bootstrap secret, registration/login options, and content-type enforcement.
@@ -48,7 +49,7 @@
 - [x] Add multi-device credential listing/addition/revocation with last-passkey protection, reload-persistent CSRF cookie, sign-out-everywhere, recent-passkey confirmation, session rotation, and idle timeout.
 - [x] Add ten one-time hashed recovery codes, replacement-passkey recovery, and atomic invalidation of old credentials, sessions, and recovery codes.
 - [x] Implement fixed-window D1 rate-limit counters keyed by HMACs of the Cloudflare client IP and auth action; raw IPs are not stored.
-- [x] Pass CI tests for rate-limit enforcement and local migration/storage validation; remote D1 verification of migration 0002 remains pending.
+- [x] Pass CI tests for rate-limit enforcement and local migration/storage validation; remote application of migration 0002 is owner-confirmed, while schema-output verification and real D1 smoke tests remain pending.
 - [ ] Configure `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through Cloudflare controls; never put secret values in Git or chat.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [ ] Explicit memory review, correction, export, and deletion.
