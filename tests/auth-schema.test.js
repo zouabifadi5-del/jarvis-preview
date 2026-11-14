@@ -131,15 +131,15 @@ test("recovery-code table stores hashes and supports one-time challenge claims",
   const db = createDatabase();
   try {
     const columns = db.prepare("PRAGMA table_info(owner_recovery_codes)").all().map((row) => row.name);
-    assert.deepEqual(columns, ["code_hash", "created_at", "used_at", "used_challenge_hash"]);
+    assert.deepEqual(columns, ["code_hash", "created_at", "used_at", "used_claim_hash"]);
     const challengeColumns = db.prepare("PRAGMA table_info(auth_challenges)").all().map((row) => row.name);
     assert.ok(challengeColumns.includes("recovery_code_hash"));
     db.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
     db.prepare("INSERT INTO owner_recovery_codes(code_hash, created_at) VALUES(?, ?)").run("opaque-sha256-recovery-hash", 2);
-    db.prepare("UPDATE owner_recovery_codes SET used_at = ?, used_challenge_hash = ? WHERE code_hash = ? AND used_at IS NULL")
+    db.prepare("UPDATE owner_recovery_codes SET used_at = ?, used_claim_hash = ? WHERE code_hash = ? AND used_at IS NULL")
       .run(3, "unique-challenge-hash", "opaque-sha256-recovery-hash");
     assert.equal(
-      db.prepare("SELECT used_challenge_hash FROM owner_recovery_codes WHERE code_hash = ?").get("opaque-sha256-recovery-hash").used_challenge_hash,
+      db.prepare("SELECT used_claim_hash FROM owner_recovery_codes WHERE code_hash = ?").get("opaque-sha256-recovery-hash").used_claim_hash,
       "unique-challenge-hash"
     );
   } finally {
