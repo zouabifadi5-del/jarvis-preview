@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Zero-Cost Authentication Test Plan
 
-**Status:** Test plan only — no authentication implementation, storage namespace, migration, or deployment is authorized by this document.
+**Status:** Initial authentication routes and storage helpers are implemented on the isolated test branch; no D1 resource, secret, or deployment has been created or authorized.
 **Target:** One owner, Safari on iPhone 17 Pro Max
 **Budget rule:** Free services only. Never enable billing, a paid plan, paid add-ons, or a trial.
 
@@ -11,7 +11,7 @@ Prove the owner-authentication design can work safely in the selected runtime be
 ## Stage 0 — Preserve the safe baseline
 
 - Keep the current health-only Worker behavior as the public baseline.
-- Do not add login, enrollment, memory, AI, or command routes yet.
+- Keep the live Worker health-only; auth route code on the isolated branch must fail closed until D1 and explicit origin settings are configured.
 - Do not provision a D1 database, Durable Object, bucket, or other cloud resource. A non-functional static owner-access shell and Workers Static Assets config may be prepared on the isolated test branch, but must not be deployed without separate approval. The shell is not a login page and has no authentication behavior.
 - Do not change Cloudflare billing, plan, production branch, DNS, or deployment settings.
 - Keep work isolated on `jarvis-worker-runtime-tests`; do not merge or deploy without approval, and never modify `jarvis-core`.
@@ -22,7 +22,7 @@ Prove the owner-authentication design can work safely in the selected runtime be
 ## Stage 1 — Local test harness (no Cloudflare account required)
 
 1. Keep the current zero-dependency Node test command working. Validate the D1 schema migration with local SQLite tests, including single-owner constraints, foreign keys, challenge expiry, one-time challenge consumption, and session-hash-only storage.
-2. Add tests for request method, path, content type, malformed JSON, oversized bodies, and generic error responses before any auth route is introduced.
+2. Test request method, path, content type, malformed JSON, oversized bodies, and generic error responses for the isolated auth routes.
 3. Build WebAuthn tests around deterministic test fixtures and a local Worker runtime; never use a real owner credential or real passkey in automated tests.
 4. Test challenge lifecycle: random generation, five-minute expiry, one-time consumption, replay rejection, and concurrency/race behavior.
 5. Test origin and RP ID allowlisting with both valid and invalid values.
@@ -93,9 +93,9 @@ Stop immediately if:
 ## Current verified project state
 
 - The live Worker remains unchanged and currently exposes only a health endpoint and a generic 404 response. The isolated test branch now contains a non-functional same-origin static shell, restrictive `_headers`, and Workers Static Assets configuration; none of these changes are deployed.
-- The baseline has zero-dependency Node scaffold tests; the isolated `jarvis-worker-runtime-tests` branch additionally has a Cloudflare Workers runtime suite with 24 passing tests at its last verified CI run.
-- The WebAuthn packages remain research candidates and are not installed. The D1 schema and storage helper module exist only in the isolated test branch; 12 local SQLite tests pass. No database has been created, no authentication route is enabled, and no passkey is registered.
-- Authentication, owner memory, and AI integration are not implemented.
+- Latest verified CI run #78 passed 14 local SQLite/Node checks, Wrangler dry-run build/config validation, and 31 Cloudflare Workers runtime tests (45 test cases total). Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43614569630
+- `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes synthetic Worker-runtime tests. Initial registration/login/session/logout routes and D1 storage helpers exist only on the isolated test branch. No database has been created, no secret configured, no route deployed, and no passkey registered.
+- Authentication routes are implemented as a tested scaffold, but not end-to-end or production-ready. Browser passkey UI, real D1 integration, multiple-device credential management, recovery, rate limiting, and iPhone acceptance remain incomplete. Owner memory and AI integration are not implemented.
 - No deployment or billing change is part of this plan.
 
 ## Execution order
