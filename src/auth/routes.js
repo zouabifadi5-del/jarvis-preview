@@ -51,15 +51,8 @@ function fail(request, status, error) {
 }
 
 function configuration(request, env) {
-  const debug = env?.JARVIS_TEST_DEBUG === "true";
-  if (!env?.DB || typeof env.DB.prepare !== "function") {
-    if (debug) console.error("JARVIS auth config: missing D1 binding");
-    return null;
-  }
-  if (typeof env.AUTH_ORIGIN !== "string" || typeof env.WEBAUTHN_RP_ID !== "string") {
-    if (debug) console.error("JARVIS auth config: missing origin or RP ID");
-    return null;
-  }
+  if (!env?.DB || typeof env.DB.prepare !== "function") return null;
+  if (typeof env.AUTH_ORIGIN !== "string" || typeof env.WEBAUTHN_RP_ID !== "string") return null;
   let configured;
   try {
     configured = new URL(env.AUTH_ORIGIN);
@@ -71,16 +64,7 @@ function configuration(request, env) {
     configured.origin !== env.AUTH_ORIGIN ||
     configured.hostname !== env.WEBAUTHN_RP_ID ||
     new URL(request.url).origin !== env.AUTH_ORIGIN
-  ) {
-    if (debug) console.error("JARVIS auth config: origin and RP ID do not match", {
-      configuredOrigin: configured.origin,
-      configuredHostname: configured.hostname,
-      expectedOrigin: env.AUTH_ORIGIN,
-      expectedRPID: env.WEBAUTHN_RP_ID,
-      requestOrigin: new URL(request.url).origin
-    });
-    return null;
-  }
+  ) return null;
   return { db: env.DB, origin: configured.origin, rpID: env.WEBAUTHN_RP_ID };
 }
 
@@ -623,8 +607,7 @@ export async function handleAuthRequest(request, env) {
       return await logout(request, cfg, now);
     }
     return fail(request, 404, "not_found");
-  } catch (error) {
-    if (env?.JARVIS_TEST_DEBUG === "true") console.error("JARVIS authentication test diagnostic", error);
+  } catch {
     return fail(request, 503, "authentication_temporarily_unavailable");
   }
 }
