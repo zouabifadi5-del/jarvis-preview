@@ -13,7 +13,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Owner security design](docs/SECURITY.md) (proposal only; no authentication is implemented)
 - [Authentication implementation plan](docs/AUTHENTICATION_PLAN.md) (candidate libraries, storage, flows, and security tests)
 - [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
-- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; execution pending)
+- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; 24 runtime tests passed, plus local SQLite and scaffold tests)
 
 ## Repository boundaries
 
@@ -22,9 +22,9 @@ This repository contains the public-facing prototype and non-sensitive project d
 
 ## Development
 
-The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments are isolated on `jarvis-worker-runtime-tests` and are not merged into the foundation branch.
+The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments, the non-functional owner-access shell, and Workers Static Assets configuration are isolated on `jarvis-worker-runtime-tests` and are not merged into the foundation branch or deployed.
 
-Run the worker's zero-dependency tests with `npm test` using Node.js. The six tests cover the health response, strict route matching, unsupported methods, hardened response headers, cache prevention, and HTTPS-only HSTS behavior.
+Run the worker's zero-dependency tests with `npm test` using Node.js. They cover the health response, strict route matching, unsupported methods, hardened response headers, cache prevention, HTTPS-only HSTS behavior, and static-shell safety/configuration.
 
 ## Constraints
 
