@@ -436,7 +436,6 @@ describe("JARVIS Worker runtime contract", () => {
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_TEST_DEBUG: "true",
       JARVIS_BOOTSTRAP_SECRET: secret,
-      JARVIS_TEST_DEBUG: true
     };
     const response = await handleAuthRequest(request("/auth/register/options", {
       method: "POST",
@@ -503,7 +502,6 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
-      JARVIS_TEST_DEBUG: true
     });
     expect(response.status).toBe(200);
     const options = await response.json();
@@ -986,7 +984,6 @@ describe("JARVIS Worker runtime contract", () => {
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_TEST_DEBUG: "true",
       JARVIS_BOOTSTRAP_SECRET: "r".repeat(64),
-      JARVIS_TEST_DEBUG: true
     };
     const origin = "https://example.test";
     const registrationOptionsResponse = await handleAuthRequest(request("/auth/register/options", {
