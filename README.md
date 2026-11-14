@@ -23,7 +23,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 
 The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`.
 
-Run the worker's zero-dependency tests with `npm test` using Node.js. The tests cover the health response, unknown routes, and rejected non-GET health requests.
+Run the worker's zero-dependency tests with `npm test` using Node.js. The six tests cover the health response, strict route matching, unsupported methods, hardened response headers, cache prevention, and HTTPS-only HSTS behavior.
 
 ## Constraints
 
