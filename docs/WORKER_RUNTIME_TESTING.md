@@ -78,7 +78,7 @@ The workflow runs `tests/auth-schema.test.js` and `tests/d1-store.test.js` with 
 
 ## Remaining gates
 
-1. Add rate limiting before production; offline recovery codes and passkey replacement are implemented but still need owner acceptance testing.
+1. Add rate limiting before production; offline recovery codes and passkey replacement are implemented and synthetically tested, but still need owner-device acceptance testing.
 2. Test the first-party browser passkey client and actual ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior.
 3. Commit a reviewed lockfile and complete dependency-advisory review.
 4. Only after those gates and separate explicit approval, create an isolated D1 database and perform a real D1 smoke test. No deployment or personal-data storage is authorized by this test.
