@@ -339,3 +339,13 @@ export async function createOwnerWithCredential(db, {
   ];
   await db.batch(statements);
 }
+
+
+export async function revokeAllSessions(db, { now = Math.floor(Date.now() / 1000) }) {
+  assertD1(db);
+  assertUnixSeconds(now, "now");
+  const result = await db.prepare(
+    "UPDATE auth_sessions SET revoked_at = ? WHERE revoked_at IS NULL"
+  ).bind(now).run();
+  return result.meta?.changes || 0;
+}
