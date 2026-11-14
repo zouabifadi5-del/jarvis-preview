@@ -40,7 +40,7 @@ export default {
     if (
       env?.ASSETS &&
       (request.method === "GET" || request.method === "HEAD") &&
-      (url.pathname === "/" || url.pathname.endsWith(".html") || acceptsHtml)
+      (url.pathname === "/" || /\\.(?:html|js|css)$/.test(url.pathname) || acceptsHtml)
     ) {
       return env.ASSETS.fetch(request);
     }
