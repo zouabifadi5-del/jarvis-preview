@@ -93,9 +93,9 @@ Stop immediately if:
 ## Current verified project state
 
 - The live Worker remains unchanged and currently exposes only a health endpoint and a generic 404 response. The isolated test branch now contains a non-functional same-origin static shell, restrictive `_headers`, and Workers Static Assets configuration; none of these changes are deployed.
-- Latest verified CI run #78 passed 14 local SQLite/Node checks, Wrangler dry-run build/config validation, and 31 Cloudflare Workers runtime tests (45 test cases total). Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43614569630
-- `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes synthetic Worker-runtime tests. Initial registration/login/session/logout routes and D1 storage helpers exist only on the isolated test branch. No database has been created, no secret configured, no route deployed, and no passkey registered.
-- Authentication routes are implemented as a tested scaffold, but not end-to-end or production-ready. Browser passkey UI, real D1 integration, multiple-device credential management, recovery, rate limiting, and iPhone acceptance remain incomplete. Owner memory and AI integration are not implemented.
+- Latest verified CI run #124 passed 15 local SQLite/Node checks, 34 Cloudflare Workers runtime tests, browser JavaScript syntax validation, and Wrangler dry-run build/config validation (49 test cases total). Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43615399873
+- `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes synthetic Worker-runtime tests. Initial registration/login/session/logout and multi-device credential-management routes, a same-origin native WebAuthn browser UI, and D1 storage helpers exist only on the isolated test branch. No database has been created, no secret configured, no route deployed, and no passkey registered.
+- Authentication routes and a browser passkey UI are implemented as a tested scaffold, but not end-to-end or production-ready. Real D1 integration, full persistent ceremony tests, offline recovery, rate limiting, and iPhone acceptance remain incomplete. Owner memory and AI integration are not implemented.
 - No deployment or billing change is part of this plan.
 
 ## Execution order
