@@ -172,7 +172,7 @@ function makeRouteD1() {
         } else if (sql.includes("INSERT INTO owner_credentials")) {
           if (sql.includes("SELECT ?")) {
             const [id, publicKey, counter, transportsJson, deviceType, backedUp, createdAt, recoveryHash, challengeHash] = values;
-            const claim = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_challenge_hash === challengeHash);
+            const claim = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_claim_hash === challengeHash);
             if (!claim) return { success: true, meta: { changes: 0 } };
             state.credentials.push({
               credential_id: id, owner_id: 1, public_key: publicKey, sign_count: counter,
@@ -190,21 +190,21 @@ function makeRouteD1() {
         } else if (sql.includes("INSERT INTO owner_recovery_codes")) {
           if (sql.includes("SELECT ?, ?")) {
             const [hash, createdAt, recoveryHash, challengeHash] = values;
-            const claim = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_challenge_hash === challengeHash);
+            const claim = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_claim_hash === challengeHash);
             if (!claim) return { success: true, meta: { changes: 0 } };
-            state.recoveryCodes.push({ code_hash: hash, created_at: createdAt, used_at: null, used_challenge_hash: null });
+            state.recoveryCodes.push({ code_hash: hash, created_at: createdAt, used_at: null, used_claim_hash: null });
             return { success: true, meta: { changes: 1 } };
           }
           const [hash, createdAt] = values;
-          state.recoveryCodes.push({ code_hash: hash, created_at: createdAt, used_at: null, used_challenge_hash: null });
+          state.recoveryCodes.push({ code_hash: hash, created_at: createdAt, used_at: null, used_claim_hash: null });
         } else if (sql.includes("UPDATE owner_recovery_codes SET used_at")) {
           const [now, challengeHash, recoveryHash] = values;
           const item = state.recoveryCodes.find((row) => row.code_hash === recoveryHash && row.used_at === null);
-          if (item) { item.used_at = now; item.used_challenge_hash = challengeHash; }
+          if (item) { item.used_at = now; item.used_claim_hash = challengeHash; }
           return { success: true, meta: { changes: item ? 1 : 0 } };
         } else if (sql.includes("DELETE FROM owner_recovery_codes")) {
           const [recoveryHash, challengeHash] = values;
-          const claim = state.recoveryCodes.some((row) => row.code_hash === recoveryHash && row.used_challenge_hash === challengeHash);
+          const claim = state.recoveryCodes.some((row) => row.code_hash === recoveryHash && row.used_claim_hash === challengeHash);
           if (!claim) return { success: true, meta: { changes: 0 } };
           const before = state.recoveryCodes.length;
           state.recoveryCodes = state.recoveryCodes.filter((row) => row.used_at !== null);
@@ -230,7 +230,7 @@ function makeRouteD1() {
             return { success: true, meta: { changes: item ? 1 : 0 } };
           }
           if (sql.includes("EXISTS (SELECT 1 FROM owner_recovery_codes")) {
-            const claim = state.recoveryCodes.some((row) => row.code_hash === hash && row.used_challenge_hash === challengeHash);
+            const claim = state.recoveryCodes.some((row) => row.code_hash === hash && row.used_claim_hash === challengeHash);
             if (!claim) return { success: true, meta: { changes: 0 } };
           }
           const active = state.sessions.filter((row) => row.revoked_at === null);
