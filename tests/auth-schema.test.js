@@ -134,6 +134,12 @@ test("recovery-code table stores hashes and supports one-time challenge claims",
     assert.deepEqual(columns, ["code_hash", "created_at", "used_at", "used_claim_hash"]);
     const challengeColumns = db.prepare("PRAGMA table_info(auth_challenges)").all().map((row) => row.name);
     assert.ok(challengeColumns.includes("recovery_code_hash"));
+    assert.throws(() => db.prepare(
+      "INSERT INTO auth_challenges (challenge_hash, challenge, purpose, created_at, expires_at) VALUES (?, ?, 'recovery', ?, ?)"
+    ).run("bad-recovery-hash", "challenge", 1, 2));
+    assert.throws(() => db.prepare(
+      "INSERT INTO auth_challenges (challenge_hash, challenge, purpose, recovery_code_hash, created_at, expires_at) VALUES (?, ?, 'registration', ?, ?, ?)"
+    ).run("bad-registration-hash", "challenge", "unexpected-code-hash", 1, 2));
     db.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
     db.prepare("INSERT INTO owner_recovery_codes(code_hash, created_at) VALUES(?, ?)").run("opaque-sha256-recovery-hash", 2);
     db.prepare("UPDATE owner_recovery_codes SET used_at = ?, used_claim_hash = ? WHERE code_hash = ? AND used_at IS NULL")
