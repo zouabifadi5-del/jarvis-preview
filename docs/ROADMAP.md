@@ -34,14 +34,14 @@
 - [x] Add initial passkey registration/login/session/logout handlers and fail-closed behavior on the isolated branch.
 - [x] Add synthetic Worker tests for origin checks, bootstrap secret, registration/login options, and content-type enforcement.
 - [x] Add a synthetic end-to-end success-path test for owner registration, login, session inspection, and logout.
-- [ ] Add negative route tests for invalid/replayed registration and login ceremonies, CSRF failure, and error cases.
+- [x] Add negative route tests for replayed ceremonies, wrong origin, tampered signatures, CSRF failure, and owner-enrollment enumeration.
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
 - [ ] Add a reviewed lockfile and dependency-advisory review.
-- [x] Pass 15 local SQLite/Node checks, 35 Workers runtime tests, browser syntax validation, and a Wrangler non-deploying dry run in CI (50 checks total).
+- [x] Pass 19 local SQLite/Node checks, 37 Workers runtime tests, browser syntax validation, and a Wrangler non-deploying dry run in CI (56 test cases total).
 - [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add-passkey, and sign-out.
 - [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey; the browser interface is not deployed or device-tested.
-- [x] Add multi-device credential listing/addition/revocation with last-passkey protection and a reload-persistent CSRF cookie.
-- [ ] Add offline recovery, login rate limits, and complete negative-path end-to-end tests.
+- [x] Add multi-device credential listing/addition/revocation with last-passkey protection, reload-persistent CSRF cookie, and sign-out-everywhere.
+- [ ] Add offline recovery, login rate limits, and real D1 binding tests.
 - [ ] Explicit memory review, correction, export, and deletion.
 - [ ] Encrypt sensitive data at rest and in transit.
 
