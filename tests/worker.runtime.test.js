@@ -1058,3 +1058,29 @@ describe("JARVIS Worker runtime contract", () => {
   });
 
 });
+
+
+describe("authentication rate limits", () => {
+  it("blocks repeated first-owner enrollment requests in the same IP window", async () => {
+    const { db } = makeRouteD1();
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    };
+    let last;
+    for (let attempt = 0; attempt < 7; attempt += 1) {
+      last = await handleAuthRequest(request("/auth/register/options", {
+        method: "POST",
+        headers: { Origin: "https://example.test" }
+      }), env);
+      if (attempt < 6) expect(last.status).toBe(403);
+    }
+    expect(last.status).toBe(429);
+    expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
+    await expect(last.json()).resolves.toEqual(expect.objectContaining({
+      error: "rate_limit_exceeded"
+    }));
+  });
+});
