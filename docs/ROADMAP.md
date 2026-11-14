@@ -24,8 +24,8 @@
 - [ ] Add rate limiting and safe error handling.
 
 ## Milestone 3 — Owner security and memory (current phase)
-- [x] Document a single-owner passkey, session, privacy, and command-approval design (design only; not implemented or security-audited).
-- [x] Research WebAuthn library candidates; exact versions remain uninstalled and must be rechecked before implementation.
+- [x] Document and implement the initial single-owner passkey, session, privacy, and command-approval foundation (not production-ready or security-audited).
+- [x] Pin `@simplewebauthn/server@14.1.0` and verify compatibility in the Cloudflare Workers runtime.
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
 - [x] Add a zero-cost, staged authentication test plan: [Authentication Free-Tier Test Plan](AUTHENTICATION_FREE_TIER_TEST_PLAN.md).
 - [x] Expand the local Worker scaffold suite to cover security headers, strict route matching, method rejection, no CORS, and HTTP/HSTS behavior.
@@ -33,13 +33,15 @@
 - [x] Owner confirmed Cloudflare Free plan and no paid Workers subscription/trial; separate approval is still required before creating D1.
 - [x] Add initial passkey registration/login/session/logout handlers and fail-closed behavior on the isolated branch.
 - [x] Add synthetic Worker tests for origin checks, bootstrap secret, registration/login options, and content-type enforcement.
-- [ ] Complete end-to-end registration verification, login verification, session, CSRF, and logout route tests.
+- [x] Add a synthetic end-to-end success-path test for owner registration, login, session inspection, and logout.
+- [ ] Add negative route tests for invalid/replayed registration and login ceremonies, CSRF failure, and error cases.
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
 - [ ] Add a reviewed lockfile and dependency-advisory review.
+- [x] Pass 15 local SQLite/Node checks, 35 Workers runtime tests, browser syntax validation, and a Wrangler non-deploying dry run in CI (50 checks total).
 - [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add-passkey, and sign-out.
-- [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey.
+- [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey; the browser interface is not deployed or device-tested.
 - [x] Add multi-device credential listing/addition/revocation with last-passkey protection and a reload-persistent CSRF cookie.
-- [ ] Add offline recovery, login rate limits, and complete end-to-end tests.
+- [ ] Add offline recovery, login rate limits, and complete negative-path end-to-end tests.
 - [ ] Explicit memory review, correction, export, and deletion.
 - [ ] Encrypt sensitive data at rest and in transit.
 
