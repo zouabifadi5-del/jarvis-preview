@@ -4,7 +4,7 @@
 
 This repository contains the public-facing prototype and non-sensitive project documentation.
 
-> The current website is a visual preview, not a functioning AI assistant. Initial owner-authentication route code is being tested on an isolated branch; it is not deployed or connected to a real database. AI, memory, and account integrations are not connected.
+> The current website is a visual preview, not a functioning AI assistant. Initial owner-authentication routes and a first-party passkey browser client are being tested on an isolated branch; they are not deployed or connected to a real database. AI, memory, and account integrations are not connected.
 
 ## Project documents
 
@@ -22,7 +22,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 
 ## Development
 
-The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments, the non-functional owner-access shell, and Workers Static Assets configuration are isolated on `jarvis-worker-runtime-tests` and are not merged into the foundation branch or deployed.
+The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments, the owner passkey interface, and Workers Static Assets configuration are isolated on `jarvis-worker-runtime-tests` and are not merged into the foundation branch or deployed.
 
 Run the worker's zero-dependency tests with `npm test` using Node.js. They cover the health response, strict route matching, unsupported methods, hardened response headers, cache prevention, HTTPS-only HSTS behavior, and static-shell safety/configuration.
 
