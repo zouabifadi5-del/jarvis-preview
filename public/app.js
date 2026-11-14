@@ -101,7 +101,8 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       bootstrap_not_authorized: "The bootstrap secret was not accepted.",
       challenge_invalid_or_expired: "That passkey request expired. Please try again.",
       not_authenticated: "Your session has expired. Sign in again.",
-      session_or_csrf_invalid: "Your session security check failed. Refresh and sign in again."
+      session_or_csrf_invalid: "Your session security check failed. Refresh and sign in again.",
+      reauthentication_required: "Please confirm your passkey again before changing owner credentials."
     };
     if (response.status === 503 && payload.error === "authentication_not_configured") {
       throw new Error("The authentication service is not configured yet.");
@@ -137,6 +138,7 @@ async function loadCredentials() {
         if (!window.confirm("Remove this passkey from your JARVIS owner account?")) return;
         remove.disabled = true;
         try {
+          await signIn();
           await api("/auth/credentials/revoke", {
             method: "POST",
             body: { credentialId: credential.id }
@@ -186,6 +188,7 @@ async function signIn() {
   setStatus("Owner authenticated. Your private session is active.", "success");
 }
 async function addPasskey() {
+  await signIn();
   await requireWebAuthn();
   const options = await api("/auth/credentials/options", { method: "POST" });
   const credential = await navigator.credentials.create({ publicKey: registrationOptionsFromServer(options) });
