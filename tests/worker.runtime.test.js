@@ -1092,15 +1092,19 @@ describe("authentication rate limits", () => {
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
-      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      JARVIS_BOOTSTRAP_SECRET: "synthetic-bootstrap-secret-0123456789"
     };
     let last;
     for (let attempt = 0; attempt < 7; attempt += 1) {
       last = await handleAuthRequest(request("/auth/register/options", {
         method: "POST",
-        headers: { Origin: "https://example.test" }
+        headers: {
+          Origin: "https://example.test",
+          "X-Jarvis-Bootstrap": env.JARVIS_BOOTSTRAP_SECRET
+        }
       }), env);
-      if (attempt < 6) expect(last.status).toBe(403);
+      if (attempt < 6) expect(last.status).toBe(200);
     }
     expect(last.status).toBe(429);
     expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
