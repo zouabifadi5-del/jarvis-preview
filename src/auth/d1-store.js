@@ -428,7 +428,7 @@ export async function completeOwnerRecovery(db, {
 
   const recoveryCodes = Array.from({ length: 10 }, () => randomToken());
   const recoveryHashes = await Promise.all(recoveryCodes.map(sha256Base64Url));
-  const claimHash = randomToken();
+  const claimHash = await sha256Base64Url(randomToken());
   const claimExists = "EXISTS (SELECT 1 FROM owner_recovery_codes WHERE code_hash = ? AND used_claim_hash = ?)";
   const statements = [
     db.prepare(
