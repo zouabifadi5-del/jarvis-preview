@@ -12,7 +12,7 @@ Prove the owner-authentication design can work safely in the selected runtime be
 
 - Keep the current health-only Worker behavior as the public baseline.
 - Do not add login, enrollment, memory, AI, or command routes yet.
-- Do not provision a D1 database, Durable Object, bucket, or other cloud resource.
+- Do not provision a D1 database, Durable Object, bucket, or other cloud resource. Do not configure/deploy Workers Static Assets yet; the same-origin login page is a planned architecture, not a live feature.
 - Do not change Cloudflare billing, plan, production branch, DNS, or deployment settings.
 - Confirm work is on `jarvis-foundation`; never modify `jarvis-core`.
 - Record the current branch commit and ensure no secrets, credentials, or personal data are present in the public repository.
