@@ -496,8 +496,10 @@ export async function consumeRateLimit(
     "RETURNING request_count"
   ).bind(bucketHash, windowStart, expiresAt).first();
 
-  // Opportunistic bounded retention: remove expired buckets on each check.
-  await db.prepare("DELETE FROM auth_rate_limits WHERE expires_at <= ?").bind(now).run();
+  // Opportunistic retention once per minute to avoid an extra D1 write per request.
+  if (now % 60 === 0) {
+    await db.prepare("DELETE FROM auth_rate_limits WHERE expires_at <= ?").bind(now).run();
+  }
   const count = Number(row?.request_count);
   if (!Number.isSafeInteger(count) || count < 1) {
     throw new Error("Rate-limit counter could not be read");
