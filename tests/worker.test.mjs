@@ -9,13 +9,13 @@ test("same-origin owner access shell is intentionally non-functional and restric
     readFile(new URL("../wrangler.toml", import.meta.url), "utf8")
   ]);
 
-  assert.match(html, /J\\.A\\.R\\.V\\.I\\.S\\./);
-  assert.match(html, /Access is not enabled yet/);
-  assert.match(html, /No sign-in, enrollment, or personal-data access is active/);
-  assert.doesNotMatch(html, /<script\\b|<form\\b/i);
-  assert.match(headers, /Content-Security-Policy: default-src 'none'/);
-  assert.match(headers, /X-Frame-Options: DENY/);
-  assert.match(headers, /Cache-Control: no-store/);
+  assert.ok(html.includes("J.A.R.V.I.S."));
+  assert.ok(html.includes("Access is not enabled yet"));
+  assert.ok(html.includes("No sign-in, enrollment, or personal-data access is active"));
+  assert.ok(!html.includes("<script") && !html.includes("<form"));
+  assert.ok(headers.includes("Content-Security-Policy: default-src 'none'"));
+  assert.ok(headers.includes("X-Frame-Options: DENY"));
+  assert.ok(headers.includes("Cache-Control: no-store"));
   assert.ok(config.includes('directory = "./public"'));
-  assert.match(config, /binding = "ASSETS"/);
+  assert.ok(config.includes('binding = "ASSETS"'));
 });
