@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const migrationPath = fileURLToPath(new URL("../migrations/0001_owner_auth.sql", import.meta.url));
-const migration = readFileSync(migrationPath, "utf8");
+const migration = readFileSync(migrationPath, "utf8");\nconst rateLimitMigration = readFileSync(\n  fileURLToPath(new URL("../migrations/0002_auth_rate_limits.sql", import.meta.url)),\n  "utf8"\n);
 
 function createDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -148,6 +148,24 @@ test("recovery-code table stores hashes and supports one-time challenge claims",
       db.prepare("SELECT used_claim_hash FROM owner_recovery_codes WHERE code_hash = ?").get("opaque-sha256-recovery-hash").used_claim_hash,
       "unique-challenge-hash"
     );
+  } finally {
+    db.close();
+  }
+});
+
+
+test("rate-limit migration stores opaque bucket hashes and bounded counters only", () => {
+  const db = createDatabase();
+  try {
+    const columns = db.prepare("PRAGMA table_info(auth_rate_limits)").all().map((row) => row.name);
+    assert.deepEqual(columns, ["bucket_hash", "window_start", "request_count", "expires_at"]);
+    assert.throws(() => db.prepare(
+      "INSERT INTO auth_rate_limits(bucket_hash, window_start, request_count, expires_at) VALUES(?, ?, ?, ?)"
+    ).run("opaque-bucket", 100, 0, 200));
+    db.prepare(
+      "INSERT INTO auth_rate_limits(bucket_hash, window_start, request_count, expires_at) VALUES(?, ?, ?, ?)"
+    ).run("opaque-bucket", 100, 1, 200);
+    assert.equal(db.prepare("SELECT request_count FROM auth_rate_limits WHERE bucket_hash = ?").get("opaque-bucket").request_count, 1);
   } finally {
     db.close();
   }
