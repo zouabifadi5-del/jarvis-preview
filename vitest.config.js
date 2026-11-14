@@ -10,7 +10,10 @@ export default defineConfig({
     })
   ],
   test: {
-    include: ["tests/worker.runtime.test.js"],
+    include: [
+      "tests/worker.runtime.test.js",
+      "tests/webauthn.runtime.test.js"
+    ],
     testTimeout: 10000,
     hookTimeout: 10000
   }
