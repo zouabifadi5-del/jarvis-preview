@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { exports } from "cloudflare:workers";
 import { handleAuthRequest } from "../src/auth/routes.js";
+import { isoCBOR } from "@simplewebauthn/server/helpers";
 
 const worker = exports.default;
 
@@ -20,6 +21,169 @@ function expectHardenedHeaders(response, { https = true } = {}) {
     https ? "max-age=31536000" : null
   );
   expect(response.headers.get("access-control-allow-origin")).toBeNull();
+}
+
+
+const testEncoder = new TextEncoder();
+function joinBytes(...parts) {
+  const output = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let offset = 0;
+  for (const part of parts) { output.set(part, offset); offset += part.length; }
+  return output;
+}
+function toB64Url(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+}
+function fromB64Url(value) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(base64 + "=".repeat((4 - base64.length % 4) % 4));
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+function uint32Bytes(value) {
+  return new Uint8Array([(value >>> 24) & 255, (value >>> 16) & 255, (value >>> 8) & 255, value & 255]);
+}
+function derEcdsa(raw) {
+  const encodeInteger = (input) => {
+    let start = 0;
+    while (start < input.length - 1 && input[start] === 0) start += 1;
+    let bytes = input.slice(start);
+    if (bytes[0] & 0x80) bytes = joinBytes(new Uint8Array([0]), bytes);
+    return joinBytes(new Uint8Array([2, bytes.length]), bytes);
+  };
+  const body = joinBytes(encodeInteger(raw.slice(0, 32)), encodeInteger(raw.slice(32, 64)));
+  return joinBytes(new Uint8Array([0x30, body.length]), body);
+}
+async function makeRouteRegistration(challenge) {
+  const keyPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+  const x = fromB64Url(jwk.x);
+  const y = fromB64Url(jwk.y);
+  const publicKey = isoCBOR.encode(new Map([[1, 2], [3, -7], [-1, 1], [-2, x], [-3, y]]));
+  const credentialId = new Uint8Array([0x4a,0x41,0x52,0x56,0x49,0x53,0x2d,0x52,0x4f,0x55,0x54,0x45,0x2d,0x54,0x45,0x53]);
+  const credentialIdB64 = toB64Url(credentialId);
+  const rpHash = new Uint8Array(await crypto.subtle.digest("SHA-256", testEncoder.encode("example.test")));
+  const clientData = testEncoder.encode(JSON.stringify({ type: "webauthn.create", challenge, origin: "https://example.test", crossOrigin: false }));
+  const credentialLength = new Uint8Array([0, credentialId.length]);
+  const authData = joinBytes(rpHash, new Uint8Array([0x45]), uint32Bytes(0), new Uint8Array(16), credentialLength, credentialId, publicKey);
+  const attestationObject = isoCBOR.encode(new Map([["fmt", "none"], ["attStmt", new Map()], ["authData", authData]]));
+  return {
+    keyPair,
+    credentialId: credentialIdB64,
+    publicKey,
+    response: {
+      id: credentialIdB64,
+      rawId: credentialIdB64,
+      type: "public-key",
+      response: {
+        clientDataJSON: toB64Url(clientData),
+        attestationObject: toB64Url(attestationObject),
+        transports: ["internal"]
+      },
+      authenticatorAttachment: "platform",
+      clientExtensionResults: {}
+    }
+  };
+}
+async function makeRouteAssertion({ keyPair, credentialId, challenge, counter = 1 }) {
+  const clientData = testEncoder.encode(JSON.stringify({ type: "webauthn.get", challenge, origin: "https://example.test", crossOrigin: false }));
+  const rpHash = new Uint8Array(await crypto.subtle.digest("SHA-256", testEncoder.encode("example.test")));
+  const authData = joinBytes(rpHash, new Uint8Array([0x05]), uint32Bytes(counter));
+  const clientHash = new Uint8Array(await crypto.subtle.digest("SHA-256", clientData));
+  const signatureRaw = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keyPair.privateKey, joinBytes(authData, clientHash)));
+  return {
+    id: credentialId,
+    rawId: credentialId,
+    type: "public-key",
+    response: {
+      clientDataJSON: toB64Url(clientData),
+      authenticatorData: toB64Url(authData),
+      signature: toB64Url(derEcdsa(signatureRaw)),
+      userHandle: null
+    },
+    authenticatorAttachment: "platform",
+    clientExtensionResults: {}
+  };
+}
+function makeRouteD1() {
+  const state = { owner: null, credentials: [], challenges: [], sessions: [] };
+  function statement(sql, values = []) {
+    return {
+      bind(...bound) { return statement(sql, bound); },
+      async first() {
+        if (sql.includes("SELECT id, created_at, enrollment_closed_at")) return state.owner;
+        if (sql.includes("DELETE FROM auth_challenges")) {
+          const [hash, purpose, now] = values;
+          const index = state.challenges.findIndex((item) => item.hash === hash && item.purpose === purpose && item.expiresAt > now);
+          if (index < 0) return null;
+          const [item] = state.challenges.splice(index, 1);
+          return { challenge: item.challenge };
+        }
+        if (sql.includes("SELECT credential_id, public_key, sign_count") && sql.includes("WHERE credential_id = ?")) {
+          const item = state.credentials.find((row) => row.credential_id === values[0] && row.revoked_at === null);
+          return item || null;
+        }
+        if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
+          const [hash, now] = values;
+          const item = state.sessions.find((row) => row.session_hash === hash && row.expires_at > now && row.revoked_at === null);
+          return item ? { created_at: item.created_at, expires_at: item.expires_at, last_seen_at: null } : null;
+        }
+        if (sql.includes("SELECT csrf_token_hash")) {
+          const [hash, now] = values;
+          const item = state.sessions.find((row) => row.session_hash === hash && row.expires_at > now && row.revoked_at === null);
+          return item ? { csrf_token_hash: item.csrf_token_hash } : null;
+        }
+        return null;
+      },
+      async all() {
+        if (sql.includes("SELECT credential_id, public_key, sign_count")) {
+          return { results: state.credentials.filter((row) => row.owner_id === 1 && row.revoked_at === null) };
+        }
+        return { results: [] };
+      },
+      async run() {
+        if (sql.includes("INSERT INTO auth_challenges")) {
+          const [hash, challenge, purpose, createdAt, expiresAt] = values;
+          state.challenges.push({ hash, challenge, purpose, createdAt, expiresAt });
+        } else if (sql.includes("INSERT INTO jarvis_owner")) {
+          state.owner = { id: 1, created_at: values[0], enrollment_closed_at: values[1] };
+        } else if (sql.includes("INSERT INTO owner_credentials")) {
+          const [id, publicKey, counter, transportsJson, deviceType, backedUp, createdAt] = values;
+          state.credentials.push({
+            credential_id: id, owner_id: 1, public_key: publicKey, sign_count: counter,
+            transports_json: transportsJson, device_type: deviceType, backed_up: backedUp,
+            created_at: createdAt, last_used_at: null, revoked_at: null
+          });
+        } else if (sql.includes("INSERT INTO auth_sessions")) {
+          const [sessionHash, csrfHash, createdAt, expiresAt] = values;
+          state.sessions.push({ session_hash: sessionHash, csrf_token_hash: csrfHash, created_at: createdAt, expires_at: expiresAt, revoked_at: null });
+        } else if (sql.includes("UPDATE owner_credentials SET sign_count")) {
+          const [newCounter, now, id, oldCounter] = values;
+          const item = state.credentials.find((row) => row.credential_id === id && row.sign_count === oldCounter && row.revoked_at === null);
+          if (item) { item.sign_count = newCounter; item.last_used_at = now; }
+          return { success: true, meta: { changes: item ? 1 : 0 } };
+        } else if (sql.includes("UPDATE auth_sessions SET revoked_at")) {
+          const [now, hash] = values;
+          const item = state.sessions.find((row) => row.session_hash === hash && row.revoked_at === null);
+          if (item) item.revoked_at = now;
+          return { success: true, meta: { changes: item ? 1 : 0 } };
+        }
+        return { success: true, meta: { changes: 1 } };
+      }
+    };
+  }
+  return {
+    state,
+    db: {
+      prepare(sql) { return statement(sql); },
+      async batch(statements) {
+        const results = [];
+        for (const item of statements) results.push(await item.run());
+        return results;
+      }
+    }
+  };
 }
 
 describe("JARVIS Worker runtime contract", () => {
@@ -411,6 +575,95 @@ describe("JARVIS Worker runtime contract", () => {
       await expect(response.text()).resolves.toContain(expected);
       expect(response.headers.get("cache-control")).toBe("no-store");
     }
+  });
+
+
+  it("completes a synthetic owner registration, login, session check, and logout", async () => {
+    const { db, state } = makeRouteD1();
+    const secret = "r".repeat(64);
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_BOOTSTRAP_SECRET: secret
+    };
+    const bootstrapHeaders = { Origin: "https://example.test", "X-Jarvis-Bootstrap": secret };
+    const optionsResponse = await handleAuthRequest(request("/auth/register/options", {
+      method: "POST", headers: bootstrapHeaders
+    }), env);
+    expect(optionsResponse.status).toBe(200);
+    const registrationOptions = await optionsResponse.json();
+    const fixture = await makeRouteRegistration(registrationOptions.challenge);
+    const registrationResponse = await handleAuthRequest(request("/auth/register/verify", {
+      method: "POST",
+      headers: { ...bootstrapHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: registrationOptions.challenge, response: fixture.response })
+    }), env);
+    expect(registrationResponse.status).toBe(200);
+    const registered = await registrationResponse.json();
+    expect(registered.authenticated).toBe(true);
+    expect(state.owner.id).toBe(1);
+    expect(state.credentials).toHaveLength(1);
+    const registrationCookies = registrationResponse.headers.get("set-cookie");
+    expect(registrationCookies).toContain("__Host-jarvis_session=");
+    expect(registrationCookies).toContain("HttpOnly");
+    expect(registrationCookies).toContain("Secure");
+    expect(registrationCookies).toContain("SameSite=Strict");
+    expect(registrationCookies).toContain("__Host-jarvis_csrf=");
+    expect(registrationCookies).not.toContain("Domain=");
+
+    const closed = await handleAuthRequest(request("/auth/register/options", {
+      method: "POST", headers: bootstrapHeaders
+    }), env);
+    expect(closed.status).toBe(409);
+
+    const loginOptionsResponse = await handleAuthRequest(request("/auth/login/options", {
+      method: "POST", headers: { Origin: "https://example.test" }
+    }), env);
+    expect(loginOptionsResponse.status).toBe(200);
+    const loginOptions = await loginOptionsResponse.json();
+    const assertion = await makeRouteAssertion({
+      keyPair: fixture.keyPair,
+      credentialId: fixture.credentialId,
+      challenge: loginOptions.challenge,
+      counter: 1
+    });
+    const loginResponse = await handleAuthRequest(request("/auth/login/verify", {
+      method: "POST",
+      headers: { Origin: "https://example.test", "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: loginOptions.challenge, response: assertion })
+    }), env);
+    expect(loginResponse.status).toBe(200);
+    const loggedIn = await loginResponse.json();
+    expect(loggedIn.authenticated).toBe(true);
+    expect(state.credentials[0].sign_count).toBe(1);
+
+    const cookies = loginResponse.headers.get("set-cookie");
+    const sessionCookie = cookies.match(/__Host-jarvis_session=([^;,]+)/)?.[1];
+    expect(sessionCookie).toBeTruthy();
+    const me = await handleAuthRequest(request("/auth/me", {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + sessionCookie }
+    }), env);
+    expect(me.status).toBe(200);
+    await expect(me.json()).resolves.toMatchObject({ authenticated: true });
+
+    const logoutResponse = await handleAuthRequest(request("/auth/logout", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + sessionCookie,
+        "X-CSRF-Token": loggedIn.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    }), env);
+    expect(logoutResponse.status).toBe(200);
+    const afterLogout = await handleAuthRequest(request("/auth/me", {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + sessionCookie }
+    }), env);
+    expect(afterLogout.status).toBe(401);
   });
 
 });
