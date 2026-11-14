@@ -85,7 +85,7 @@ Never store passkey private keys, biometric data, plaintext session tokens, prom
 ### Session and logout
 - `GET /auth/me` rejects expired or revoked sessions.
 - `POST /auth/logout` verifies the CSRF token and exact Origin, revokes the session, and clears the cookie.
-- CSRF token persistence across browser reloads, credential management, and session management UI remain incomplete.
+- A same-origin browser client now performs registration, login, session inspection, additional passkey enrollment, credential listing, and logout. The CSRF token is reloaded from a Secure, SameSite, JavaScript-readable cookie; only its hash is stored in D1. Credential revocation has a protected server route but is not yet exposed in the UI.
 - The intended client and API are same-origin; no wildcard credentialed CORS is configured.
 - Never place session IDs in URLs, browser storage, logs, or client JavaScript.
 
@@ -134,7 +134,7 @@ Unknown routes and methods remain rejected. No AI command endpoint is added in t
 
 Implemented on `jarvis-worker-runtime-tests`: initial first-owner registration, passkey login, session inspection, and logout handlers; exact configured origin/RP ID checks; bootstrap secret gate; JSON content-type/body-size validation; five-minute single-use challenges; D1-backed owner/credential/session helpers; hashed session and CSRF tokens; host-only Secure/HttpOnly/SameSite cookie; CSRF verification; and fail-closed behavior when D1 or origin settings are absent. Synthetic Worker tests cover registration/login options, origin rejection, bootstrap enforcement, content-type enforcement, and verifier behavior.
 
-Not complete: real D1 binding tests, browser passkey UI, multiple-device credential addition/revocation, CSRF persistence across reloads, rate limiting, recovery, full registration/login/logout route ceremony tests, lockfile/advisory review, live origin verification, and iPhone Safari acceptance. No Cloudflare database, secret, or deployment has been created.
+Not complete: real D1 binding tests, full cryptographic registration/login route ceremony tests, rate limiting, recovery, dependency lockfile/advisory review, live origin verification, and iPhone Safari acceptance. The first browser client is implemented but has not been exercised in a real browser or deployed. No Cloudflare database, secret, or deployment has been created.
 
 ## 7. Release gates
 
