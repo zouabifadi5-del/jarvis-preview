@@ -17,16 +17,18 @@
 - [x] Connect the public preview repository and configure Cloudflare's production branch as `jarvis-foundation`.
 - [ ] Verify the active deployment was built from `jarvis-foundation` and serves the health-only worker scaffold.
 - [ ] Verify the live `/health` response and independently confirm zero-cost account/billing status.
-- [x] Add zero-dependency tests for the worker health route, unknown routes, and non-GET requests; verified locally with Node.js v22.16.0 (3 passed, 0 failed).
+- [x] Add zero-dependency tests for the worker health route, unknown routes, and non-GET requests; previously verified locally with Node.js v22.16.0 (3 passed, 0 failed).
 - [ ] Keep credentials on the server only.
 - [ ] Add request validation before accepting commands.
 - [ ] Add rate limiting and safe error handling.
 
 ## Milestone 3 — Owner security and memory
 - [x] Document a single-owner passkey, session, privacy, and command-approval design (design only; not implemented or audited).
-- [x] Research a maintained WebAuthn candidate: SimpleWebAuthn server 14.1.0 documents Cloudflare Workers support; browser 14.0.0 is the current browser package (candidates only, not installed).
+- [x] Research WebAuthn library candidates; exact versions remain uninstalled and must be rechecked before implementation.
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
+- [x] Add a zero-cost, staged authentication test plan: [Authentication Free-Tier Test Plan](AUTHENTICATION_FREE_TIER_TEST_PLAN.md).
 - [ ] Verify the actual Cloudflare account is on the Free plan before provisioning SQLite Durable Object storage.
+- [ ] Complete local request, challenge, origin, session, CSRF, and error-handling tests.
 - [ ] Pin dependencies and prove the selected versions work in the exact Worker runtime.
 - [ ] Owner authentication.
 - [ ] Session protection and logout.
