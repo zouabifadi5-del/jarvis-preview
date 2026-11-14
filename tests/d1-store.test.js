@@ -17,6 +17,9 @@ import {
   findOwner,
   listActiveCredentials,
   createOwnerWithCredential,
+  findActiveRecoveryCode,
+  consumeRecoveryChallenge,
+  completeOwnerRecovery,
   revokeAllSessions
 } from "../src/auth/d1-store.js";
 
@@ -275,7 +278,7 @@ test("first owner and first passkey are created atomically and enrollment closes
   const { sqlite, binding } = makeD1({ seedOwner: false });
   try {
     assert.equal(await findOwner(binding), null);
-    await createOwnerWithCredential(binding, {
+    const { recoveryCodes } = await createOwnerWithCredential(binding, {
       id: "first-owner-passkey",
       publicKey: new Uint8Array([7, 6, 5, 4]),
       counter: 0,
@@ -284,6 +287,12 @@ test("first owner and first passkey are created atomically and enrollment closes
       backedUp: true,
       now: 2000
     });
+    assert.equal(recoveryCodes.length, 10);
+    assert.ok(recoveryCodes.every((code) => /^[A-Za-z0-9_-]{40,}$/.test(code)));
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM owner_recovery_codes").get().count, 10);
+    assert.ok(recoveryCodes.every((code) =>
+      sqlite.prepare("SELECT COUNT(*) AS count FROM owner_recovery_codes WHERE code_hash = ?").get(code).count === 0
+    ));
     const owner = await findOwner(binding);
     assert.equal(owner.id, 1);
     assert.equal(owner.created_at, 2000);
@@ -404,6 +413,93 @@ test("sessions expire after 30 minutes of inactivity and active access refreshes
     assert.equal(await findActiveSession(binding, {
       sessionToken: session.sessionToken,
       now: 1100 + 59 * 60
+    }), null);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("recovery codes are hashed, single-use, and replace all previous codes atomically", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const initial = await createOwnerWithCredential(binding, {
+      id: "recovery-original",
+      publicKey: new Uint8Array([1, 3, 5, 7]),
+      now: 1000
+    });
+    const oldCode = initial.recoveryCodes[0];
+    const oldUnusedCode = initial.recoveryCodes[1];
+    const recoveryCodeHash = await findActiveRecoveryCode(binding, oldCode);
+    assert.ok(recoveryCodeHash);
+    assert.equal(await findActiveRecoveryCode(binding, "not-a-valid-recovery-code"), null);
+
+    const session = await createSession(binding, { now: 1001 });
+    const challenge = await createChallenge(binding, {
+      purpose: "recovery",
+      recoveryCodeHash,
+      now: 1002
+    });
+    const consumed = await consumeRecoveryChallenge(binding, {
+      challenge: challenge.challenge,
+      now: 1003
+    });
+    assert.equal(consumed.challenge, challenge.challenge);
+    assert.equal(consumed.recoveryCodeHash, recoveryCodeHash);
+
+    const replacement = await completeOwnerRecovery(binding, {
+      recoveryCodeHash,
+      challengeHash: consumed.challengeHash,
+      id: "recovery-replacement",
+      publicKey: new Uint8Array([2, 4, 6, 8]),
+      counter: 0,
+      transports: ["internal"],
+      deviceType: "singleDevice",
+      backedUp: true,
+      now: 1004
+    });
+    assert.equal(replacement.recoveryCodes.length, 10);
+    assert.ok(await findActiveCredential(binding, "recovery-replacement"));
+    assert.equal(await findActiveRecoveryCode(binding, oldCode), null);
+    assert.equal(await findActiveRecoveryCode(binding, oldUnusedCode), null);
+    assert.equal(await findActiveSession(binding, { sessionToken: session.sessionToken, now: 1005 }), null);
+    for (const code of replacement.recoveryCodes) assert.ok(await findActiveRecoveryCode(binding, code));
+
+    await assert.rejects(completeOwnerRecovery(binding, {
+      recoveryCodeHash,
+      challengeHash: consumed.challengeHash,
+      id: "recovery-replay",
+      publicKey: new Uint8Array([9, 9, 9]),
+      now: 1006
+    }), /invalid or has already been used/);
+    assert.equal(await findActiveCredential(binding, "recovery-replay"), null);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("recovery challenges are purpose-bound, single-use, and require a code hash", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    await assert.rejects(createChallenge(binding, { purpose: "recovery", now: 1000 }), TypeError);
+    const issued = await createChallenge(binding, {
+      purpose: "recovery",
+      recoveryCodeHash: "a".repeat(43),
+      now: 1000
+    });
+    assert.equal(await consumeChallenge(binding, {
+      challenge: issued.challenge,
+      purpose: "authentication",
+      now: 1001
+    }), null);
+    const consumed = await consumeRecoveryChallenge(binding, {
+      challenge: issued.challenge,
+      now: 1001
+    });
+    assert.equal(consumed.challenge, issued.challenge);
+    assert.equal(consumed.recoveryCodeHash, "a".repeat(43));
+    assert.equal(await consumeRecoveryChallenge(binding, {
+      challenge: issued.challenge,
+      now: 1002
     }), null);
   } finally {
     sqlite.close();
