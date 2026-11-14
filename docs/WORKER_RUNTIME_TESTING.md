@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status:** The latest synthetic ceremony test run passed 19 of 19 tests across two test files on `jarvis-worker-runtime-tests`. This is a compatibility and verifier test harness, not a production authentication implementation.  
+**Status:** The latest synthetic ceremony test run passed 24 of 24 tests across two test files on `jarvis-worker-runtime-tests`. This is a compatibility and verifier test harness, not a production authentication implementation.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -39,6 +39,10 @@ These are test candidates, not production approvals. The CI job uses Node.js 24 
 - Verify successful registration and authentication against the expected challenge, origin, and RP ID.
 - Assert rejection when registration or authentication uses a wrong challenge, wrong origin, or wrong RP ID.
 - Tamper with the synthetic authentication signature and assert verification does not succeed.
+- Reject authentication when user presence or user verification flags are missing.
+- Reject an authentication counter rollback.
+- Enforce application-level binding between response `id`/`rawId` and the selected stored credential record before calling the library verifier. This is an explicit wrapper because the library expects the caller to select and supply the correct credential.
+- Reject malformed CBOR registration attestation data.
 - Keep all credential identifiers and keys synthetic and generated during the test; no real owner credential or passkey is created.
 
 The synthetic attestation uses the WebAuthn `none` format and is not evidence of hardware-backed attestation, trusted authenticator provenance, or a real device ceremony. The tests exercise the library's verifier paths with constructed fixtures, not a physical authenticator or Safari/iPhone passkey UI.
@@ -46,9 +50,9 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 ### Current CI result
 
 - Test files: 2 passed.
-- Test cases: 19 passed.
+- Test cases: 24 passed.
 - Worker runtime job: successful.
-- The run is associated with commit `ea38129` on the isolated test branch.
+- The run is associated with commit `ebfad80` on the isolated test branch.
 
 ## CI safety boundaries
 
@@ -65,9 +69,9 @@ The Worker test harness is not a hardened security sandbox. Only trusted project
 ## Remaining gates
 
 1. Add a separate, reviewed server-side authentication design: origin/RP ID allowlists, one-time challenge storage and expiry, credential persistence, replay/counter policy, session issuance, CSRF protections where applicable, rate limits, and recovery procedures.
-2. Add tests for user-verification and user-presence flag failures, counter rollback/replay, credential-ID binding, and malformed CBOR/credential edge cases.
+2. Test additional credential lifecycle cases, including counter semantics for synced passkeys, credential revocation, duplicate registration, and challenge one-time use/expiry.
 3. Test the browser package and actual passkey ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior and recovery paths.
-4. Perform a security review before any real authentication route, secret, database, or personal-data storage is introduced.
+4. Design and review persistence, one-time challenge storage, session issuance, recovery, and rate limiting before any real authentication route or personal-data storage is introduced.
 5. Only after those gates, consider a separately approved deployment. No deployment or personal-data storage is authorized by this test.
 
 ## References
