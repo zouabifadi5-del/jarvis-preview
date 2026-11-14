@@ -9,6 +9,7 @@ The single D1 database is restricted to:
 - Passkey credential IDs, public keys, counters, transport metadata, device type, and backup status.
 - Short-lived WebAuthn challenges.
 - Hashed session and CSRF tokens, expiry, activity, and revocation metadata.
+- Hashed one-time recovery codes and their use/replacement metadata; plaintext codes are shown only once during enrollment or recovery.
 
 It must not store conversations, prompts, private memory, email, contact lists, or unrelated personal content.
 
