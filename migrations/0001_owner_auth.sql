@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS owner_recovery_codes (
   code_hash TEXT PRIMARY KEY,
   created_at INTEGER NOT NULL,
   used_at INTEGER,
-  used_challenge_hash TEXT
+  used_claim_hash TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_owner_recovery_codes_unused
