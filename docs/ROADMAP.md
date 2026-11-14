@@ -31,13 +31,14 @@
 - [x] Expand the local Worker scaffold suite to cover security headers, strict route matching, method rejection, no CORS, and HTTP/HSTS behavior.
 - [x] Select D1 (rather than Durable Objects) for the small relational auth store; add an unprovisioned SQL schema migration on the isolated test branch.
 - [x] Owner confirmed Cloudflare Free plan and no paid Workers subscription/trial; separate approval is still required before creating D1.
+- [x] Document the approval-gated D1 provisioning and first-owner enrollment sequence: [Remote D1 Provisioning Gate](REMOTE_D1_PROVISIONING_GATE.md).
 - [x] Add initial passkey registration/login/session/logout handlers and fail-closed behavior on the isolated branch.
 - [x] Add synthetic Worker tests for origin checks, bootstrap secret, registration/login options, and content-type enforcement.
 - [x] Add a synthetic end-to-end success-path test for owner registration, login, session inspection, and logout.
 - [x] Add negative route tests for replayed ceremonies, wrong origin, tampered signatures, CSRF failure, and owner-enrollment enumeration.
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
 - [x] Add a CI production-dependency advisory audit (`npm audit --omit=dev --audit-level=moderate`); a committed, reviewed lockfile and full transitive dependency review remain outstanding.
-- [x] Pass 19 local SQLite/Node checks, 39 Workers runtime tests, production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI (58 test cases total).
+- [x] Pass 20 local SQLite/Node checks, 38 Workers runtime tests, production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI (58 test cases total).
 - [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add-passkey, and sign-out.
 - [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey; the browser interface is not deployed or device-tested.
 - [x] Add multi-device credential listing/addition/revocation with last-passkey protection, reload-persistent CSRF cookie, sign-out-everywhere, recent-passkey confirmation, session rotation, and idle timeout.
