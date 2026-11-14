@@ -56,8 +56,6 @@ export async function createChallenge(
     throw new RangeError("WebAuthn challenge lifetime cannot exceed five minutes");
   }
 
-  // Opportunistic bounded cleanup keeps expired challenge rows from accumulating.
-  await db.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now).run();
   // Opportunistically prune expired one-time challenges before issuing another.
   await db.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now).run();
 
