@@ -1,0 +1,5 @@
+name = "jarvis-preview-api"
+main = "src/worker.js"
+compatibility_date = "2026-11-14"
+
+# No account ID, routes, secrets, or paid resources are configured here.
