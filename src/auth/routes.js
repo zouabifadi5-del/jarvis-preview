@@ -19,6 +19,7 @@ import {
 import { verifyStoredCredentialAuthentication } from "./webauthn.js";
 
 const SESSION_COOKIE = "__Host-jarvis_session";
+const CSRF_COOKIE = "__Host-jarvis_csrf";
 const CHALLENGE_TTL_SECONDS = 5 * 60;
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
 const MAX_BODY_BYTES = 16 * 1024;
@@ -105,18 +106,29 @@ function sessionCookie(token, maxAge) {
   return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
 }
 
+function csrfCookie(token, maxAge) {
+  // Deliberately readable by same-origin JavaScript so the client can recover
+  // the CSRF header value after a page reload; the server stores only its hash.
+  return `${CSRF_COOKIE}=${token}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+}
+
 function clearSessionCookie() {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
 }
 
+function clearCsrfCookie() {
+  return `${CSRF_COOKIE}=; Path=/; Secure; SameSite=Strict; Max-Age=0`;
+}
+
 async function issueSession(request, db, now) {
   const session = await createSession(db, { now, ttlSeconds: SESSION_TTL_SECONDS });
-  const headers = { "Set-Cookie": sessionCookie(session.sessionToken, SESSION_TTL_SECONDS) };
-  return response(request, {
+  const issued = response(request, {
     authenticated: true,
     csrfToken: session.csrfToken,
     expiresAt: session.expiresAt
-  }, 200, headers);
+  }, 200, { "Set-Cookie": sessionCookie(session.sessionToken, SESSION_TTL_SECONDS) });
+  issued.headers.append("Set-Cookie", csrfCookie(session.csrfToken, SESSION_TTL_SECONDS));
+  return issued;
 }
 
 async function registrationOptions(request, env, cfg, now) {
@@ -296,9 +308,11 @@ async function logout(request, cfg, now) {
     return fail(request, 403, "csrf_check_failed");
   }
   await revokeSession(cfg.db, { sessionToken: token, now });
-  return response(request, { authenticated: false }, 200, {
+  const cleared = response(request, { authenticated: false }, 200, {
     "Set-Cookie": clearSessionCookie()
   });
+  cleared.headers.append("Set-Cookie", clearCsrfCookie());
+  return cleared;
 }
 
 export async function handleAuthRequest(request, env) {
