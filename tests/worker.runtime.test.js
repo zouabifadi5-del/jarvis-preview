@@ -211,4 +211,61 @@ describe("JARVIS Worker runtime contract", () => {
     expect(issued[0].values[2]).toBe("registration");
   });
 
+  it("issues login options only for the enrolled owner's active credentials", async () => {
+    const issued = [];
+    const db = {
+      prepare(sql) {
+        if (sql.includes("SELECT id, created_at, enrollment_closed_at")) {
+          return { async first() { return { id: 1, created_at: 1000, enrollment_closed_at: 1000 }; } };
+        }
+        if (sql.includes("SELECT credential_id, public_key, sign_count")) {
+          return {
+            async all() {
+              return {
+                results: [{
+                  credential_id: "owner-passkey",
+                  public_key: new Uint8Array([1, 2, 3]),
+                  sign_count: 0,
+                  transports_json: '["internal"]',
+                  device_type: "singleDevice",
+                  backed_up: 1,
+                  created_at: 1000,
+                  last_used_at: null
+                }]
+              };
+            }
+          };
+        }
+        return {
+          bind(...values) {
+            return {
+              async run() {
+                issued.push({ sql, values });
+                return { success: true, meta: { changes: 1 } };
+              }
+            };
+          }
+        };
+      }
+    };
+    const response = await handleAuthRequest(request("/auth/login/options", {
+      method: "POST",
+      headers: { Origin: "https://example.test" }
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test"
+    });
+    expect(response.status).toBe(200);
+    const options = await response.json();
+    expect(options.rpId).toBe("example.test");
+    expect(options.userVerification).toBe("required");
+    expect(options.allowCredentials).toEqual([
+      { id: "owner-passkey", transports: ["internal"] }
+    ]);
+    expect(issued).toHaveLength(1);
+    expect(issued[0].values[1]).toBe(options.challenge);
+    expect(issued[0].values[2]).toBe("authentication");
+  });
+
 });
