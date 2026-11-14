@@ -578,7 +578,7 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
   const secret = env?.JARVIS_RATE_LIMIT_HMAC_SECRET;
   const ip = request.headers.get("CF-Connecting-IP");
   if (typeof secret !== "string" || secret.length < 32 ||
-      typeof ip !== "string" || ip.length < 3 || ip.length > 64 || /[\\s,]/.test(ip)) {
+      typeof ip !== "string" || ip.length < 3 || ip.length > 64 || /[\s,]/.test(ip)) {
     return fail(request, 503, "rate_limit_not_configured");
   }
 
