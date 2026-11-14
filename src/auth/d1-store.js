@@ -467,3 +467,40 @@ export async function revokeAllSessions(db, { now = Math.floor(Date.now() / 1000
   ).bind(now).run();
   return result.meta?.changes || 0;
 }
+
+
+/**
+ * Atomically increments a fixed-window request bucket.
+ * The caller supplies an HMAC-derived opaque key; raw IPs never enter D1.
+ */
+export async function consumeRateLimit(
+  db,
+  { bucketHash, windowStart, windowSeconds, limit, now = Math.floor(Date.now() / 1000) }
+) {
+  assertD1(db);
+  assertUnixSeconds(now, "now");
+  if (typeof bucketHash !== "string" || !/^[A-Za-z0-9_-]{40,}$/.test(bucketHash)) {
+    throw new TypeError("Rate-limit bucket hash is invalid");
+  }
+  assertUnixSeconds(windowStart, "windowStart");
+  assertPositiveInteger(windowSeconds, "windowSeconds");
+  assertPositiveInteger(limit, "limit");
+  if (windowStart > now || now >= windowStart + windowSeconds) {
+    throw new RangeError("Rate-limit window does not contain now");
+  }
+
+  const expiresAt = windowStart + windowSeconds;
+  const row = await db.prepare(
+    "INSERT INTO auth_rate_limits (bucket_hash, window_start, request_count, expires_at) VALUES (?, ?, 1, ?) " +
+    "ON CONFLICT(bucket_hash, window_start) DO UPDATE SET request_count = request_count + 1 " +
+    "RETURNING request_count"
+  ).bind(bucketHash, windowStart, expiresAt).first();
+
+  // Opportunistic bounded retention: remove expired buckets on each check.
+  await db.prepare("DELETE FROM auth_rate_limits WHERE expires_at <= ?").bind(now).run();
+  const count = Number(row?.request_count);
+  if (!Number.isSafeInteger(count) || count < 1) {
+    throw new Error("Rate-limit counter could not be read");
+  }
+  return { allowed: count <= limit, count, remaining: Math.max(0, limit - count), resetAt: expiresAt };
+}
