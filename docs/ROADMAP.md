@@ -13,9 +13,9 @@
 - [x] No simulated AI responses or misleading online claims; test input stays local.
 
 ## Milestone 2 — Minimal service
-- [ ] Choose a genuinely free backend/runtime.
+- [x] Select Cloudflare Workers Free as the provisional backend candidate; deployment still requires owner account setup and a no-billing check.
 - [ ] Keep credentials on the server only.
-- [ ] Add a health endpoint and basic request validation.
+- [ ] Deploy and verify the scaffold health endpoint; add request validation before accepting commands.
 - [ ] Add rate limiting and safe error handling.
 
 ## Milestone 3 — Owner security and memory
