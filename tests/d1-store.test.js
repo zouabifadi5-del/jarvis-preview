@@ -191,6 +191,11 @@ test("revoked credentials cannot be retrieved or have counters updated", async (
       publicKey: new Uint8Array([9, 8, 7]),
       now: 1000
     });
+    await storeCredential(binding, {
+      id: "keep-me",
+      publicKey: new Uint8Array([6, 5, 4]),
+      now: 1000
+    });
     assert.equal(await revokeCredential(binding, {
       credentialId: "revoke-me",
       now: 1001
