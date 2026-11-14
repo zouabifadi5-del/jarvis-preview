@@ -103,8 +103,8 @@ All routes are same-origin HTTPS. JSON bodies are content-type checked and cappe
 - `POST /auth/logout` — verifies Origin and CSRF, revokes the current session, and clears cookies.
 - `POST /auth/logout-all` — verifies Origin and CSRF, revokes every active session, and clears the current cookies.
 - `GET /auth/credentials` — returns limited metadata for active owner passkeys.
-- `POST /auth/credentials/options` and `POST /auth/credentials/verify` — add another passkey to the existing owner account, requiring an authenticated session and CSRF token.
-- `POST /auth/credentials/revoke` — revokes a selected credential only when another active credential remains.
+- `POST /auth/credentials/options` and `POST /auth/credentials/verify` — add another passkey to the existing owner account, requiring an authenticated session, CSRF token, and a passkey-authenticated session no older than five minutes.
+- `POST /auth/credentials/revoke` — revokes a selected credential only when another active credential remains; it also requires recent passkey authentication.
 
 Unknown routes and methods remain rejected. No AI command, memory, or external-account endpoint is implemented in this phase. These routes have not been deployed or tested against a real D1 database.
 
