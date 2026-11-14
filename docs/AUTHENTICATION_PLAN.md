@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Authentication Implementation Plan
 
-**Status:** Initial server-side passkey routes and storage helpers are implemented on the isolated test branch; not deployed, not connected to a real D1 database, and not production-ready  
+**Status:** Initial passkey routes and a native browser passkey UI are implemented on the isolated test branch; not deployed, not connected to a real D1 database, and not production-ready  
 **Owner model:** One enrolled owner, no public sign-up  
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
@@ -32,7 +32,7 @@ References:
 - Licence: MIT for both packages.
 - The server package's current JSR documentation explicitly lists Cloudflare Workers as a supported runtime. The browser package targets modern browsers.
 
-`@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes the current synthetic Worker-runtime compatibility suite. `@simplewebauthn/browser` has not yet been added; a lockfile, current advisory review, real D1 test, and real Safari/iPhone ceremony remain outstanding. Do not load a third-party CDN script on authenticated pages.
+`@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes the synthetic Worker-runtime compatibility suite. The browser uses native WebAuthn APIs (`navigator.credentials.create/get`) rather than a separate browser library. A lockfile, current advisory review, real D1 test, and real Safari/iPhone ceremony remain outstanding. Do not load a third-party CDN script on authenticated pages.
 
 References:
 - https://jsr.io/@simplewebauthn/server
@@ -80,7 +80,7 @@ Never store passkey private keys, biometric data, plaintext session tokens, prom
 2. `POST /auth/login/verify` consumes the challenge once and verifies the assertion against the stored public key, exact challenge, origin, RP ID, user-verification flag, and credential ID.
 3. The credential counter is updated with compare-and-set semantics.
 4. A random opaque session ID and CSRF token are generated; only their hashes are stored in D1.
-5. The session is issued in a host-only `Secure; HttpOnly; SameSite=Strict` cookie with `Path=/` and no `Domain`; current lifetime is eight hours.
+5. The session is issued in a host-only `Secure; HttpOnly; SameSite=Strict` cookie with `Path=/` and no `Domain`; current lifetime is eight hours. A separate host-only `Secure; SameSite=Strict` CSRF cookie is readable by same-origin JavaScript so it survives page reloads; only its hash is stored server-side.
 
 ### Session and logout
 - `GET /auth/me` rejects expired or revoked sessions.
