@@ -13,7 +13,10 @@ import {
   createSession,
   findActiveSession,
   verifySessionCsrf,
-  revokeSession
+  revokeSession,
+  findOwner,
+  listActiveCredentials,
+  createOwnerWithCredential
 } from "../src/auth/d1-store.js";
 
 const migration = readFileSync(
@@ -21,11 +24,11 @@ const migration = readFileSync(
   "utf8"
 );
 
-function makeD1() {
+function makeD1({ seedOwner = true } = {}) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("PRAGMA foreign_keys = ON");
   sqlite.exec(migration);
-  sqlite.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
+  if (seedOwner) sqlite.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
 
   return {
     sqlite,
@@ -43,10 +46,26 @@ function makeD1() {
                   success: true,
                   meta: { changes: Number(result.changes) }
                 };
+              },
+              async all() {
+                const result = sqlite.prepare(sql).all(...values);
+                return { success: true, results: result };
               }
             };
           }
         };
+      },
+      async batch(statements) {
+        sqlite.exec("BEGIN");
+        try {
+          const results = [];
+          for (const statement of statements) results.push(await statement.run());
+          sqlite.exec("COMMIT");
+          return results;
+        } catch (error) {
+          sqlite.exec("ROLLBACK");
+          throw error;
+        }
       }
     }
   };
@@ -223,6 +242,40 @@ test("session lifetime cannot exceed seven days", async () => {
       createSession(binding, { now: 1000, ttlSeconds: 7 * 24 * 60 * 60 + 1 }),
       RangeError
     );
+  } finally {
+    sqlite.close();
+  }
+});
+
+
+test("first owner and first passkey are created atomically and enrollment closes", async () => {
+  const { sqlite, binding } = makeD1({ seedOwner: false });
+  try {
+    assert.equal(await findOwner(binding), null);
+    await createOwnerWithCredential(binding, {
+      id: "first-owner-passkey",
+      publicKey: new Uint8Array([7, 6, 5, 4]),
+      counter: 0,
+      transports: ["internal"],
+      deviceType: "singleDevice",
+      backedUp: true,
+      now: 2000
+    });
+    const owner = await findOwner(binding);
+    assert.equal(owner.id, 1);
+    assert.equal(owner.created_at, 2000);
+    assert.equal(owner.enrollment_closed_at, 2000);
+    const credentials = await listActiveCredentials(binding);
+    assert.equal(credentials.length, 1);
+    assert.equal(credentials[0].id, "first-owner-passkey");
+    assert.deepEqual([...credentials[0].publicKey], [7, 6, 5, 4]);
+    assert.deepEqual(credentials[0].transports, ["internal"]);
+    await assert.rejects(createOwnerWithCredential(binding, {
+      id: "second-owner-passkey",
+      publicKey: new Uint8Array([1, 1, 1]),
+      now: 2001
+    }));
+    assert.equal((await listActiveCredentials(binding)).length, 1);
   } finally {
     sqlite.close();
   }
