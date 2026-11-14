@@ -27,7 +27,7 @@ jobs:
       - name: Report Node.js and npm versions
         run: node --version && npm --version
       - name: Validate D1 auth schema and storage helpers with local SQLite (no Cloudflare account)
-        run: node --experimental-sqlite --test tests/auth-schema.test.js tests/d1-store.test.js
+        run: node --experimental-sqlite --test tests/auth-schema.test.js tests/d1-store.test.js tests/worker.test.mjs
       - name: Install temporary test tooling and WebAuthn candidate
         run: npm install --no-save --no-audit --no-fund vitest@4.1.0 @cloudflare/vitest-plugin@1.8.2 @simplewebauthn/server@14.1.0
       - name: Run tests inside the Cloudflare Workers runtime
