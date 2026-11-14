@@ -31,7 +31,7 @@ describe("JARVIS Worker runtime contract", () => {
     await expect(response.json()).resolves.toEqual({
       service: "jarvis-api",
       status: "ok",
-      mode: "scaffold",
+      mode: "authentication-scaffold",
       aiConnected: false
     });
   });
