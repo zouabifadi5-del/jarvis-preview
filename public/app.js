@@ -8,7 +8,6 @@ const enrollButton = document.querySelector("#enroll");
 const addButton = document.querySelector("#add-credential");
 const logoutButton = document.querySelector("#logout");
 const logoutAllButton = document.querySelector("#logout-all");
-const logoutAllButton = document.querySelector("#logout-all");
 const secretInput = document.querySelector("#bootstrap-secret");
 const credentialsNode = document.querySelector("#credentials");
 
