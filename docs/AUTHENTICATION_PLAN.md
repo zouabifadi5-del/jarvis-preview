@@ -15,7 +15,7 @@
 
 The owner supplied this Worker URL. To make it a valid WebAuthn identity without buying a domain, the authentication/login page will be served from the same Worker hostname using Cloudflare Workers Static Assets. The existing GitHub Pages preview, if enabled, remains a public demo and will not perform passkey ceremonies. This avoids cross-site cookies/CORS and ensures the browser page's effective domain matches the RP ID.
 
-Cloudflare documents Workers Static Assets as free and unlimited for asset requests, with no additional asset storage charge. Requests that invoke the Worker script remain subject to the Workers Free request limit. A non-functional static owner-access shell and Workers Static Assets configuration have been added to the isolated test branch only. They have not been deployed; the live Worker remains unchanged.
+Cloudflare documents Workers Static Assets as free and unlimited for asset requests, with no additional asset storage charge. Requests that invoke the Worker script remain subject to the Workers Free request limit. A same-origin owner-access interface (`index.html`, `app.js`, `style.css`) and Workers Static Assets configuration have been added to the isolated test branch only. It supports native WebAuthn registration/login, credential management, and session controls, but has not been deployed; the live Worker remains unchanged.
 
 The RP ID and exact origin must be rechecked against the actual served login page before the first real passkey is enrolled. Wrangler's non-deploying build validation has passed for the current static asset configuration, but that does not prove the page is live or validate a real browser ceremony. Never accept origin or RP ID values supplied by a request. Changing the hostname after enrollment generally requires enrolling new passkeys.
 
@@ -28,9 +28,9 @@ References:
 
 **Preferred candidate:**
 - Server: `@simplewebauthn/server@14.1.0`
-- Browser: `@simplewebauthn/browser@14.0.0`
-- Licence: MIT for both packages.
-- The server package's current JSR documentation explicitly lists Cloudflare Workers as a supported runtime. The browser package targets modern browsers.
+- Browser: native WebAuthn APIs (`navigator.credentials.create/get`), no third-party browser package.
+- Licence: MIT for the server package.
+- The server package's current JSR documentation explicitly lists Cloudflare Workers as a supported runtime.
 
 `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes the synthetic Worker-runtime compatibility suite. The browser uses native WebAuthn APIs (`navigator.credentials.create/get`) rather than a separate browser library. A lockfile, current advisory review, real D1 test, and real Safari/iPhone ceremony remain outstanding. Do not load a third-party CDN script on authenticated pages.
 
@@ -84,8 +84,9 @@ Never store passkey private keys, biometric data, plaintext session tokens, prom
 
 ### Session and logout
 - `GET /auth/me` rejects expired or revoked sessions.
-- `POST /auth/logout` verifies the CSRF token and exact Origin, revokes the session, and clears the cookie.
-- A same-origin browser client now performs registration, login, session inspection, additional passkey enrollment, credential listing, and logout. The CSRF token is reloaded from a Secure, SameSite, JavaScript-readable cookie; only its hash is stored in D1. Credential revocation has a protected server route but is not yet exposed in the UI.
+- `POST /auth/logout` verifies the CSRF token and exact Origin, revokes the current session, and clears cookies.
+- `POST /auth/logout-all` revokes all active sessions after the same Origin/CSRF checks.
+- A same-origin browser client performs registration, login, session inspection, additional passkey enrollment, credential listing/revocation, logout, and sign-out-everywhere. The CSRF token is reloaded from a Secure, SameSite, JavaScript-readable cookie; only its hash is stored in D1.
 - The intended client and API are same-origin; no wildcard credentialed CORS is configured.
 - Never place session IDs in URLs, browser storage, logs, or client JavaScript.
 
@@ -97,7 +98,8 @@ All routes are same-origin HTTPS. JSON bodies are content-type checked and cappe
 - `POST /auth/login/options` — issues a short-lived authentication challenge for active owner credentials.
 - `POST /auth/login/verify` — verifies the assertion, compare-and-set updates the counter, and issues a session.
 - `GET /auth/me` — returns only whether the owner session is active and its expiry.
-- `POST /auth/logout` — verifies Origin and CSRF, revokes the session, and clears cookies.
+- `POST /auth/logout` — verifies Origin and CSRF, revokes the current session, and clears cookies.
+- `POST /auth/logout-all` — verifies Origin and CSRF, revokes every active session, and clears the current cookies.
 - `GET /auth/credentials` — returns limited metadata for active owner passkeys.
 - `POST /auth/credentials/options` and `POST /auth/credentials/verify` — add another passkey to the existing owner account, requiring an authenticated session and CSRF token.
 - `POST /auth/credentials/revoke` — revokes a selected credential only when another active credential remains.
@@ -135,9 +137,9 @@ Unknown routes and methods remain rejected. No AI command, memory, or external-a
 
 ## 6. Current implementation status
 
-Implemented on `jarvis-worker-runtime-tests`: initial first-owner registration, passkey login, session inspection, and logout handlers; exact configured origin/RP ID checks; bootstrap secret gate; JSON content-type/body-size validation; five-minute single-use challenges; D1-backed owner/credential/session helpers; hashed session and CSRF tokens; host-only Secure/HttpOnly/SameSite cookie; CSRF verification; and fail-closed behavior when D1 or origin settings are absent. Synthetic Worker tests cover registration/login options, origin rejection, bootstrap enforcement, content-type enforcement, and verifier behavior.
+Implemented on `jarvis-worker-runtime-tests`: first-owner passkey registration, passkey login, session inspection, logout and sign-out-everywhere; multi-device credential listing/addition/revocation with last-credential protection; exact configured origin/RP ID checks; bootstrap secret gate; JSON content-type/body-size validation; five-minute single-use challenges with cleanup; D1-backed owner/credential/session helpers; hashed session and CSRF tokens; host-only Secure/HttpOnly session cookie plus reload-persistent CSRF cookie; CSRF verification; and fail-closed behavior when D1 or origin settings are absent. A same-origin native WebAuthn UI is included. The synthetic route suite now exercises a successful registration/login/session/logout ceremony and negative paths including replay, wrong origin, tampered signatures, CSRF rejection, and owner-enrollment enumeration.
 
-Not complete: real D1 binding tests, full cryptographic registration/login route ceremony tests, rate limiting, recovery, dependency lockfile/advisory review, live origin verification, and iPhone Safari acceptance. The first browser client is implemented but has not been exercised in a real browser or deployed. No Cloudflare database, secret, or deployment has been created.
+Latest verified CI run #160 passed 19 local SQLite/Node checks and 37 Workers-runtime tests (56 tests total), plus browser JavaScript syntax validation and Wrangler dry-run configuration validation. Still incomplete: real D1 binding tests, rate limiting, offline recovery, dependency lockfile/advisory review, live origin verification, and iPhone Safari acceptance. No Cloudflare database, secret, or deployment has been created.
 
 ## 7. Release gates
 
