@@ -361,3 +361,27 @@ test("owner-wide session revocation invalidates every active session", async () 
     sqlite.close();
   }
 });
+
+test("new challenges prune expired challenge records", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    await createChallenge(binding, { purpose: "registration", now: 1000 });
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM auth_challenges").get().count, 1);
+    await createChallenge(binding, { purpose: "authentication", now: 1300 });
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM auth_challenges").get().count, 1);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("new sessions prune expired session records", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    await createSession(binding, { now: 1000, ttlSeconds: 1 });
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM auth_sessions").get().count, 1);
+    await createSession(binding, { now: 1001 });
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM auth_sessions").get().count, 1);
+  } finally {
+    sqlite.close();
+  }
+});
