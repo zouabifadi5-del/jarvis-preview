@@ -265,3 +265,73 @@ export async function revokeSession(db, { sessionToken, now = Math.floor(Date.no
 
   return result.meta?.changes === 1;
 }
+
+export async function findOwner(db) {
+  assertD1(db);
+  return db.prepare(
+    "SELECT id, created_at, enrollment_closed_at FROM jarvis_owner WHERE id = 1 LIMIT 1"
+  ).first();
+}
+
+export async function listActiveCredentials(db) {
+  assertD1(db);
+  const result = await db.prepare(
+    "SELECT credential_id, public_key, sign_count, transports_json, device_type, backed_up, created_at, last_used_at FROM owner_credentials WHERE owner_id = 1 AND revoked_at IS NULL ORDER BY created_at ASC"
+  ).all();
+  return (result.results || []).map((row) => ({
+    id: row.credential_id,
+    publicKey: row.public_key instanceof Uint8Array
+      ? row.public_key
+      : row.public_key instanceof ArrayBuffer
+        ? new Uint8Array(row.public_key)
+        : new Uint8Array(row.public_key),
+    counter: row.sign_count,
+    transports: (() => {
+      try {
+        const parsed = JSON.parse(row.transports_json || "[]");
+        return Array.isArray(parsed) && parsed.every((item) => typeof item === "string") ? parsed : [];
+      } catch {
+        return [];
+      }
+    })(),
+    deviceType: row.device_type,
+    backedUp: row.backed_up === 1,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at
+  }));
+}
+
+/**
+ * Creates the singleton owner and first credential atomically.
+ * D1 batch executes the statements transactionally; a competing bootstrap
+ * attempt cannot create a second owner.
+ */
+export async function createOwnerWithCredential(db, {
+  id, publicKey, counter = 0, transports = [], deviceType = null,
+  backedUp = false, now = Math.floor(Date.now() / 1000)
+}) {
+  assertD1(db);
+  assertUnixSeconds(now, "now");
+  if (typeof id !== "string" || id.length < 1 || id.length > 1024) {
+    throw new TypeError("Credential ID is invalid");
+  }
+  if (!(publicKey instanceof Uint8Array) || publicKey.length < 1) {
+    throw new TypeError("Credential public key must be a non-empty Uint8Array");
+  }
+  if (!Number.isSafeInteger(counter) || counter < 0) {
+    throw new TypeError("Credential counter must be a non-negative integer");
+  }
+  if (!Array.isArray(transports) || transports.some((item) => typeof item !== "string")) {
+    throw new TypeError("Credential transports must be an array of strings");
+  }
+
+  const statements = [
+    db.prepare(
+      "INSERT INTO jarvis_owner (id, created_at, enrollment_closed_at) VALUES (1, ?, ?)"
+    ).bind(now, now),
+    db.prepare(
+      "INSERT INTO owner_credentials (credential_id, owner_id, public_key, sign_count, transports_json, device_type, backed_up, created_at) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
+    ).bind(id, publicKey, counter, JSON.stringify(transports), deviceType, backedUp ? 1 : 0, now)
+  ];
+  await db.batch(statements);
+}
