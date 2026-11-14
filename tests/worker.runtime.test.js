@@ -136,6 +136,9 @@ function makeRouteD1() {
         if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
           return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
         }
+        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
         if (sql.includes("SELECT csrf_token_hash")) {
           const [hash, now] = values;
           const item = state.sessions.find((row) => row.session_hash === hash && row.expires_at > now && row.revoked_at === null);
@@ -477,6 +480,9 @@ describe("JARVIS Worker runtime contract", () => {
         if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
           return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
         }
+        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
         if (sql.includes("SELECT csrf_token_hash")) {
           return { bind(...values) { return { async first() {
             return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
@@ -554,6 +560,9 @@ describe("JARVIS Worker runtime contract", () => {
           } }; } };
         }
         if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
+        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
           return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
         }
         if (sql.includes("SELECT csrf_token_hash")) {
@@ -868,6 +877,9 @@ describe("JARVIS Worker runtime contract", () => {
         if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
           return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
         }
+        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
         if (sql.includes("SELECT csrf_token_hash")) {
           return { bind(...values) { return { async first() {
             return values[0] === sessionHash ? { csrf_token_hash: csrfHash } : null;
@@ -916,6 +928,9 @@ describe("JARVIS Worker runtime contract", () => {
           } }; } };
         }
         if (sql.includes("UPDATE auth_sessions SET last_seen_at")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
+        }
+        if (sql.startsWith("UPDATE auth_sessions SET last_seen_at")) {
           return { bind() { return { async run() { return { success: true, meta: { changes: 1 } }; } }; } };
         }
         if (sql.includes("SELECT csrf_token_hash")) {
