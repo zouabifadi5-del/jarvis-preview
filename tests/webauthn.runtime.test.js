@@ -60,6 +60,53 @@ function derEncodeEcdsaSignature(rawSignature) {
   return concatBytes(new Uint8Array([0x30, body.length]), body);
 }
 
+async function makeSyntheticAuthenticationResponse({
+  keyPair,
+  credentialId,
+  challenge,
+  flags = 0x05,
+  counter = 1,
+  origin = ORIGIN
+}) {
+  const clientData = encoder.encode(JSON.stringify({
+    type: "webauthn.get",
+    challenge,
+    origin,
+    crossOrigin: false
+  }));
+  const rpIdHash = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", encoder.encode(RP_ID))
+  );
+  const authenticatorData = concatBytes(
+    rpIdHash,
+    new Uint8Array([flags]),
+    uint32(counter)
+  );
+  const clientDataHash = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", clientData)
+  );
+  const signedData = concatBytes(authenticatorData, clientDataHash);
+  const rawSignature = new Uint8Array(await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    keyPair.privateKey,
+    signedData
+  ));
+
+  return {
+    id: credentialId,
+    rawId: credentialId,
+    type: "public-key",
+    response: {
+      clientDataJSON: toBase64URL(clientData),
+      authenticatorData: toBase64URL(authenticatorData),
+      signature: toBase64URL(derEncodeEcdsaSignature(rawSignature)),
+      userHandle: null
+    },
+    authenticatorAttachment: "platform",
+    clientExtensionResults: {}
+  };
+}
+
 async function makeSyntheticCeremonies() {
   const keyPair = await crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
@@ -176,6 +223,7 @@ async function makeSyntheticCeremonies() {
   };
 
   return {
+    keyPair,
     registrationOptions,
     registrationResponse,
     authenticationOptions,
@@ -381,5 +429,91 @@ describe("SimpleWebAuthn server runtime compatibility", () => {
     });
 
     expect(result.verified).toBe(false);
+  });
+
+  it("rejects authentication when user verification is absent", async () => {
+    const response = await makeSyntheticAuthenticationResponse({
+      keyPair: fixtures.keyPair,
+      credentialId: fixtures.credential.id,
+      challenge: fixtures.authenticationOptions.challenge,
+      flags: 0x01
+    });
+
+    await expect(
+      verifyAuthenticationResponse({
+        response,
+        expectedChallenge: fixtures.authenticationOptions.challenge,
+        expectedOrigin: ORIGIN,
+        expectedRPID: RP_ID,
+        credential: fixtures.credential,
+        requireUserVerification: true
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects authentication when user presence is absent", async () => {
+    const response = await makeSyntheticAuthenticationResponse({
+      keyPair: fixtures.keyPair,
+      credentialId: fixtures.credential.id,
+      challenge: fixtures.authenticationOptions.challenge,
+      flags: 0x04
+    });
+
+    await expect(
+      verifyAuthenticationResponse({
+        response,
+        expectedChallenge: fixtures.authenticationOptions.challenge,
+        expectedOrigin: ORIGIN,
+        expectedRPID: RP_ID,
+        credential: fixtures.credential,
+        requireUserVerification: true
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects an authentication counter rollback", async () => {
+    await expect(
+      verifyAuthenticationResponse({
+        response: fixtures.authenticationResponse,
+        expectedChallenge: fixtures.authenticationOptions.challenge,
+        expectedOrigin: ORIGIN,
+        expectedRPID: RP_ID,
+        credential: { ...fixtures.credential, counter: 2 },
+        requireUserVerification: true
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects an authentication response bound to a different credential ID", async () => {
+    await expect(
+      verifyAuthenticationResponse({
+        response: fixtures.authenticationResponse,
+        expectedChallenge: fixtures.authenticationOptions.challenge,
+        expectedOrigin: ORIGIN,
+        expectedRPID: RP_ID,
+        credential: { ...fixtures.credential, id: "different-synthetic-credential" },
+        requireUserVerification: true
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects a malformed CBOR registration attestation object", async () => {
+    const response = {
+      ...fixtures.registrationResponse,
+      response: {
+        ...fixtures.registrationResponse.response,
+        attestationObject: toBase64URL(new Uint8Array([0xff]))
+      }
+    };
+
+    await expect(
+      verifyRegistrationResponse({
+        response,
+        expectedChallenge: fixtures.registrationOptions.challenge,
+        expectedOrigin: ORIGIN,
+        expectedRPID: RP_ID,
+        requireUserVerification: true
+      })
+    ).rejects.toThrow();
   });
 });
