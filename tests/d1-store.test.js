@@ -16,7 +16,8 @@ import {
   revokeSession,
   findOwner,
   listActiveCredentials,
-  createOwnerWithCredential
+  createOwnerWithCredential,
+  revokeAllSessions
 } from "../src/auth/d1-store.js";
 
 const migration = readFileSync(
@@ -341,6 +342,21 @@ test("new challenges and sessions prune expired or revoked rows", async () => {
     ).run("revoked-session", "revoked-csrf", 1, 100, 5);
     await createSession(binding, { now: 10 });
     assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM auth_sessions WHERE session_hash IN ('expired-session', 'revoked-session')").get().n, 0);
+  } finally {
+    sqlite.close();
+  }
+});
+
+
+test("owner-wide session revocation invalidates every active session", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const first = await createSession(binding, { now: 1000 });
+    const second = await createSession(binding, { now: 1001 });
+    assert.equal(await revokeAllSessions(binding, { now: 1002 }), 2);
+    assert.equal(await findActiveSession(binding, { sessionToken: first.sessionToken, now: 1003 }), null);
+    assert.equal(await findActiveSession(binding, { sessionToken: second.sessionToken, now: 1003 }), null);
+    assert.equal(await revokeAllSessions(binding, { now: 1004 }), 0);
   } finally {
     sqlite.close();
   }
