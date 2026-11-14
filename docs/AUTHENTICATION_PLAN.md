@@ -32,7 +32,9 @@ References:
 - Licence: MIT for the server package.
 - The server package's current JSR documentation explicitly lists Cloudflare Workers as a supported runtime.
 
-`@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes the synthetic Worker-runtime compatibility suite. The browser uses native WebAuthn APIs (`navigator.credentials.create/get`) rather than a separate browser library. A lockfile, current advisory review, real D1 test, and real Safari/iPhone ceremony remain outstanding. Do not load a third-party CDN script on authenticated pages.
+`@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes the synthetic Worker-runtime compatibility suite. The browser uses native WebAuthn APIs (`navigator.credentials.create/get`) rather than a separate browser library. `@simplewebauthn/server@14.1.0` is the latest npm release as of 14 November 2026. Snyk currently lists zero direct vulnerabilities for this version; the v14.0.2 release fixed two moderate certificate-revocation advisories and v14.1.0 includes subsequent verification hardening. This is not a complete transitive-dependency audit. CI now runs `npm audit --omit=dev --audit-level=moderate`; a committed lockfile, review of transitive results, real D1 test, and real Safari/iPhone ceremony remain outstanding.
+
+References: [npm package](https://www.npmjs.com/package/@simplewebauthn/server), [Snyk package report](https://security.snyk.io/package/npm/%40simplewebauthn%2Fserver), [maintainer changelog](https://github.com/MasterKale/SimpleWebAuthn/blob/master/CHANGELOG.md), [maintainer advisories](https://github.com/MasterKale/SimpleWebAuthn/security/advisories). Do not load a third-party CDN script on authenticated pages.
 
 References:
 - https://jsr.io/@simplewebauthn/server
