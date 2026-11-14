@@ -7,7 +7,6 @@ import {
   createChallenge,
   consumeChallenge,
   consumeRateLimit,
-  consumeRateLimit,
   storeCredential,
   findActiveCredential,
   updateCredentialCounter,
