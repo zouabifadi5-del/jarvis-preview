@@ -4,13 +4,13 @@
 - [x] Keep the public preview separate from the private core repository.
 - [x] Create the `jarvis-foundation` development branch.
 - [x] Document the architecture and security boundaries.
-- [ ] Review and approve the first client implementation.
+- [ ] Owner review of the first client implementation (awaiting user review).
 
 ## Milestone 1 — Usable client
-- [ ] Responsive mobile-first command interface.
-- [ ] Clear offline / preview / service-connected status.
-- [ ] Accessible controls and keyboard support.
-- [ ] No fake AI responses or misleading "online" claims.
+- [x] Responsive mobile-first command interface.
+- [x] Clear preview / service-not-connected status.
+- [x] Accessible labeled controls and keyboard submission.
+- [x] No simulated AI responses or misleading online claims; test input stays local.
 
 ## Milestone 2 — Minimal service
 - [ ] Choose a genuinely free backend/runtime.
