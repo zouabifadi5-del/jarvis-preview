@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   createChallenge,
   consumeChallenge,
+  consumeRateLimit,
   storeCredential,
   findActiveCredential,
   updateCredentialCounter,
@@ -501,6 +502,40 @@ test("recovery challenges are purpose-bound, single-use, and require a code hash
       challenge: issued.challenge,
       now: 1002
     }), null);
+  } finally {
+    sqlite.close();
+  }
+});
+
+
+test("rate-limit counters increment atomically within a fixed window and expire", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const bucketHash = "A".repeat(43);
+    const first = await consumeRateLimit(binding, {
+      bucketHash, windowStart: 900, windowSeconds: 300, limit: 2, now: 901
+    });
+    assert.deepEqual(first, { allowed: true, count: 1, remaining: 1, resetAt: 1200 });
+    const second = await consumeRateLimit(binding, {
+      bucketHash, windowStart: 900, windowSeconds: 300, limit: 2, now: 902
+    });
+    assert.equal(second.allowed, true);
+    assert.equal(second.count, 2);
+    const third = await consumeRateLimit(binding, {
+      bucketHash, windowStart: 900, windowSeconds: 300, limit: 2, now: 903
+    });
+    assert.equal(third.allowed, false);
+    assert.equal(third.count, 3);
+
+    const nextWindow = await consumeRateLimit(binding, {
+      bucketHash, windowStart: 1200, windowSeconds: 300, limit: 2, now: 1201
+    });
+    assert.equal(nextWindow.allowed, true);
+    assert.equal(nextWindow.count, 1);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM auth_rate_limits").get().n, 1);
+    await assert.rejects(consumeRateLimit(binding, {
+      bucketHash: "short", windowStart: 1200, windowSeconds: 300, limit: 2, now: 1201
+    }), TypeError);
   } finally {
     sqlite.close();
   }
