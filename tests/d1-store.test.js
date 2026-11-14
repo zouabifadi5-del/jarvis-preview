@@ -101,6 +101,16 @@ test("challenge issuance is random, purpose-bound, and single-use", async () => 
       now: 1001
     }), issued.challenge);
 
+    const addCredentialChallenge = await createChallenge(binding, {
+      purpose: "credential_add",
+      now: 1002
+    });
+    assert.equal(await consumeChallenge(binding, {
+      challenge: addCredentialChallenge.challenge,
+      purpose: "credential_add",
+      now: 1003
+    }), addCredentialChallenge.challenge);
+
     assert.equal(await consumeChallenge(binding, {
       challenge: issued.challenge,
       purpose: "authentication",
