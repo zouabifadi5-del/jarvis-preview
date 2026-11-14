@@ -168,9 +168,14 @@ function makeRouteD1() {
           return { success: true, meta: { changes: item ? 1 : 0 } };
         } else if (sql.includes("UPDATE auth_sessions SET revoked_at")) {
           const [now, hash] = values;
-          const item = state.sessions.find((row) => row.session_hash === hash && row.revoked_at === null);
-          if (item) item.revoked_at = now;
-          return { success: true, meta: { changes: item ? 1 : 0 } };
+          if (sql.includes("WHERE session_hash = ?")) {
+            const item = state.sessions.find((row) => row.session_hash === hash && row.revoked_at === null);
+            if (item) item.revoked_at = now;
+            return { success: true, meta: { changes: item ? 1 : 0 } };
+          }
+          const active = state.sessions.filter((row) => row.revoked_at === null);
+          for (const item of active) item.revoked_at = now;
+          return { success: true, meta: { changes: active.length } };
         }
         return { success: true, meta: { changes: 1 } };
       }
@@ -629,6 +634,8 @@ describe("JARVIS Worker runtime contract", () => {
     expect(registrationCookies).toContain("SameSite=Strict");
     expect(registrationCookies).toContain("__Host-jarvis_csrf=");
     expect(registrationCookies).not.toContain("Domain=");
+    const registrationSessionCookie = registrationCookies.match(/__Host-jarvis_session=([^;,]+)/)?.[1];
+    expect(registrationSessionCookie).toBeTruthy();
 
     const closed = await handleAuthRequest(request("/auth/register/options", {
       method: "POST", headers: bootstrapHeaders
@@ -741,6 +748,24 @@ describe("JARVIS Worker runtime contract", () => {
       headers: { Cookie: "__Host-jarvis_session=" + sessionCookie }
     }), env);
     expect(afterLogout.status).toBe(401);
+
+    const logoutAllResponse = await handleAuthRequest(request("/auth/logout-all", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + registrationSessionCookie,
+        "X-CSRF-Token": registered.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    }), env);
+    expect(logoutAllResponse.status).toBe(200);
+    await expect(logoutAllResponse.json()).resolves.toMatchObject({ authenticated: false, revokedCount: 1 });
+    const afterLogoutAll = await handleAuthRequest(request("/auth/me", {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + registrationSessionCookie }
+    }), env);
+    expect(afterLogoutAll.status).toBe(401);
   });
 
   it("does not disclose whether an owner has completed enrollment", async () => {
