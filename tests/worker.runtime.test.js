@@ -167,4 +167,48 @@ describe("JARVIS Worker runtime contract", () => {
     await expect(response.json()).resolves.toEqual({ error: "bootstrap_not_authorized" });
   });
 
+  it("issues one-time registration options only with the bootstrap secret", async () => {
+    const issued = [];
+    const db = {
+      prepare(sql) {
+        if (sql.includes("SELECT id, created_at, enrollment_closed_at")) {
+          return { async first() { return null; } };
+        }
+        return {
+          bind(...values) {
+            return {
+              async run() {
+                issued.push({ sql, values });
+                return { success: true, meta: { changes: 1 } };
+              }
+            };
+          }
+        };
+      }
+    };
+    const secret = "c".repeat(48);
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_BOOTSTRAP_SECRET: secret
+    };
+    const response = await handleAuthRequest(request("/auth/register/options", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        "X-Jarvis-Bootstrap": secret
+      }
+    }), env);
+    expect(response.status).toBe(200);
+    const options = await response.json();
+    expect(options.rp.id).toBe("example.test");
+    expect(options.challenge).toMatch(/^[A-Za-z0-9_-]{40,}$/);
+    expect(options.authenticatorSelection.residentKey).toBe("required");
+    expect(options.authenticatorSelection.userVerification).toBe("required");
+    expect(issued).toHaveLength(1);
+    expect(issued[0].values[1]).toBe(options.challenge);
+    expect(issued[0].values[2]).toBe("registration");
+  });
+
 });
