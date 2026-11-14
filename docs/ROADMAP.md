@@ -15,7 +15,7 @@
 ## Milestone 2 — Minimal service
 - [x] Select Cloudflare Workers as the provisional backend candidate.
 - [x] Connect the public preview repository and configure Cloudflare's production branch as `jarvis-foundation`.
-- [x] Complete a successful deployment build of the health-only worker scaffold.
+- [ ] Verify the active deployment was built from `jarvis-foundation` and serves the health-only worker scaffold.
 - [ ] Verify the live `/health` response and independently confirm zero-cost account/billing status.
 - [ ] Keep credentials on the server only.
 - [ ] Add request validation before accepting commands.
