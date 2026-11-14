@@ -620,6 +620,9 @@ export async function handleAuthRequest(request, env) {
   const { pathname } = new URL(request.url);
 
   try {
+    const limited = await enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now);
+    if (limited) return limited;
+
     if (pathname === "/auth/register/options" && request.method === "POST") {
       return await registrationOptions(request, env, cfg, now);
     }
