@@ -226,6 +226,7 @@ async function enrollOwner() {
 async function recoverOwner() {
   await requireWebAuthn();
   const recoveryCode = recoveryCodeInput.value.trim();
+  recoveryCodeInput.value = "";
   if (recoveryCode.length < 40) throw new Error("Enter one complete unused recovery code.");
   const options = await api("/auth/recovery/options", {
     method: "POST",
