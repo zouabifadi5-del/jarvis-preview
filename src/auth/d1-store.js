@@ -436,6 +436,9 @@ export async function completeOwnerRecovery(db, {
       "UPDATE owner_recovery_codes SET used_at = ?, used_challenge_hash = ? WHERE code_hash = ? AND used_at IS NULL"
     ).bind(now, challengeHash, recoveryCodeHash),
     db.prepare(
+      `UPDATE owner_credentials SET revoked_at = ? WHERE revoked_at IS NULL AND ${claimExists}`
+    ).bind(now, recoveryCodeHash, challengeHash),
+    db.prepare(
       `INSERT INTO owner_credentials (credential_id, owner_id, public_key, sign_count, transports_json, device_type, backed_up, created_at) SELECT ?, 1, ?, ?, ?, ?, ?, ? WHERE ${claimExists}`
     ).bind(id, publicKey, counter, JSON.stringify(transports), deviceType, backedUp ? 1 : 0, now, recoveryCodeHash, challengeHash),
     db.prepare(
