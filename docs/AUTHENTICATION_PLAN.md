@@ -21,26 +21,29 @@ References:
 - https://simplewebauthn.dev/docs/packages/server/
 - https://simplewebauthn.dev/docs/packages/browser/
 
-## 2. Persistence candidate
+## 2. Selected persistence: Cloudflare D1
 
-**Candidate: one SQLite-backed Cloudflare Durable Object dedicated to the single owner.**
+**Decision: use one Cloudflare D1 database for authentication records. Do not use Durable Objects for this phase.**
 
-Cloudflare's current documentation describes Durable Object storage as private to each object, transactional, and strongly consistent. The current Workers Free documentation lists SQLite-backed Durable Objects on Free, with limits including 100,000 Durable Object requests/day, 13,000 GB-seconds/day, 5 million SQL row reads/day, 100,000 SQL row writes/day, and 5 GB total storage. Workers Free itself currently lists 100,000 Worker requests/day and 10 ms CPU per invocation.
+D1 is the simpler fit for this relational, low-volume workload: one owner row, passkey credentials, one-time challenges, and revocable sessions. It supports SQL constraints, indexes, prepared statements, and atomic database operations without introducing a custom stateful Durable Object class or routing layer. A Durable Object remains a valid option for future coordinated live-agent state, but that capability is unnecessary for passkey authentication alone.
 
-This is not proof that the user's account is on the Free plan. The account's actual plan and billing settings must be verified before creating the namespace or deploying a migration. Exceeding Free limits causes operations to fail on Free; do not switch to Paid to resolve that.
+Cloudflare's current Workers Free D1 limits are 5 million rows read/day, 100,000 rows written/day, 5 GB total account storage, 500 MB per database, and 10 databases per account. D1 has no compute-hour charge. Free-tier query limits fail closed when exceeded until the daily reset; storage exhaustion blocks additional writes and schema changes. The Free plan has 50 D1 read subrequests per Worker invocation. These limits are ample for a single-owner authentication service if queries stay indexed and challenge/session cleanup is bounded.
+
+For comparison, SQLite-backed Durable Objects are also available on Workers Free, but add their own request and duration quotas (currently 100,000 requests/day and 13,000 GB-seconds/day) plus SQL storage quotas. They are designed for stateful coordination; we do not need that complexity for the current auth database.
+
+This is a technical selection, **not** proof that the user's Cloudflare account is on Free or that billing is disabled. Verify the actual account plan and billing controls before creating any database or applying this migration. Never upgrade or enable billing to overcome a quota. If Free eligibility is unclear, stop.
 
 References:
-- https://developers.cloudflare.com/workers/platform/pricing/
-- https://developers.cloudflare.com/durable-objects/platform/limits/
-- https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/
+- https://developers.cloudflare.com/d1/platform/pricing/
+- https://developers.cloudflare.com/d1/platform/limits/
+- https://developers.cloudflare.com/durable-objects/platform/pricing/
 
-The Durable Object would store only:
-- one owner record and enrolled passkey public credential(s);
-- short-lived, single-use WebAuthn challenges;
-- hashed opaque session identifiers with expiry and revocation state;
-- minimal security metadata such as credential signature counters and timestamps.
+The unprovisioned schema proposal is [migrations/0001_owner_auth.sql](../migrations/0001_owner_auth.sql). It stores only:
+- a singleton owner marker and passkey credential public keys/metadata;
+- short-lived WebAuthn challenges, consumed once with an atomic delete-returning operation;
+- hashed opaque session identifiers, hashed CSRF tokens, expiry, and revocation metadata.
 
-Do not store conversation memory, emails, contacts, or other personal content in this phase.
+Never store passkey private keys, biometric data, plaintext session tokens, prompts, conversation memory, emails, or contacts in this authentication database.
 
 ## 3. Authentication flow
 
@@ -56,7 +59,7 @@ Do not store conversation memory, emails, contacts, or other personal content in
 ### Owner sign-in
 1. Generate authentication options for the enrolled credential(s), with a new random five-minute challenge and user verification required.
 2. Verify the assertion server-side against the stored public key, expected challenge, exact origin, exact RP ID, and current credential counter.
-3. Consume the challenge once and update the credential counter in a transaction.
+3. Atomically consume the challenge once (a replay must return no row); update the credential counter with a compare-and-set write so concurrent assertions cannot silently overwrite a newer counter.
 4. Generate a cryptographically random opaque session ID. Store only its hash and expiry.
 5. Set a host-only `Secure; HttpOnly; SameSite=Strict` cookie with `Path=/`; omit `Domain`. Use a short idle timeout and an absolute expiry. Rotate after authentication and privilege changes.
 
@@ -114,7 +117,7 @@ Unknown routes and methods remain rejected. No AI command endpoint is added in t
 Do not enable authentication or store personal data until all are true:
 1. The production hostname, active branch, and deployed code hash are verified.
 2. The actual Cloudflare account plan and billing controls are confirmed zero-cost.
-3. SQLite Durable Object limits and account eligibility are checked in the actual account.
+3. D1 database limits and account eligibility are checked in the actual account.
 4. The pinned library versions pass Worker runtime tests and dependency review.
 5. All negative security tests above pass.
 6. One-time bootstrap and recovery have been reviewed; no public enrollment remains.
