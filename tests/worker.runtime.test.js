@@ -736,7 +736,7 @@ describe("JARVIS Worker runtime contract", () => {
     expect(ownerWithoutActiveCredentials.status).toBe(401);
     const first = await noOwner.json();
     const second = await ownerWithoutActiveCredentials.json();
-    expect(first).toEqual({ error: "authentication_unavailable" });
+    expect(first).toEqual({ error: "authentication_failed" });
     expect(second).toEqual(first);
   });
 
