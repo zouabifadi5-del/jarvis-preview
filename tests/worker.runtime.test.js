@@ -187,6 +187,13 @@ function makeRouteD1() {
             transports_json: transportsJson, device_type: deviceType, backed_up: backedUp,
             created_at: createdAt, last_used_at: null, revoked_at: null
           });
+        } else if (sql.includes("UPDATE owner_credentials SET revoked_at")) {
+          const [now, recoveryHash, claimHash] = values;
+          const claim = state.recoveryCodes.some((row) => row.code_hash === recoveryHash && row.used_claim_hash === claimHash);
+          if (!claim) return { success: true, meta: { changes: 0 } };
+          const active = state.credentials.filter((row) => row.revoked_at === null);
+          for (const row of active) row.revoked_at = now;
+          return { success: true, meta: { changes: active.length } };
         } else if (sql.includes("INSERT INTO owner_recovery_codes")) {
           if (sql.includes("SELECT ?, ?")) {
             const [hash, createdAt, recoveryHash, challengeHash] = values;
