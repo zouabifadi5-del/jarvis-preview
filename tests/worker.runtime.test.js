@@ -414,6 +414,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: { prepare() { throw new Error("unauthorized bootstrap must not touch storage"); } },
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_BOOTSTRAP_SECRET: "b".repeat(48)
     };
     const response = await handleAuthRequest(request("/auth/register/options", {
@@ -451,6 +452,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_BOOTSTRAP_SECRET: secret,
     };
     const response = await handleAuthRequest(request("/auth/register/options", {
@@ -518,6 +520,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
     });
     expect(response.status).toBe(200);
     const options = await response.json();
@@ -705,6 +708,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_BOOTSTRAP_SECRET: secret
     };
     const bootstrapHeaders = { Origin: "https://example.test", "X-Jarvis-Bootstrap": secret };
@@ -997,6 +1001,7 @@ describe("JARVIS Worker runtime contract", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_BOOTSTRAP_SECRET: "r".repeat(64),
     };
     const origin = "https://example.test";
@@ -1086,6 +1091,7 @@ describe("authentication rate limits", () => {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
     };
     let last;
