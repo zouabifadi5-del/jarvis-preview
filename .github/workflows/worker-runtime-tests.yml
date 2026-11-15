@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - jarvis-worker-runtime-tests
+      - jarvis-iphone-only
   pull_request:
     branches:
       - jarvis-foundation
@@ -32,8 +33,8 @@ jobs:
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm audit --omit=dev --audit-level=moderate
       - name: Install temporary test tooling and WebAuthn candidate
         run: npm install --no-save --no-audit --no-fund vitest@4.1.0 @cloudflare/vitest-plugin@1.8.2 @simplewebauthn/server@14.1.0
-      - name: Check browser client JavaScript syntax
-        run: node --check public/app.js
+      - name: Check browser and worker JavaScript syntax
+        run: node --check public/app.js && node --check public/assistant.js && node --check src/assistant.js && node --check src/worker.js
       - name: Validate Wrangler and static asset configuration without deploying
         run: npx --yes wrangler@4.148.0 deploy --dry-run
       - name: Run tests inside the Cloudflare Workers runtime
