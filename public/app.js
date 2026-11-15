@@ -124,6 +124,7 @@ function showSignedOut() {
   signedOut.hidden = false;
   signedIn.hidden = true;
   recoveryPanel.hidden = true;
+  window.dispatchEvent(new CustomEvent("jarvis-auth-changed", { detail: { authenticated: false } }));
 }
 function showRecoveryCodes(codes) {
   if (!Array.isArray(codes) || codes.length !== 10 || codes.some((code) => typeof code !== "string")) {
@@ -156,7 +157,7 @@ function acknowledgeRecoveryCodes() {
   signedIn.hidden = false;
   setStatus("Recovery codes acknowledged. Owner session active.", "success");
 }
-async function showSignedIn() { signedOut.hidden = true; signedIn.hidden = false; await loadCredentials(); }
+async function showSignedIn() { signedOut.hidden = true; signedIn.hidden = false; window.dispatchEvent(new CustomEvent("jarvis-auth-changed", { detail: { authenticated: true } })); await loadCredentials(); }
 async function loadCredentials() {
   credentialsNode.replaceChildren();
   const result = await api("/auth/credentials");
