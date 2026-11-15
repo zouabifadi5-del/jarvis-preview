@@ -1,13 +1,13 @@
 # Remote D1 provisioning and deployment gate
 
-**Status:** The owner-auth D1 database has been created on the Cloudflare Free plan, and the isolated branch's Wrangler config contains its `DB` binding. The owner confirmed that migrations `0001_owner_auth.sql` and `0002_auth_rate_limits.sql` were both applied successfully in the remote D1 console. The read-only schema verification output and real D1 smoke tests remain unconfirmed. No Worker secrets or variables have been configured, and no Worker deployment has been performed.
+**Status:** The remote D1 database `jarvis-owner-auth` exists. Both migrations were applied directly and their history was recorded; a read-only query verified all six application tables and five expected indexes. All application tables remain empty, and `PRAGMA foreign_key_check` returned no violations. The deployed Worker settings list `DB`, `AI`, `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `JARVIS_BOOTSTRAP_SECRET`, and `JARVIS_RATE_LIMIT_HMAC_SECRET` bindings; secret values are not readable through this inspection. The deployed Worker source is still the health-check scaffold and does not execute the isolated authentication routes. No authentication code has been deployed and no owner passkey has been enrolled.
 
 ## Provisioned database
 
 - Name: `jarvis-owner-auth`
 - Binding: `DB`
 - Database ID: `2bee8195-488a-4c73-ba42-d21950e890c4`
-- Scope: isolated `jarvis-worker-runtime-tests` branch only; do not add this binding to the live Worker.
+- Scope: created for the isolated JARVIS owner-auth work. Cloudflare currently lists a `DB` binding on the deployed Worker settings as well; the currently deployed health-only source does not use it. Do not deploy authentication code until the separate deployment gate is approved.
 
 ## What the authentication database stores
 
@@ -23,7 +23,7 @@ It must not store conversations, prompts, private memory, email, contact lists, 
 
 ## Required Worker configuration
 
-The isolated branch configures Workers Static Assets and the D1 binding above.
+The isolated branch configures Workers Static Assets and the D1 binding above. The deployed Worker settings also currently list the D1 binding, but the deployed source remains a health-only scaffold.
 
 Required non-secret Worker variables:
 - `AUTH_ORIGIN`: the exact HTTPS origin serving the owner page and API.
@@ -41,8 +41,8 @@ These values must be verified against the actual served owner page immediately b
 
 ## Remaining approval-gated sequence
 
-1. Confirm the read-only schema query returns the six expected tables and the expiry index; perform real D1 smoke tests for both migrations.
-2. Configure `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, temporary `JARVIS_BOOTSTRAP_SECRET`, and persistent `JARVIS_RATE_LIMIT_HMAC_SECRET` through Cloudflare controls.
+1. [x] Read-only verification confirmed all six application tables, five indexes, two migration-history records, empty application tables, and no foreign-key violations.
+2. Perform real D1 read/write/delete smoke tests using synthetic records only; this is a separate write operation and still needs explicit approval. The Worker settings expose the required binding names, but the secret values and exact origin configuration still need safe verification.
 3. Obtain separate explicit owner approval before deploying the isolated Worker branch.
 4. Verify the served page origin, CSP, cookies, and static assets. Only then perform the first passkey enrollment on the owner's iPhone.
 5. Immediately after successful first-owner enrollment, remove the temporary `JARVIS_BOOTSTRAP_SECRET` from the Worker. The database's singleton owner marker permanently closes first-owner enrollment.
