@@ -1,9 +1,10 @@
 /**
  * J.A.R.V.I.S. Worker entry point.
- * Authentication routes fail closed until D1 and explicit origin/RP settings
- * are configured. No AI calls or personal-content storage are exposed here.
+ * Owner authentication and assistant requests fail closed until the required
+ * D1, origin, WebAuthn, and Workers AI bindings are configured.
  */
 import { handleAuthRequest } from "./auth/routes.js";
+import { handleAssistantRequest } from "./assistant.js";
 
 function jsonResponse(request, body, status = 200) {
   const headers = {
@@ -27,9 +28,14 @@ export default {
       return jsonResponse(request, {
         service: "jarvis-api",
         status: "ok",
-        mode: "authentication-scaffold",
-        aiConnected: false
+        mode: "iphone-assistant",
+        aiConfigured: Boolean(env?.AI),
+        authenticationConfigured: Boolean(env?.DB && env?.AUTH_ORIGIN && env?.WEBAUTHN_RP_ID)
       });
+    }
+
+    if (url.pathname === "/assistant/chat") {
+      return handleAssistantRequest(request, env);
     }
 
     if (url.pathname.startsWith("/auth/")) {
@@ -39,7 +45,9 @@ export default {
     const isStaticAsset = url.pathname === "/" ||
       url.pathname.endsWith(".html") ||
       url.pathname.endsWith(".js") ||
-      url.pathname.endsWith(".css");
+      url.pathname.endsWith(".css") ||
+      url.pathname.endsWith(".webmanifest") ||
+      url.pathname.endsWith(".svg");
     const acceptsHtml = (request.headers.get("Accept") || "").includes("text/html");
     if (
       env?.ASSETS &&
