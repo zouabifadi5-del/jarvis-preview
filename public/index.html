@@ -2,26 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#090d16">
   <meta name="referrer" content="no-referrer">
-  <title>J.A.R.V.I.S. — Owner Access</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JARVIS">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
+  <script src="/assistant.js" defer></script>
+  <title>J.A.R.V.I.S. — Private Assistant</title>
 </head>
 <body>
   <main>
     <div class="mark" aria-hidden="true">J</div>
-    <div class="eyebrow">PERSONAL SYSTEM</div>
+    <div class="eyebrow">PERSONAL SYSTEM · IPHONE EDITION</div>
     <h1>J.A.R.V.I.S.</h1>
     <p>Private owner access · Passkey protected</p>
     <div id="status" class="status" role="status" aria-live="polite">Checking authentication status…</div>
-
     <section id="signed-out">
       <div class="panel">
         <h2>Owner sign-in</h2>
-        <p>Use the passkey registered to your owner account. Your device will request local user verification.</p>
+        <p>Use the passkey registered to your owner account. Your iPhone requests local user verification.</p>
         <button id="login" type="button">Continue with passkey</button>
       </div>
       <div class="panel">
@@ -34,26 +40,24 @@
       </div>
       <div class="panel">
         <h2>Emergency recovery</h2>
-        <p>If you lose access to every registered passkey, use one unused recovery code to register a replacement passkey. Each code works once.</p>
+        <p>If you lose access to every registered passkey, use one unused recovery code to register a replacement passkey.</p>
         <label for="recovery-code">One-time recovery code</label>
         <input id="recovery-code" type="password" autocomplete="off" spellcheck="false" maxlength="128" placeholder="Paste one recovery code">
         <button id="recover" type="button" class="secondary">Recover owner access</button>
       </div>
     </section>
-
     <section id="recovery-panel" hidden class="panel">
       <h2>Save your recovery codes now</h2>
-      <p>These ten codes are shown only once. Store them offline in a safe place. Anyone with a code can replace the owner passkey.</p>
+      <p>These ten codes are shown only once. Store them offline in a safe place.</p>
       <pre id="recovery-list"></pre>
       <button id="copy-recovery" type="button" class="secondary">Copy recovery codes</button>
       <button id="download-recovery" type="button" class="secondary">Download recovery codes</button>
       <button id="acknowledge-recovery" type="button">I saved these codes</button>
     </section>
-
     <section id="signed-in" hidden>
       <div class="panel">
         <h2>Owner session active</h2>
-        <p>This confirms authentication only. JARVIS assistant features are not connected yet.</p>
+        <p>JARVIS is available only after your passkey session is verified.</p>
         <div id="credentials"></div>
         <button id="reauthenticate" type="button" class="secondary">Confirm passkey for security changes</button>
         <button id="add-credential" type="button" class="secondary">Add another passkey</button>
@@ -61,8 +65,21 @@
         <button id="logout-all" type="button" class="danger">Sign out on all devices</button>
       </div>
     </section>
-
-    <div class="note"><strong>Security boundary.</strong> No conversation memory, personal files, AI tools, or external accounts are connected on this page.</div>
+    <section id="assistant-panel" hidden class="assistant-panel" aria-label="JARVIS assistant">
+      <div class="assistant-heading"><div><div class="eyebrow">OWNER SESSION</div><h2>How can I help?</h2></div><span class="live-dot" aria-label="Ready"></span></div>
+      <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-relevant="additions text"><div class="message assistant-message">JARVIS online. Your conversation stays in this page session and is not saved as long-term memory.</div></div>
+      <form id="chat-form" class="chat-form">
+        <label class="sr-only" for="chat-input">Message JARVIS</label>
+        <textarea id="chat-input" rows="2" maxlength="4000" placeholder="Message JARVIS…" required></textarea>
+        <button id="send-command" type="submit">Send</button>
+      </form>
+      <div class="chat-tools"><button id="speak-last" type="button" class="secondary">Speak last reply</button><button id="clear-chat" type="button" class="secondary">Clear conversation</button></div>
+      <p class="muted">AI requests use Cloudflare Workers AI. The free allowance is limited and resets daily. No paid fallback is configured. This first release cannot control iPhone settings or run actions.</p>
+    </section>
+    <div class="note"><strong>Privacy boundary.</strong> Authentication uses your passkey. AI prompts are sent to Cloudflare for inference; chat history is kept only in this open page and is not written to JARVIS storage.</div>
   </main>
+  <script>
+    if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  </script>
 </body>
 </html>
