@@ -1,0 +1,88 @@
+name: Cloudflare bridge
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Choose a Cloudflare operation"
+        required: true
+        type: choice
+        options:
+          - inspect
+          - list-migrations
+          - apply-migrations
+      confirm_apply:
+        description: "Required for apply-migrations: confirm that you intend to change the remote D1 database"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-bridge-production
+  cancel-in-progress: false
+
+jobs:
+  cloudflare:
+    if: github.ref == 'refs/heads/cloudflare-automation-bridge'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check out the isolated bridge branch
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets without printing them
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::Missing CLOUDFLARE_API_TOKEN repository secret"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID repository secret"; exit 1; }
+
+      - name: Inspect Cloudflare access and JARVIS resources
+        if: inputs.operation == 'inspect'
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4"
+          verify="$(mktemp)"
+          worker="$(mktemp)"
+          database="$(mktemp)"
+          trap 'rm -f "$verify" "$worker" "$database"' EXIT
+          code="$(curl -sS -o "$verify" -w '%{http_code}' "$api/user/tokens/verify" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+          test "$code" = "200" || { echo "::error::Cloudflare token verification failed (HTTP $code)"; exit 1; }
+          jq -e '.success == true and .result.status == "active"' "$verify" >/dev/null
+          echo "Cloudflare API token: active"
+          code="$(curl -sS -o "$worker" -w '%{http_code}' "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jarvis-preview-api/settings" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+          test "$code" = "200" || { echo "::error::Cannot read Worker settings (HTTP $code). Check Workers Scripts Read permission."; exit 1; }
+          jq -e '.success == true' "$worker" >/dev/null
+          echo "Worker jarvis-preview-api: readable"
+          code="$(curl -sS -o "$database" -w '%{http_code}' "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/2bee8195-488a-4c73-ba42-d21950e890c4" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+          test "$code" = "200" || { echo "::error::Cannot read D1 database metadata (HTTP $code). Check D1 Read permission."; exit 1; }
+          jq -e '.success == true' "$database" >/dev/null
+          echo "D1 database jarvis-owner-auth: readable"
+          echo "Inspection completed. No Cloudflare resources were changed."
+
+      - name: List remote D1 migrations
+        if: inputs.operation == 'list-migrations' || inputs.operation == 'apply-migrations'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.148.0 d1 migrations list jarvis-owner-auth --remote --config wrangler.toml
+
+      - name: Apply remote D1 migrations (explicit manual confirmation required)
+        if: inputs.operation == 'apply-migrations' && inputs.confirm_apply == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.148.0 d1 migrations apply jarvis-owner-auth --remote --config wrangler.toml
+
+      - name: Refuse unconfirmed migration request
+        if: inputs.operation == 'apply-migrations' && inputs.confirm_apply != true
+        run: |
+          echo "::error::Migration not applied. Re-run manually with confirm_apply enabled."
+          exit 1
