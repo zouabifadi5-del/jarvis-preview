@@ -29,7 +29,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 ## Data and memory protection
 
 - Keep the public `jarvis-preview` repository free of personal data, credentials, session material, and real owner memory. Keep `jarvis-core` private.
-- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed. A single Cloudflare D1 database is the selected storage design for credentials, challenges, and sessions only; its schema migration is unprovisioned. The owner has confirmed Free plan and no paid Workers subscription/trial; this remains owner-provided confirmation.
+- Do not persist personal memory until storage, access controls, backup behavior, deletion behavior, and zero-cost eligibility have been reviewed. A single Cloudflare D1 database is provisioned for credentials, challenges, sessions, recovery-code hashes, and rate-limit buckets only; both schema migrations are applied and read-only verified. The live Worker source remains a health-only scaffold and does not use the authentication routes. The owner has confirmed Free plan and no paid Workers subscription/trial; this remains owner-provided confirmation.
 - Minimize stored data. Give the owner controls to inspect, correct, export, and delete memory. Deletion must cover derived indexes and backups according to a documented retention policy.
 - Encrypt sensitive records at rest with a key held only in server-side secret storage; never commit encryption keys or place them in client code. HTTPS protects data in transit.
 - Do not log prompts, message bodies, memory contents, tokens, recovery codes, or provider secrets. Keep only minimal operational metadata with a defined retention period.
@@ -60,7 +60,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 2. Verify the hosting account remains on a genuinely zero-cost plan; do not enable billing or paid add-ons.
 3. Choose storage only after checking its current free limits, data location, access model, retention, and deletion semantics.
 4. Select and test a maintained WebAuthn verifier compatible with the runtime.
-5. Complete one-owner enrollment, passkey login, session rotation, logout, credential revocation, CSRF, recovery-code replacement, and sign-out-everywhere tests. Before production, implement rate limiting, validate against real D1, test the real Safari/iPhone ceremony, review dependency locking, and complete an independent security review.
+5. Complete one-owner enrollment, passkey login, session rotation, logout, credential revocation, CSRF, recovery-code replacement, and sign-out-everywhere tests. Rate limiting is implemented and synthetically tested. Before production, exercise the code against real D1 using disposable synthetic records, verify secret values and the live origin, test the real Safari/iPhone ceremony, review dependency locking, and complete an independent security review.
 6. Complete a security review and negative tests before storing any personal information.
 
 Until every gate is met, the service must remain a non-sensitive scaffold. A successful health check is not proof of authentication, privacy, or production readiness.
