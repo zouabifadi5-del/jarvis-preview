@@ -326,7 +326,7 @@ describe("JARVIS Worker runtime contract", () => {
     expect(response.status).toBe(200);
     expectHardenedHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
-      aiConnected: false
+      aiConfigured: false
     });
   });
 
