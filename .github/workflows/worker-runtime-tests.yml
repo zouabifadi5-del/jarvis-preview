@@ -27,8 +27,8 @@ jobs:
           package-manager-cache: false
       - name: Report Node.js and npm versions
         run: node --version && npm --version
-      - name: Validate D1 auth schema and storage helpers with local SQLite (no Cloudflare account)
-        run: node --experimental-sqlite --test tests/auth-schema.test.js tests/d1-store.test.js tests/worker.test.mjs
+      - name: Validate auth storage and assistant security paths with local SQLite (no Cloudflare account)
+        run: node --experimental-sqlite --test tests/auth-schema.test.js tests/d1-store.test.js tests/worker.test.mjs tests/assistant.test.js
       - name: Audit runtime dependency tree (moderate and above)
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm audit --omit=dev --audit-level=moderate
       - name: Install temporary test tooling and WebAuthn candidate
