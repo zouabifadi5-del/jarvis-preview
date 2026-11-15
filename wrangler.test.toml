@@ -1,0 +1,15 @@
+name = "jarvis-preview-api-test"
+main = "src/worker.js"
+compatibility_date = "2026-11-14"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jarvis-owner-auth-test"
+database_id = "00000000-0000-0000-0000-000000000001"
+
+# Intentionally no Workers AI binding: automated tests must not contact
+# Cloudflare's hosted inference service or require Cloudflare credentials.
