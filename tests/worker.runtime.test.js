@@ -314,8 +314,9 @@ describe("JARVIS Worker runtime contract", () => {
     await expect(response.json()).resolves.toEqual({
       service: "jarvis-api",
       status: "ok",
-      mode: "authentication-scaffold",
-      aiConnected: false
+      mode: "iphone-assistant",
+      aiConfigured: false,
+      authenticationConfigured: false
     });
   });
 
