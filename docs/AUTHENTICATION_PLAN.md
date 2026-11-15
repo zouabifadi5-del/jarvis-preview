@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Authentication Implementation Plan
 
-**Status:** Initial passkey routes and a native browser passkey UI are implemented on the isolated test branch; not deployed, not connected to a real D1 database, and not production-ready  
+**Status:** Initial passkey routes and a native browser passkey UI are implemented on the isolated test branch; both D1 migrations are applied and a synthetic D1 smoke test passed with cleanup; authentication code remains undeployed and is not production-ready  
 **Owner model:** One enrolled owner, no public sign-up  
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
@@ -52,14 +52,14 @@ Cloudflare's current Workers Free D1 limits are 5 million rows read/day, 100,000
 
 For comparison, SQLite-backed Durable Objects are also available on Workers Free, but add their own request and duration quotas (currently 100,000 requests/day and 13,000 GB-seconds/day) plus SQL storage quotas. They are designed for stateful coordination; we do not need that complexity for the current auth database.
 
-The owner has confirmed that the Cloudflare account is on the Free plan and has no paid Workers subscription or trial. This is an owner-provided confirmation, not an independent inspection of account billing controls. No database has been created. Never upgrade or enable billing to overcome a quota; stop if any unexpected paid prompt or requirement appears.
+The owner has confirmed that the Cloudflare account is on the Free plan and has no paid Workers subscription or trial. This is an owner-provided confirmation, not an independent inspection of account billing controls. The isolated owner-auth D1 database has been created and schema-verified; a synthetic data-path smoke test passed and its test records were cleaned up. Never upgrade or enable billing to overcome a quota; stop if any unexpected paid prompt or requirement appears.
 
 References:
 - https://developers.cloudflare.com/d1/platform/pricing/
 - https://developers.cloudflare.com/d1/platform/limits/
 - https://developers.cloudflare.com/durable-objects/platform/pricing/
 
-The schema in [migrations/0001_owner_auth.sql](../migrations/0001_owner_auth.sql) and [migrations/0002_auth_rate_limits.sql](../migrations/0002_auth_rate_limits.sql) has been applied to the existing isolated `jarvis-owner-auth` D1 database and verified read-only. Real D1 data-path smoke tests remain pending separate approval. It stores only:
+The schema in [migrations/0001_owner_auth.sql](../migrations/0001_owner_auth.sql) and [migrations/0002_auth_rate_limits.sql](../migrations/0002_auth_rate_limits.sql) has been applied to the existing isolated `jarvis-owner-auth` D1 database and verified. A real D1 smoke test using temporary synthetic records passed; the records were cleaned up and no owner account was created. It stores only:
 - a singleton owner marker and passkey credential public keys/metadata;
 - short-lived WebAuthn challenges, consumed once with an atomic delete-returning operation;
 - hashed opaque session identifiers, hashed CSRF tokens, expiry, and revocation metadata.
@@ -107,7 +107,7 @@ All routes are same-origin HTTPS. JSON bodies are content-type checked and cappe
 - `POST /auth/credentials/options` and `POST /auth/credentials/verify` — add another passkey to the existing owner account, requiring an authenticated session, CSRF token, and a passkey-authenticated session no older than five minutes.
 - `POST /auth/credentials/revoke` — revokes a selected credential only when another active credential remains; it also requires recent passkey authentication.
 
-Unknown routes and methods remain rejected. No AI command, memory, or external-account endpoint is implemented in this phase. These routes have not been deployed or tested against a real D1 database.
+Unknown routes and methods remain rejected. No AI command, memory, or external-account endpoint is implemented in this phase. These routes remain undeployed. The smoke test validated D1 storage operations with synthetic data, not the complete live WebAuthn browser ceremony.
 
 ## 5. Required security tests
 
