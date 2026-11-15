@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Zero-Cost Authentication Test Plan
 
-**Status:** Initial authentication routes, a same-origin native passkey UI, and synthetic end-to-end route tests are implemented on the isolated test branch; no D1 resource, secret, or deployment has been created or authorized.
+**Status:** Initial authentication routes, a same-origin native passkey UI, rate limiting, and synthetic end-to-end route tests are implemented on the isolated test branch. The owner-auth D1 database exists and both migrations have been applied and schema-verified. Authentication code remains undeployed; no real owner credential or passkey has been enrolled.
 **Target:** One owner, Safari on iPhone 17 Pro Max
 **Budget rule:** Free services only. Never enable billing, a paid plan, paid add-ons, or a trial.
 
@@ -12,7 +12,7 @@ Prove the owner-authentication design can work safely in the selected runtime be
 
 - Keep the current health-only Worker behavior as the public baseline.
 - Keep the live Worker health-only; auth route code on the isolated branch must fail closed until D1 and explicit origin settings are configured.
-- Do not provision a D1 database, Durable Object, bucket, or other cloud resource. The isolated branch now has a native WebAuthn owner-access page and Worker route code, but neither may be deployed or connected to real storage without separate explicit approval.
+- The owner-auth D1 database has already been provisioned and its schema migrations applied. Do not create additional Cloudflare resources. The isolated branch's auth code and native WebAuthn page remain undeployed.
 - Do not change Cloudflare billing, plan, production branch, DNS, or deployment settings.
 - Keep work isolated on `jarvis-worker-runtime-tests`; do not merge or deploy without approval, and never modify `jarvis-core`.
 - Record the current branch commit and ensure no secrets, credentials, or personal data are present in the public repository.
@@ -61,8 +61,8 @@ Record the date and the relevant plan/feature evidence in the project notes with
 ## Stage 4 — Isolated cloud smoke test (only after Stage 3 passes)
 
 - First confirm the intended branch, production hostname, and currently deployed code identity.
-- Use a separate preview/test environment, not the production owner service. Apply `migrations/0001_owner_auth.sql` only to that isolated D1 database.
-- Create only one isolated D1 database only after a separate explicit owner approval; record its ID in non-secret environment configuration, never in source code.
+- Use the existing `jarvis-owner-auth` D1 database only for the isolated owner-auth work; do not create another database.
+- Both migrations are already applied. Before any synthetic write/read/delete smoke test, obtain separate explicit owner approval and use disposable synthetic records only; do not create real owner credentials or store personal data.
 - Store synthetic test records only; no personal memory, real passkey, or production credential.
 - Test create/read/update/delete, atomic challenge consumption/replay rejection, credential counter compare-and-set, session revocation, expiry cleanup, and behavior at safe request limits.
 - Confirm that exceeding a Free quota fails closed and does not trigger paid usage or automatic upgrade.
@@ -93,8 +93,8 @@ Stop immediately if:
 ## Current verified project state
 
 - The live Worker remains unchanged and currently exposes only a health endpoint and a generic 404 response. The isolated test branch now contains a same-origin native WebAuthn owner interface, restrictive `_headers`, and Workers Static Assets configuration; none of these changes are deployed.
-- Latest verified CI run #263 passed 23 local SQLite/Node checks, 39 Cloudflare Workers runtime tests, a production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run build/config validation (62 test cases total). It includes a synthetic recovery ceremony with one-time recovery-code rotation. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43617630912
-- `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes synthetic Worker-runtime tests. First-owner registration, passkey login, session/logout, sign-out-everywhere, and multi-device credential-management routes, a same-origin native WebAuthn browser UI, and D1 storage helpers exist only on the isolated test branch. Synthetic route tests exercise registration, login, session, logout, replay, origin, signature, CSRF, and enrollment-enumeration cases. No database has been created, no secret configured, no route deployed, and no real passkey registered.
+- Latest verified CI run #320 passed 23 local SQLite/Node checks, 39 Cloudflare Workers runtime tests, a production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run build/config validation (62 test cases total). It includes synthetic recovery and rate-limit tests. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43622925213
+- `@simplewebauthn/server@14.1.0` is pinned in `package.json` and passes synthetic Worker-runtime tests. First-owner registration, passkey login, session/logout, sign-out-everywhere, and multi-device credential-management routes, a same-origin native WebAuthn browser UI, and D1 storage helpers exist only on the isolated test branch. Synthetic route tests exercise registration, login, session, logout, replay, origin, signature, CSRF, and enrollment-enumeration cases. The remote D1 database exists and its schema is verified; the deployed Worker settings list the relevant secret binding names, but secret values cannot be inspected. No authentication route has been deployed and no real passkey has been registered.
 - Authentication routes, recovery-code flow, and a browser passkey UI are implemented; synthetic registration/login/session/logout and recovery replacement ceremonies pass in workerd, but this is not production-ready. Real D1 integration, rate limiting, committed lockfile review, and iPhone acceptance remain incomplete. Offline recovery codes are implemented and tested synthetically. Owner memory and AI integration are not implemented.
 - No deployment or billing change is part of this plan.
 
