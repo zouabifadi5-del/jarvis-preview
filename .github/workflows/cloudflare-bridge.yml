@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - inspect
+          - schema-check
           - list-migrations
           - apply-migrations
       confirm_apply:
@@ -66,6 +67,24 @@ jobs:
           jq -e '.success == true' "$database" >/dev/null
           echo "D1 database jarvis-owner-auth: readable"
           echo "Inspection completed. No Cloudflare resources were changed."
+
+      - name: Read-only D1 schema inspection
+        if: inputs.operation == 'schema-check'
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4"
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          sql="SELECT name, type, tbl_name FROM sqlite_master WHERE type IN ('table', 'index') AND (name IN ('jarvis_owner', 'owner_credentials', 'auth_challenges', 'owner_recovery_codes', 'auth_sessions', 'auth_rate_limits', 'd1_migrations') OR name LIKE 'idx_%') ORDER BY type, name;"
+          payload="$(jq -n --arg sql "$sql" '{sql: $sql}')"
+          code="$(curl -sS -o "$response" -w '%{http_code}' -X POST "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/2bee8195-488a-4c73-ba42-d21950e890c4/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data "$payload")"
+          test "$code" = "200" || { echo "::error::D1 read-only query failed (HTTP $code). Check the token's D1 Read permission."; jq -r '.errors[]?.message // empty' "$response"; exit 1; }
+          jq -e '.success == true and .result[0].success == true' "$response" >/dev/null || { echo "::error::Cloudflare returned an unsuccessful D1 query."; jq -r '.errors[]?.message // empty' "$response"; exit 1; }
+          jq -e '(.result[0].meta.changed_db // false) == false and (.result[0].meta.rows_written // 0) == 0' "$response" >/dev/null || { echo "::error::The schema inspection did not report a read-only result; stopping."; exit 1; }
+          echo "Read-only schema query succeeded. Objects returned:"
+          jq -r '.result[0].results[] | [.type, .name, .tbl_name] | @tsv' "$response"
+          echo "No database objects or rows were changed."
 
       - name: List remote D1 migrations
         if: inputs.operation == 'list-migrations' || inputs.operation == 'apply-migrations'
