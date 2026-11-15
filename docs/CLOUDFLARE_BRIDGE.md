@@ -14,7 +14,7 @@ Recommended Cloudflare token permissions, scoped to the one account:
 
 - Account / Workers Scripts / Read
 - Account / D1 / Read
-- Account / D1 / Edit (only needed to apply migrations)
+- Account / D1 / Write (only needed to apply migrations)
 
 Do not use the Global API Key. Do not grant Workers Scripts Edit for this bridge;
 Worker deployment is deliberately not implemented here.
