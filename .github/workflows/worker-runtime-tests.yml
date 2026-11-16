@@ -35,6 +35,8 @@ jobs:
         run: npm install --no-save --no-audit --no-fund vitest@4.1.0 @cloudflare/vitest-plugin@1.8.2 @simplewebauthn/server@14.1.0
       - name: Check browser client JavaScript syntax
         run: node --check public/app.js
+      - name: Validate iPhone home-screen web app manifest and icon
+        run: node -e "const fs=require('node:fs'); const manifest=JSON.parse(fs.readFileSync('public/manifest.webmanifest','utf8')); if(manifest.display!=='standalone' || !manifest.icons.some(icon=>icon.src==='/icon.svg') || !fs.existsSync('public/icon.svg')) process.exit(1)"
       - name: Validate Wrangler and static asset configuration without deploying
         run: npx --yes wrangler@4.148.0 deploy --dry-run
       - name: Run tests inside the Cloudflare Workers runtime
