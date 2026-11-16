@@ -636,3 +636,26 @@ export async function deleteAllMemoryRecords(db) {
   ).bind().run();
   return result.meta?.changes || 0;
 }
+
+
+export async function getMemorySettings(db) {
+  assertD1(db);
+  const row = await db.prepare(
+    "SELECT enabled, updated_at FROM owner_memory_settings WHERE owner_id = 1"
+  ).bind().first();
+  return {
+    enabled: row?.enabled === 1,
+    updatedAt: row?.updated_at ?? null
+  };
+}
+
+export async function setMemoryEnabled(db, enabled, now = Math.floor(Date.now() / 1000)) {
+  assertD1(db);
+  if (typeof enabled !== "boolean") throw new TypeError("Memory enabled state must be boolean");
+  assertUnixSeconds(now, "now");
+  await db.prepare(
+    "INSERT INTO owner_memory_settings (owner_id, enabled, updated_at) VALUES (1, ?, ?) " +
+    "ON CONFLICT(owner_id) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at"
+  ).bind(enabled ? 1 : 0, now).run();
+  return { enabled, updatedAt: now };
+}
