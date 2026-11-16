@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status (16 November 2026):** Latest verified run #387 passed 49 Workers-runtime tests and 25 local SQLite/Node checks (74 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication and stateless chat branch remains isolated, undeployed, and not production-ready.  
+**Status (16 November 2026):** Latest verified run #399 passed 49 Workers-runtime tests and 25 local SQLite/Node checks (74 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication and stateless chat branch remains isolated, undeployed, and not production-ready.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -56,7 +56,7 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 - Browser client syntax check: passed with Node.js 24.
 - Wrangler `deploy --dry-run`: successful; it validated the Worker and static assets without uploading or deploying.
 - Total test cases: 70 passed.
-- Verified run #387: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43880925921
+- Verified run #399: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43881271121
 
 ### Static shell and Wrangler validation
 
