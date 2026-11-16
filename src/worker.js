@@ -60,7 +60,10 @@ export default {
     const isStaticAsset = url.pathname === "/" ||
       url.pathname.endsWith(".html") ||
       url.pathname.endsWith(".js") ||
-      url.pathname.endsWith(".css");
+      url.pathname.endsWith(".css") ||
+      url.pathname.endsWith(".webmanifest") ||
+      url.pathname.endsWith(".svg") ||
+      url.pathname.endsWith(".png");
     const acceptsHtml = (request.headers.get("Accept") || "").includes("text/html");
     if (
       env?.ASSETS &&
