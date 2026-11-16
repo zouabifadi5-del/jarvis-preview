@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status (16 November 2026):** Latest verified run #516 passed 55 Workers-runtime tests and 31 local SQLite/Node checks (86 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication and stateless chat branch remains isolated, undeployed, and not production-ready.  
+**Status (16 November 2026):** Latest verified run #542 passed 55 Workers-runtime tests and 34 local SQLite/Node checks (89 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication, encrypted-memory controls, and stateless chat branch remains isolated, undeployed, and not production-ready.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -49,14 +49,14 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 
 ### Current CI result
 
-- Local SQLite/Node checks: 25 passed.
+- Local SQLite/Node checks: 34 passed.
 - Workers runtime test files: 2 passed.
-- Workers runtime test cases: 51 passed, including synthetic end-to-end registration/login/session/logout, recovery, valid-session-only rate-limit bucket allocation, IP and session throttling, daily AI budget enforcement, unexpected-field rejection, bounded chat input, and owner-only chat tests using a mocked AI binding.
+- Workers runtime test cases: 55 passed, including synthetic end-to-end registration/login/session/logout, recovery, valid-session-only rate-limit bucket allocation, IP and session throttling, daily AI budget enforcement, unexpected-field rejection, bounded chat input, encrypted-memory CRUD/export/delete, explicit memory enable/disable, and owner-only chat tests using a mocked AI binding.
 - Production dependency audit: passed at moderate severity and above.
 - Browser client syntax check: passed with Node.js 24.
 - Wrangler `deploy --dry-run`: successful; it validated the Worker and static assets without uploading or deploying.
-- Total test cases: 70 passed.
-- Verified run #516: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43886848760
+- Total test cases: 89 passed.
+- Verified run #542: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43892492181
 
 ### Static shell and Wrangler validation
 
@@ -76,15 +76,16 @@ The Worker test harness is not a hardened security sandbox. Only trusted project
 
 ## D1 schema validation added alongside this harness
 
-The workflow runs `tests/auth-schema.test.js`, `tests/d1-store.test.js`, `tests/memory-crypto.test.js`, and `tests/worker.test.mjs` with Node's built-in SQLite module before the Workers runtime tests. It validates the migration table shape, singleton owner constraint, credential foreign keys and uniqueness, one-time recovery-code claims, challenge expiry and single-use consumption, hash-only session storage, counter compare-and-set, idle expiry, CSRF, revocation, and atomic recovery replacement. Latest verified run #516 passed all 31 local SQLite/Node checks and 55 Workers-runtime tests (86 total), as well as the dependency audit, browser syntax check, PWA manifest validation, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43883804734. The remote D1 database `jarvis-owner-auth` exists; both migrations, six expected tables, and five supporting indexes were verified. A temporary synthetic D1 table passed create/insert/read/delete/drop and cleanup checks; all six application tables remained empty and the foreign-key check had no violations. This D1 smoke test verified storage access, not the authentication routes end to end against the live Worker. Synthetic workerd tests cover registration/login, session rotation, idle timeout, challenge replay, wrong origin, tampered signatures, CSRF rejection, enrollment-state privacy, recent-passkey requirements, all-session revocation, recovery-code replacement, per-IP and per-session throttling, and rejection of unexpected top-level JSON fields. The browser client has not been tested on a physical iPhone. Cloudflare Worker settings list authentication-related secret binding names, but secret values were not read or validated. Authentication code remains undeployed and no real passkey has been registered.
+The workflow runs `tests/auth-schema.test.js`, `tests/d1-store.test.js`, `tests/memory-crypto.test.js`, and `tests/worker.test.mjs` with Node's built-in SQLite module before the Workers runtime tests. It validates the migration table shape, singleton owner constraint, credential foreign keys and uniqueness, one-time recovery-code claims, challenge expiry and single-use consumption, hash-only session storage, counter compare-and-set, idle expiry, CSRF, revocation, and atomic recovery replacement. Latest verified run #542 passed all 34 local SQLite/Node checks and 55 Workers-runtime tests (89 total), as well as the dependency audit, browser syntax check, PWA manifest validation, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43892492181. The remote D1 database `jarvis-owner-auth` exists; both migrations, six expected tables, and five supporting indexes were verified. A temporary synthetic D1 table passed create/insert/read/delete/drop and cleanup checks; all six application tables remained empty and the foreign-key check had no violations. This D1 smoke test verified storage access, not the authentication routes end to end against the live Worker. Synthetic workerd tests cover registration/login, session rotation, idle timeout, challenge replay, wrong origin, tampered signatures, CSRF rejection, enrollment-state privacy, recent-passkey requirements, all-session revocation, recovery-code replacement, per-IP and per-session throttling, and rejection of unexpected top-level JSON fields. The browser client has not been tested on a physical iPhone. Cloudflare Worker settings list authentication-related secret binding names, but secret values were not read or validated. Authentication code remains undeployed and no real passkey has been registered.
 
 ## Remaining gates
 
 1. Exercise the authentication routes against the configured real D1 binding using disposable synthetic credentials and records, then verify cleanup; do not write owner data.
 2. Test the first-party browser passkey client and actual ceremony in Safari on the owner's iPhone; verify iCloud Keychain behavior and recovery-code handling.
-3. [x] Commit a reproducible lockfile and switch CI to `npm ci`.\n4. [ ] Complete the full transitive dependency-advisory review.
-4. Verify the exact served origin/RP ID and secret-binding configuration without exposing secret values.
-5. Complete an independent security review and negative tests. Deployment and owner enrollment remain separate release actions; this test workflow never deploys or stores personal data.
+3. [x] Commit a reproducible lockfile and switch CI to `npm ci`.
+4. [ ] Complete the full transitive dependency-advisory review.
+5. Verify the exact served origin/RP ID and secret-binding configuration without exposing secret values.
+6. Complete an independent security review and negative tests. Deployment and owner enrollment remain separate release actions; this test workflow never deploys or stores personal data.
 
 ## References
 
