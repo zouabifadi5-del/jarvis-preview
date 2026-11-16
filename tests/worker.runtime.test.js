@@ -1560,8 +1560,9 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       method: "POST",
       headers: originHeaders
     }), env);
-    expect(registrationOptionsResponse.status).toBe(200);
-    const registrationOptions = await registrationOptionsResponse.json();
+    const registrationOptionsPayload = await registrationOptionsResponse.clone().json();
+    expect(registrationOptionsResponse.status, JSON.stringify(registrationOptionsPayload)).toBe(200);
+    const registrationOptions = registrationOptionsPayload;
     const credential = await makeRouteRegistration(registrationOptions.challenge);
     const registrationResponse = await worker.fetch(request("/auth/register/verify", {
       method: "POST",
