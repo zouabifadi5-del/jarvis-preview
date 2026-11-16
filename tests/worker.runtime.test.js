@@ -1399,6 +1399,24 @@ describe("owner-only stateless AI chat", () => {
   });
 });
 
+  it("does not allocate session rate-limit buckets for invalid session cookies", async () => {
+    const { db, state } = makeRouteD1();
+    const response = await handleAuthRequest(request("/auth/me", {
+      method: "GET",
+      headers: {
+        Cookie: "__Host-jarvis_session=" + "A".repeat(43)
+      }
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    });
+
+    expect(response.status).toBe(401);
+    expect(state.rateLimits).toHaveLength(0);
+  });
+
   it("enforces one shared daily AI budget across sessions and IP addresses", async () => {
     const { db } = makeRouteD1();
     const now = Math.floor(Date.now() / 1000);
