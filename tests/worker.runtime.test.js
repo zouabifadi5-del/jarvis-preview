@@ -1543,6 +1543,10 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
       JARVIS_BOOTSTRAP_SECRET: bootstrapSecret,
+      // Synthetic acceptance and key exist only inside this isolated test fixture.
+      JARVIS_MEMORY_RETENTION_ACCEPTED: "true",
+      JARVIS_MEMORY_ENCRYPTION_KEY: encodeMemoryKeyForSetup(crypto.getRandomValues(new Uint8Array(32))),
+      JARVIS_MEMORY_KEY_VERSION: "1",
       AI: {
         async run(model, input) {
           inferenceCalls += 1;
@@ -1635,6 +1639,60 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       model: "@cf/zai-org/glm-4.7-flash"
     });
     expect(inferenceCalls).toBe(1);
+
+    const ownerHeaders = {
+      Origin: "https://example.test",
+      Cookie: "__Host-jarvis_session=" + ownerCookie,
+      "X-CSRF-Token": login.csrfToken,
+      "Content-Type": "application/json"
+    };
+    const enableMemory = await workerModule.fetch(request("/auth/memories/enable", {
+      method: "POST",
+      headers: ownerHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(enableMemory.status).toBe(200);
+
+    const saveMemory = await workerModule.fetch(request("/auth/memories", {
+      method: "POST",
+      headers: ownerHeaders,
+      body: JSON.stringify({
+        category: "preference",
+        content: "Synthetic test memory: owner prefers concise replies",
+        expiresAt: null
+      })
+    }), env);
+    expect(saveMemory.status).toBe(200);
+    const saved = await saveMemory.json();
+    expect(saved.memory.id).toMatch(/^[0-9a-f-]{36}$/);
+
+    const inspectMemory = await workerModule.fetch(request("/auth/memories/" + saved.memory.id, {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + ownerCookie }
+    }), env);
+    expect(inspectMemory.status).toBe(200);
+    await expect(inspectMemory.json()).resolves.toMatchObject({
+      memory: {
+        category: "preference",
+        content: "Synthetic test memory: owner prefers concise replies"
+      }
+    });
+
+    const deleteMemory = await workerModule.fetch(request("/auth/memories/" + saved.memory.id, {
+      method: "DELETE",
+      headers: ownerHeaders,
+      body: "{}"
+    }), env);
+    expect(deleteMemory.status).toBe(200);
+    await expect(deleteMemory.json()).resolves.toMatchObject({ deleted: true });
+
+    const disableMemory = await workerModule.fetch(request("/auth/memories/disable", {
+      method: "POST",
+      headers: ownerHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(disableMemory.status).toBe(200);
+    await expect(disableMemory.json()).resolves.toMatchObject({ enabled: false });
 
     const logoutResponse = await workerModule.fetch(request("/auth/logout", {
       method: "POST",
