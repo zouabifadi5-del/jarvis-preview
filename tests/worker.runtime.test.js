@@ -137,7 +137,7 @@ async function makeRouteAssertion({ keyPair, credentialId, challenge, counter = 
   };
 }
 function makeRouteD1() {
-  const state = { owner: null, credentials: [], challenges: [], sessions: [], recoveryCodes: [], rateLimits: [], memories: [] };
+  const state = { owner: null, credentials: [], challenges: [], sessions: [], recoveryCodes: [], rateLimits: [], memories: [], memorySettings: null };
   function statement(sql, values = []) {
     return {
       bind(...bound) { return statement(sql, bound); },
@@ -153,6 +153,7 @@ function makeRouteD1() {
           return { request_count: bucket.requestCount };
         }
         if (sql.includes("SELECT id, created_at, enrollment_closed_at")) return state.owner;
+        if (sql.includes("SELECT enabled, updated_at FROM owner_memory_settings")) return state.memorySettings;
         if (sql.includes("SELECT id, owner_id, category, ciphertext, nonce")) {
           const [id, now] = values;
           return state.memories.find((row) => row.id === id && row.owner_id === 1 &&
@@ -208,6 +209,10 @@ function makeRouteD1() {
         return { results: [] };
       },
       async run() {
+        if (sql.includes("INSERT INTO owner_memory_settings")) {
+          state.memorySettings = { enabled: values[0], updated_at: values[1] };
+          return { success: true, meta: { changes: 1 } };
+        }
         if (sql.includes("INSERT INTO owner_memories")) {
           const [id, category, ciphertext, nonce, keyVersion, schemaVersion, createdAt, updatedAt, expiresAt] = values;
           state.memories.push({
