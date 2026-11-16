@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Authentication Implementation Plan
 
-**Status:** Initial passkey routes and a native browser passkey UI are implemented on the isolated test branch; both D1 migrations are applied and a synthetic D1 smoke test passed with cleanup; authentication code remains undeployed and is not production-ready  
+**Status (16 November 2026):** Initial passkey routes and a native browser passkey UI are implemented on the isolated test branch; both D1 migrations, all six expected application tables, five supporting indexes, and a synthetic D1 read/write/delete/drop smoke test are verified; authentication code remains undeployed and is not production-ready  
 **Owner model:** One enrolled owner, no public sign-up  
 **Client:** Safari on iPhone 17 Pro Max  
 **Budget:** Zero-cost only; no paid plan, billing, trial, or resource may be enabled
@@ -52,14 +52,14 @@ Cloudflare's current Workers Free D1 limits are 5 million rows read/day, 100,000
 
 For comparison, SQLite-backed Durable Objects are also available on Workers Free, but add their own request and duration quotas (currently 100,000 requests/day and 13,000 GB-seconds/day) plus SQL storage quotas. They are designed for stateful coordination; we do not need that complexity for the current auth database.
 
-The owner has confirmed that the Cloudflare account is on the Free plan and has no paid Workers subscription or trial. This is an owner-provided confirmation, not an independent inspection of account billing controls. The isolated owner-auth D1 database has been created and schema-verified; a synthetic data-path smoke test passed and its test records were cleaned up. Never upgrade or enable billing to overcome a quota; stop if any unexpected paid prompt or requirement appears.
+The owner has confirmed that the Cloudflare account is on the Free plan and has no paid Workers subscription or trial. This is an owner-provided confirmation, not an independent inspection of account billing controls. The isolated owner-auth D1 database has been created; both migration records, six expected application tables, and five supporting indexes were verified. A temporary synthetic table passed create/insert/read/delete/drop checks and was confirmed absent afterward. Never upgrade or enable billing to overcome a quota; stop if any unexpected paid prompt or requirement appears.
 
 References:
 - https://developers.cloudflare.com/d1/platform/pricing/
 - https://developers.cloudflare.com/d1/platform/limits/
 - https://developers.cloudflare.com/durable-objects/platform/pricing/
 
-The schema in [migrations/0001_owner_auth.sql](../migrations/0001_owner_auth.sql) and [migrations/0002_auth_rate_limits.sql](../migrations/0002_auth_rate_limits.sql) has been applied to the existing isolated `jarvis-owner-auth` D1 database and verified. A real D1 smoke test using temporary synthetic records passed; the records were cleaned up and no owner account was created. It stores only:
+The schema in [migrations/0001_owner_auth.sql](../migrations/0001_owner_auth.sql) and [migrations/0002_auth_rate_limits.sql](../migrations/0002_auth_rate_limits.sql) has been applied to the existing `jarvis-owner-auth` D1 database and verified. Both migration records, all six expected application tables, and five supporting indexes were confirmed. A temporary synthetic table passed create/insert/read/delete/drop checks and was confirmed absent afterward; no owner account or passkey was created. It stores only:
 - a singleton owner marker and passkey credential public keys/metadata;
 - short-lived WebAuthn challenges, consumed once with an atomic delete-returning operation;
 - hashed opaque session identifiers, hashed CSRF tokens, expiry, and revocation metadata.
@@ -142,7 +142,7 @@ Unknown routes and methods remain rejected. No AI command, memory, or external-a
 
 Implemented on `jarvis-worker-runtime-tests`: first-owner passkey registration, passkey login, session inspection, logout and sign-out-everywhere; multi-device credential listing/addition/revocation with last-credential protection; exact configured origin/RP ID checks; bootstrap secret gate; JSON content-type/body-size validation; five-minute single-use challenges with cleanup; D1-backed owner/credential/session helpers; hashed session and CSRF tokens; host-only Secure/HttpOnly session cookie plus reload-persistent CSRF cookie; CSRF verification; 30-minute idle expiry; session rotation after passkey sign-in; five-minute recent-passkey requirement for credential changes; and fail-closed behavior when D1 or origin settings are absent. A same-origin native WebAuthn UI is included. The synthetic route suite now exercises a successful registration/login/session/logout ceremony and negative paths including replay, wrong origin, tampered signatures, CSRF rejection, and owner-enrollment enumeration.
 
-Latest verified CI run #320 passed 23 local SQLite/Node checks and 39 Workers-runtime tests (62 tests total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run configuration validation. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43622925213 Rate limiting is now implemented and covered by synthetic tests. Still incomplete: real D1 data-path tests, committed dependency lockfile review, verification of configured secret values and live origin, and iPhone Safari acceptance. Offline recovery codes are implemented and synthetically tested, but need owner-device acceptance testing. The remote D1 database exists and its schema is verified; authentication code remains undeployed and no real passkey has been registered. See [Remote D1 Provisioning Gate](REMOTE_D1_PROVISIONING_GATE.md) for the approval-gated next step.
+Latest verified CI run #320 passed 23 local SQLite/Node checks and 39 Workers-runtime tests (62 tests total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run configuration validation. Run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43622925213 Rate limiting is now implemented and covered by synthetic tests. Still incomplete: end-to-end Worker routing against the deployed authentication code, safe validation of the configured origin/RP ID and secret presence, committed dependency lockfile review, and iPhone Safari acceptance. Offline recovery codes are implemented and synthetically tested, but need owner-device acceptance testing. The remote D1 database exists and its schema is verified; authentication code remains undeployed and no real passkey has been registered. See [Remote D1 Provisioning Gate](REMOTE_D1_PROVISIONING_GATE.md) for the approval-gated next step.
 
 ## 7. Release gates
 
