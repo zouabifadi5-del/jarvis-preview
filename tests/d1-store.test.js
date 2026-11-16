@@ -463,6 +463,32 @@ test("sessions expire after 30 minutes of inactivity and active access refreshes
   }
 });
 
+test("concurrent out-of-order session touches never move activity backwards", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const session = await createSession(binding, { now: 1000 });
+    const newer = await findActiveSession(binding, {
+      sessionToken: session.sessionToken,
+      now: 1100
+    });
+    assert.equal(newer.lastSeenAt, 1100);
+
+    // Model a slower request whose timestamp was captured before the newer
+    // request completed. It must not overwrite the newer activity timestamp.
+    const older = await findActiveSession(binding, {
+      sessionToken: session.sessionToken,
+      now: 1060
+    });
+    assert.equal(older.lastSeenAt, 1100);
+    const stored = sqlite.prepare(
+      "SELECT last_seen_at FROM auth_sessions WHERE session_hash = ?"
+    ).get(await sha256Base64Url(session.sessionToken));
+    assert.equal(stored.last_seen_at, 1100);
+  } finally {
+    sqlite.close();
+  }
+});
+
 test("recovery codes are hashed, single-use, and replace all previous codes atomically", async () => {
   const { sqlite, binding } = makeD1({ seedOwner: false });
   try {
