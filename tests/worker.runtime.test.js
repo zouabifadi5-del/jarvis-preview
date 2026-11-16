@@ -1681,7 +1681,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
     const deleteMemory = await workerModule.fetch(request("/auth/memories/" + saved.memory.id, {
       method: "DELETE",
       headers: ownerHeaders,
-      body: "{}"
+      body: JSON.stringify({ confirm: true })
     }), env);
     expect(deleteMemory.status).toBe(200);
     await expect(deleteMemory.json()).resolves.toMatchObject({ deleted: true });
