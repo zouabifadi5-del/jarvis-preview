@@ -53,7 +53,7 @@ Do not use models that Cloudflare marks as Workers Paid-only, including `@cf/moo
 
 ## Current implementation status
 
-The stateless chat route, owner-only UI, HMAC-backed per-session/per-IP throttles, and 100-request UTC-day budget are implemented on `jarvis-security-hardening`. Synthetic tests use a mocked `env.AI.run()` binding; no real inference has been performed. CI run #399 passed 25 local SQLite/Node checks and 49 Workers-runtime tests (74 total), plus the dependency audit, browser syntax check, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43881271121. The route is not deployed, and no owner conversation data is stored.
+The stateless chat route, owner-only UI, HMAC-backed per-session/per-IP throttles, and 100-request UTC-day budget are implemented on `jarvis-security-hardening`. Synthetic tests use a mocked `env.AI.run()` binding; no real inference has been performed. CI run #413 passed 25 local SQLite/Node checks and 51 Workers-runtime tests (76 total), plus the dependency audit, browser syntax check, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43882501898. The route is not deployed, and no owner conversation data is stored.
 
 ## Next steps
 
