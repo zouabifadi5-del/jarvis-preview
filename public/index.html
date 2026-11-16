@@ -55,6 +55,14 @@
         <h2>Owner session active</h2>
         <p>This confirms authentication only. JARVIS assistant features are not connected yet.</p>
         <div id="credentials"></div>
+        <section class="chat-panel" aria-label="JARVIS chat">
+          <h2>Talk to JARVIS</h2>
+          <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+          <label for="chat-message">Your message</label>
+          <textarea id="chat-message" rows="3" maxlength="6000" placeholder="Write a message to JARVIS…"></textarea>
+          <button id="send-chat" type="button">Send message</button>
+          <p class="muted">Prototype chat is not saved. It has no tools, memory, or device control yet.</p>
+        </section>
         <button id="reauthenticate" type="button" class="secondary">Confirm passkey for security changes</button>
         <button id="add-credential" type="button" class="secondary">Add another passkey</button>
         <button id="logout" type="button" class="danger">Sign out</button>
