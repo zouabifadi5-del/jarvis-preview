@@ -358,8 +358,9 @@ async function saveMemory() {
   if (!content) throw new Error("Enter the exact memory text you want to save.");
   if (!window.confirm((selectedMemoryId ? "Update" : "Save") + " this exact text in your private encrypted memory?")) return;
   const body = { content, category, expiresAt: memoryExpirySeconds() };
+  // Memory writes require a recent passkey ceremony, including first-time creation.
+  await signIn();
   if (selectedMemoryId) {
-    await signIn();
     await api("/auth/memories/" + encodeURIComponent(selectedMemoryId), { method: "PUT", body });
     setStatus("Memory updated and encrypted.", "success");
   } else {
