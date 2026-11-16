@@ -38,6 +38,37 @@ export async function importMemoryEncryptionKey(encodedKey) {
   return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
+export async function importMemoryEncryptionKeyring(encodedKeyring) {
+  if (typeof encodedKeyring !== "string" || encodedKeyring.length > 4096) {
+    throw new TypeError("Memory keyring must be a bounded JSON string");
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(encodedKeyring);
+  } catch {
+    throw new TypeError("Memory keyring must be valid JSON");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
+      Object.keys(parsed).sort().join(",") !== "currentVersion,keys" ||
+      !Number.isSafeInteger(parsed.currentVersion) || parsed.currentVersion < 1 ||
+      !parsed.keys || typeof parsed.keys !== "object" || Array.isArray(parsed.keys)) {
+    throw new TypeError("Invalid memory keyring structure");
+  }
+  const versions = Object.keys(parsed.keys);
+  if (versions.length < 1 || versions.length > 8 ||
+      versions.some((version) => !/^[1-9][0-9]{0,5}$/.test(version))) {
+    throw new TypeError("Invalid memory keyring versions");
+  }
+  if (!Object.hasOwn(parsed.keys, String(parsed.currentVersion))) {
+    throw new TypeError("Current memory key version is missing");
+  }
+  const keys = new Map();
+  for (const version of versions) {
+    keys.set(Number(version), await importMemoryEncryptionKey(parsed.keys[version]));
+  }
+  return { currentVersion: parsed.currentVersion, keys };
+}
+
 export async function encryptMemoryText(key, {
   plaintext, ownerId = 1, recordId, category, keyVersion = 1, createdAt
 }) {
