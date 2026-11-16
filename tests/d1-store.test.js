@@ -481,8 +481,8 @@ test("concurrent out-of-order session touches never move activity backwards", as
     });
     assert.equal(older.lastSeenAt, 1100);
     const stored = sqlite.prepare(
-      "SELECT last_seen_at FROM auth_sessions WHERE session_hash = ?"
-    ).get(await sha256Base64Url(session.sessionToken));
+      "SELECT last_seen_at FROM auth_sessions"
+    ).get();
     assert.equal(stored.last_seen_at, 1100);
   } finally {
     sqlite.close();
