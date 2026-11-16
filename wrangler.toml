@@ -19,3 +19,8 @@ database_id = "2bee8195-488a-4c73-ba42-d21950e890c4"
 # Workers AI is only invoked from the authenticated, stateless chat route.
 [ai]
 binding = "AI"
+
+
+# One daily cleanup pass; scheduled invocations count toward the Free request cap.
+[triggers]
+crons = ["0 2 * * *"]
