@@ -214,6 +214,18 @@ function makeRouteD1() {
           state.memorySettings = { enabled: values[0], updated_at: values[1] };
           return { success: true, meta: { changes: 1 } };
         }
+        if (sql.includes("UPDATE owner_memories SET ciphertext")) {
+          const [ciphertext, nonce, keyVersion, schemaVersion, updatedAt, id, expectedKeyVersion, expectedCiphertext, expectedNonce] = values;
+          const row = state.memories.find((item) => item.id === id && item.owner_id === 1 &&
+            item.key_version === expectedKeyVersion &&
+            item.ciphertext.length === expectedCiphertext.length &&
+            item.ciphertext.every((byte, index) => byte === expectedCiphertext[index]) &&
+            item.nonce.length === expectedNonce.length &&
+            item.nonce.every((byte, index) => byte === expectedNonce[index]));
+          if (!row) return { success: true, meta: { changes: 0 } };
+          Object.assign(row, { ciphertext, nonce, key_version: keyVersion, schema_version: schemaVersion, updated_at: updatedAt });
+          return { success: true, meta: { changes: 1 } };
+        }
         if (sql.includes("INSERT INTO owner_memories")) {
           const [id, category, ciphertext, nonce, keyVersion, schemaVersion, createdAt, updatedAt, expiresAt, countNow] = values;
           const activeCount = state.memories.filter((row) =>
@@ -1926,6 +1938,47 @@ describe("gated encrypted owner memory routes", () => {
     await expect(detail.json()).resolves.toMatchObject({
       memory: { id, content: "The owner prefers concise answers." }
     });
+
+    const rotationId = "123e4567-e89b-42d3-a456-426614174088";
+    const rotationCreatedAt = Math.floor(Date.now() / 1000) - 50;
+    const oldCryptoKey = await importMemoryEncryptionKey(oldKey);
+    const rotationFixture = await encryptMemoryText(oldCryptoKey, {
+      plaintext: "Synthetic rotation fixture",
+      ownerId: 1,
+      recordId: rotationId,
+      category: "fact",
+      keyVersion: 1,
+      createdAt: rotationCreatedAt
+    });
+    state.memories.push({
+      id: rotationId, owner_id: 1, category: "fact",
+      ciphertext: rotationFixture.ciphertext, nonce: rotationFixture.nonce,
+      key_version: 1, schema_version: 1,
+      created_at: rotationCreatedAt, updated_at: rotationCreatedAt, expires_at: null
+    });
+    const rotated = await handleAuthRequest(request("/auth/memories/rotate", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true, batchSize: 1 })
+    }), env);
+    expect(rotated.status).toBe(200);
+    await expect(rotated.json()).resolves.toMatchObject({
+      rotated: 1, remaining: 1, currentVersion: 2, oldKeyVersions: [1]
+    });
+    expect(state.memories.find((item) => item.id === rotationId).key_version).toBe(2);
+    const rotatedDetail = await handleAuthRequest(request("/auth/memories/" + rotationId, {
+      method: "GET",
+      headers: { Cookie: authHeaders.Cookie }
+    }), env);
+    await expect(rotatedDetail.json()).resolves.toMatchObject({
+      memory: { id: rotationId, content: "Synthetic rotation fixture" }
+    });
+    const deleteRotatedFixture = await handleAuthRequest(request("/auth/memories/" + rotationId, {
+      method: "DELETE",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(deleteRotatedFixture.status).toBe(200);
 
     const updated = await handleAuthRequest(request("/auth/memories/" + id, {
       method: "PUT",
