@@ -28,6 +28,8 @@ import {
   updateMemoryRecord,
   deleteMemoryRecord,
   deleteAllMemoryRecords,
+  getMemorySettings,
+  setMemoryEnabled,
   pruneExpiredMemoryRecords
 } from "../src/auth/d1-store.js";
 
@@ -651,6 +653,20 @@ test("encrypted memory storage rejects malformed IDs, categories, payloads, and 
     await assert.rejects(insertMemoryRecord(binding, { ...valid, nonce: new Uint8Array(11) }), TypeError);
     await assert.rejects(insertMemoryRecord(binding, { ...valid, ciphertext: 16 }), TypeError);
     await assert.rejects(insertMemoryRecord(binding, { ...valid, expiresAt: 999 }), RangeError);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("owner memory settings stay disabled until explicitly enabled and can be switched off", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    assert.deepEqual(await getMemorySettings(binding), { enabled: false, updatedAt: null });
+    assert.deepEqual(await setMemoryEnabled(binding, true, 2000), { enabled: true, updatedAt: 2000 });
+    assert.deepEqual(await getMemorySettings(binding), { enabled: true, updatedAt: 2000 });
+    assert.deepEqual(await setMemoryEnabled(binding, false, 2001), { enabled: false, updatedAt: 2001 });
+    assert.deepEqual(await getMemorySettings(binding), { enabled: false, updatedAt: 2001 });
+    await assert.rejects(setMemoryEnabled(binding, "yes", 2002), TypeError);
   } finally {
     sqlite.close();
   }
