@@ -601,15 +601,31 @@ export async function findMemoryRecord(db, id, {
 }
 
 export async function updateMemoryRecord(db, {
-  id, category, ciphertext, nonce, keyVersion, schemaVersion = 1,
+  id, expectedKeyVersion, expectedCiphertext, expectedNonce,
+  category, ciphertext, nonce, keyVersion, schemaVersion = 1,
   now = Math.floor(Date.now() / 1000), expiresAt = null
 }) {
   assertD1(db);
+  assertPositiveInteger(expectedKeyVersion, "expectedKeyVersion");
   const input = assertMemoryRecordInput({ id, category, ciphertext, nonce, keyVersion, schemaVersion, now, expiresAt });
+  const toBytes = (value, label) => {
+    if (value instanceof Uint8Array) return value;
+    if (value instanceof ArrayBuffer) return new Uint8Array(value);
+    if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    throw new TypeError("Expected encrypted " + label + " bytes");
+  };
+  const previousCiphertext = toBytes(expectedCiphertext, "ciphertext");
+  const previousNonce = toBytes(expectedNonce, "nonce");
+  if (previousCiphertext.byteLength < 16 || previousNonce.byteLength !== 12) {
+    throw new TypeError("Expected encrypted memory payload is invalid");
+  }
   const result = await db.prepare(
     "UPDATE owner_memories SET category = ?, ciphertext = ?, nonce = ?, key_version = ?, schema_version = ?, updated_at = ?, expires_at = ? " +
-    "WHERE id = ? AND owner_id = 1"
-  ).bind(category, input.ciphertext, input.nonce, keyVersion, schemaVersion, now, input.expiresAt, id).run();
+    "WHERE id = ? AND owner_id = 1 AND key_version = ? AND ciphertext = ? AND nonce = ?"
+  ).bind(
+    category, input.ciphertext, input.nonce, keyVersion, schemaVersion, now, input.expiresAt,
+    id, expectedKeyVersion, previousCiphertext, previousNonce
+  ).run();
   return (result.meta?.changes || 0) === 1;
 }
 
