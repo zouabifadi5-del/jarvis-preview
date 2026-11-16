@@ -1713,6 +1713,24 @@ describe("gated encrypted owner memory routes", () => {
       "X-CSRF-Token": session.csrfToken,
       "Content-Type": "application/json"
     };
+    const enableResponse = await handleAuthRequest(request("/auth/memories/enable", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(enableResponse.status).toBe(403);
+    await expect(enableResponse.json()).resolves.toEqual({ error: "reauthentication_required" });
+
+    // Emergency disable remains available to a valid CSRF-protected session
+    // without requiring a fresh passkey ceremony.
+    const disableResponse = await handleAuthRequest(request("/auth/memories/disable", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(disableResponse.status).toBe(200);
+    await expect(disableResponse.json()).resolves.toMatchObject({ enabled: false });
+
     const createResponse = await handleAuthRequest(request("/auth/memories", {
       method: "POST",
       headers: authHeaders,
