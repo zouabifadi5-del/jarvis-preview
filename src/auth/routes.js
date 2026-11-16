@@ -647,6 +647,8 @@ async function memoryCreate(request, env, cfg, now) {
       !validMemoryExpiry(body.category, body.expiresAt, now)) {
     return fail(request, 400, "invalid_request");
   }
+  const currentMemories = await listMemoryRecords(cfg.db, { now, limit: 100 });
+  if (currentMemories.length >= 100) return fail(request, 409, "memory_limit_reached");
   const id = crypto.randomUUID();
   const createdAt = now;
   let encrypted;
@@ -909,6 +911,7 @@ async function logout(request, cfg, now) {
 
 async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) {
   const sessionPolicies = {
+    "/auth/memories/export": { name: "memory_export", limit: 3, windowSeconds: 60, method: "POST" },
     "/auth/me": { name: "session_info", limit: 60, windowSeconds: 60, method: "GET" },
     "/auth/chat": { name: "chat", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/credentials": { name: "credential_list", limit: 60, windowSeconds: 60, method: "GET" },
@@ -924,7 +927,9 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
       ? { name: "memory_list", limit: 60, windowSeconds: 60, method: "GET" }
       : pathname === "/auth/memories" && request.method === "POST"
         ? { name: "memory_create", limit: 10, windowSeconds: 60, method: "POST" }
-        : memoryRecordPath && request.method === "GET"
+        : pathname === "/auth/memories" && request.method === "DELETE"
+          ? { name: "memory_delete_all", limit: 1, windowSeconds: 60, method: "DELETE" }
+          : memoryRecordPath && request.method === "GET"
           ? { name: "memory_read", limit: 30, windowSeconds: 60, method: "GET" }
           : memoryRecordPath && request.method === "PUT"
             ? { name: "memory_update", limit: 10, windowSeconds: 60, method: "PUT" }
@@ -976,7 +981,8 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/recovery/options": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
     "/auth/recovery/verify": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
     "/auth/chat": { name: "chat", limit: 30, windowSeconds: 60 },
-    "/auth/memories": { name: "memory", limit: 30, windowSeconds: 60 }
+    "/auth/memories": { name: "memory", limit: 30, windowSeconds: 60 },
+    "/auth/memories/export": { name: "memory_export", limit: 3, windowSeconds: 60 }
   };
   const memoryIpRecordPath = /^\/auth\/memories\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname);
   const policy = groups[pathname] || (memoryRecordPath ? { name: "memory_record", limit: 30, windowSeconds: 60 } : null);
@@ -1059,6 +1065,12 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/memories" && request.method === "GET") {
       return await memoryList(request, env, cfg, now);
+    }
+    if (pathname === "/auth/memories/export" && request.method === "POST") {
+      return await memoryExport(request, env, cfg, now);
+    }
+    if (pathname === "/auth/memories" && request.method === "DELETE") {
+      return await memoryDeleteAll(request, env, cfg, now);
     }
     if (pathname === "/auth/memories" && request.method === "POST") {
       return await memoryCreate(request, env, cfg, now);
