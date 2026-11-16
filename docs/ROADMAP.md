@@ -51,7 +51,7 @@
 - [x] Add ten one-time hashed recovery codes, replacement-passkey recovery, and atomic invalidation of old credentials, sessions, and recovery codes.
 - [x] Implement fixed-window D1 rate-limit counters keyed by HMACs of the Cloudflare client IP and auth action; raw IPs are not stored.
 - [x] Add per-session HMAC-keyed throttling for session inspection, credential management, and logout routes; raw session tokens are not stored in rate-limit buckets.
-- [x] Pass CI tests for IP and per-session rate-limit enforcement, unexpected-field rejection, and local migration/storage validation; latest CI run #368 passed 25 local SQLite/Node checks and 45 Workers-runtime tests (70 total): https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43879861916. Remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
+- [x] Pass CI tests for IP and per-session rate-limit enforcement, unexpected-field rejection, and local migration/storage validation; latest CI run #399 passed 25 local SQLite/Node checks and 49 Workers-runtime tests (74 total): https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43881271121. Remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
 - [ ] Verify the configured `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through safe non-disclosing checks; never read or print secret values.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [ ] Explicit memory review, correction, export, and deletion.
@@ -60,7 +60,7 @@
 ## Milestone 4 — AI and integrations
 - [x] Research the Workers AI Free allocation and shortlist Free-eligible models; document cost, quota, privacy, and test boundaries in [AI Provider Plan](AI_PROVIDER_PLAN.md). No inference request has been made.
 - [x] Implement a stateless, passkey-protected chat route and owner-only in-memory chat UI; tests use a mocked AI binding and never invoke real inference.
-- [x] Add per-session and per-IP chat throttles plus a 100-request UTC-day owner budget using HMAC-derived D1 buckets.
+- [x] Add per-session and per-IP chat throttles plus a 50-request UTC-day owner budget using HMAC-derived D1 buckets.
 - [ ] Test model quality in Tunisian Arabic, French, English, and tool-call accuracy with non-sensitive prompts; no live inference in CI.
 - [ ] Start with read-only connectors.
 - [ ] Require confirmation for messages, sharing, schedule changes, and destructive actions.
