@@ -1,9 +1,11 @@
 /**
  * J.A.R.V.I.S. Worker entry point.
  * Authentication routes fail closed until D1 and explicit origin/RP settings
- * are configured. No AI calls or personal-content storage are exposed here.
+ * are configured. Durable memory remains separately gated by owner acceptance
+ * and server-side encryption keys; scheduled expiry cleanup is disabled by default.
  */
 import { handleAuthRequest } from "./auth/routes.js";
+import { pruneExpiredMemoryRecords } from "./auth/d1-store.js";
 
 function securityHeaders(request, { noStore = false } = {}) {
   const headers = new Headers({
@@ -41,6 +43,20 @@ async function secureAssetResponse(request, assets) {
 }
 
 export default {
+  async scheduled(controller, env) {
+    // Expiry cleanup is inactive until the owner has explicitly accepted the
+    // D1 retention window. It requires no decryption key and never reads content.
+    if (env?.JARVIS_MEMORY_RETENTION_ACCEPTED !== "true" ||
+        !env?.DB || typeof env.DB.prepare !== "function") return;
+    try {
+      await pruneExpiredMemoryRecords(env.DB, {
+        now: Math.floor(Date.now() / 1000)
+      });
+    } catch {
+      // Fail closed and retry at the next daily trigger; never log memory data.
+    }
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
 
