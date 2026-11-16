@@ -59,7 +59,9 @@
 
 ## Milestone 4 — AI and integrations
 - [x] Research the Workers AI Free allocation and shortlist Free-eligible models; document cost, quota, privacy, and test boundaries in [AI Provider Plan](AI_PROVIDER_PLAN.md). No inference request has been made.
-- [ ] Implement a stateless, passkey-protected chat route with a mocked AI binding and synthetic tests.
+- [x] Implement a stateless, passkey-protected chat route and owner-only in-memory chat UI; tests use a mocked AI binding and never invoke real inference.
+- [x] Add per-session and per-IP chat throttles plus a 100-request UTC-day owner budget using HMAC-derived D1 buckets.
+- [ ] Test model quality in Tunisian Arabic, French, English, and tool-call accuracy with non-sensitive prompts; no live inference in CI.
 - [ ] Start with read-only connectors.
 - [ ] Require confirmation for messages, sharing, schedule changes, and destructive actions.
 - [ ] Require strong confirmation for financial and security actions.
