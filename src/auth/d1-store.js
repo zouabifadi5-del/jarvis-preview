@@ -143,8 +143,9 @@ export async function storeCredential(
     throw new TypeError("Credential transports must be an array of strings");
   }
 
-  await db.prepare(
-    "INSERT INTO owner_credentials (credential_id, public_key, sign_count, transports_json, device_type, backed_up, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  const result = await db.prepare(
+    "INSERT INTO owner_credentials (credential_id, owner_id, public_key, sign_count, transports_json, device_type, backed_up, created_at) " +
+    "SELECT ?, 1, ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM owner_credentials WHERE owner_id = 1 AND revoked_at IS NULL) < 10"
   ).bind(
     id,
     publicKey,
@@ -154,6 +155,7 @@ export async function storeCredential(
     backedUp ? 1 : 0,
     now
   ).run();
+  return result.meta?.changes === 1;
 }
 
 export async function findActiveCredential(db, credentialId) {
