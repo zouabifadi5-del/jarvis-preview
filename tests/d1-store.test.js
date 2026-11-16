@@ -620,6 +620,7 @@ test("encrypted memory storage rejects malformed IDs, categories, payloads, and 
     await assert.rejects(insertMemoryRecord(binding, { ...valid, id: "bad-id" }), TypeError);
     await assert.rejects(insertMemoryRecord(binding, { ...valid, category: "credential" }), TypeError);
     await assert.rejects(insertMemoryRecord(binding, { ...valid, nonce: new Uint8Array(11) }), TypeError);
+    await assert.rejects(insertMemoryRecord(binding, { ...valid, ciphertext: 16 }), TypeError);
     await assert.rejects(insertMemoryRecord(binding, { ...valid, expiresAt: 999 }), RangeError);
   } finally {
     sqlite.close();
