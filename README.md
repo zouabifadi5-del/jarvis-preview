@@ -4,7 +4,7 @@
 
 This repository contains the public-facing prototype and non-sensitive project documentation.
 
-> The foundation website remains a visual preview, not a functioning AI assistant. The isolated `jarvis-worker-runtime-tests` branch now contains synthetic-tested owner passkey enrollment/login, session protection, multi-device credential management, and one-time recovery-code replacement. It is not deployed or connected to a real D1 database. AI, memory, and account integrations are not connected.
+> The foundation website remains a visual preview, not a functioning AI assistant. The isolated `jarvis-security-hardening` branch contains synthetic-tested owner passkey enrollment/login, session protection, multi-device credential management, and one-time recovery-code replacement. Its D1 schema and synthetic create/read/delete smoke test are verified, but the authentication code is not deployed and no real owner passkey has been enrolled. AI, memory, and account integrations are not connected.
 
 ## Project documents
 
@@ -13,7 +13,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Owner security design](docs/SECURITY.md) (design and implementation in progress; not deployed or security-audited)
 - [Authentication implementation plan](docs/AUTHENTICATION_PLAN.md) (current route implementation, storage design, flows, and remaining security gates)
 - [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
-- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; latest verified run #263 has 39 runtime tests plus 23 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
+- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; latest verified run #345 has 40 runtime tests plus 25 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
 
 ## Repository boundaries
 
