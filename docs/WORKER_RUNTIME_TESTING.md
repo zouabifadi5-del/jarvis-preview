@@ -66,6 +66,7 @@ The isolated branch now contains `public/index.html`, `public/app.js`, and `publ
 The workflow:
 - Runs on pushes to `jarvis-worker-runtime-tests` and `jarvis-security-hardening`, and on pull requests targeting the listed development branches.
 - Uses the standard `ubuntu-latest` runner.
+- Uses `wrangler.test.toml`, which intentionally omits the AI binding so local workerd tests never open a remote Cloudflare AI proxy or consume the account's daily inference allocation. The separate Wrangler dry run validates the deployment config including the AI binding.
 - Has read-only repository permissions.
 - Does not receive Cloudflare credentials or other secrets.
 - Does not run Wrangler deploy, create a Durable Object, or call Cloudflare account APIs.
