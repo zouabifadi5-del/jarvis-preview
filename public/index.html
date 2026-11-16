@@ -58,7 +58,7 @@
     <section id="signed-in" hidden>
       <div class="panel">
         <h2>Owner session active</h2>
-        <p>This confirms authentication only. JARVIS assistant features are not connected yet.</p>
+        <p>Your owner session is active. Chat uses a stateless AI prototype; persistent memory stays disabled until its encryption and backup-retention gates are accepted.</p>
         <div id="credentials"></div>
         <section class="chat-panel" aria-label="JARVIS chat">
           <h2>Talk to JARVIS</h2>
@@ -68,6 +68,34 @@
           <button id="send-chat" type="button">Send message</button>
           <p class="muted">Recent chat context stays in this page only and clears on reload or sign-out. No long-term memory, tools, or device control yet.</p>
         </section>
+        <section id="memory-panel" class="memory-panel" aria-label="Private memory">
+          <h2>Private memory</h2>
+          <p id="memory-status" class="muted">Checking whether encrypted memory is enabled…</p>
+          <div id="memory-controls" hidden>
+            <label for="memory-category">Memory category</label>
+            <select id="memory-category">
+              <option value="preference">Preference</option>
+              <option value="fact">Fact</option>
+              <option value="project">Project</option>
+              <option value="routine">Routine</option>
+              <option value="temporary">Temporary note</option>
+            </select>
+            <label for="memory-content">Memory text</label>
+            <textarea id="memory-content" rows="3" maxlength="8000" placeholder="Write exactly what you want JARVIS to remember…"></textarea>
+            <label for="memory-expires">Expiry date (required for temporary notes)</label>
+            <input id="memory-expires" type="date">
+            <div class="memory-actions">
+              <button id="save-memory" type="button">Save memory</button>
+              <button id="clear-memory" type="button" class="secondary">Clear selection</button>
+            </div>
+            <div id="memory-list" class="memory-list" aria-live="polite"></div>
+            <div class="memory-actions">
+              <button id="export-memories" type="button" class="secondary">Export all memories</button>
+              <button id="delete-all-memories" type="button" class="danger">Delete all memories</button>
+            </div>
+            <p class="muted">Deletion removes live records, but Cloudflare D1 Time Travel may retain restorable encrypted copies for up to seven days.</p>
+          </div>
+        </section>
         <button id="reauthenticate" type="button" class="secondary">Confirm passkey for security changes</button>
         <button id="add-credential" type="button" class="secondary">Add another passkey</button>
         <button id="logout" type="button" class="danger">Sign out</button>
@@ -75,7 +103,7 @@
       </div>
     </section>
 
-    <div class="note"><strong>Security boundary.</strong> No conversation memory, personal files, AI tools, or external accounts are connected on this page.</div>
+    <div class="note"><strong>Security boundary.</strong> No persistent memory, personal files, external tools, or external accounts are connected. Chat is temporary and cannot perform actions.</div>
   </main>
 </body>
 </html>
