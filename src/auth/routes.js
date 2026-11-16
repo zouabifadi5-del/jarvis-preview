@@ -686,7 +686,13 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
       new URL(request.url).origin === cfg.origin &&
       (request.method === "GET" || sameOrigin(request, cfg.origin))) {
     const sessionToken = getCookie(request, SESSION_COOKIE);
-    if (sessionToken) {
+    // Only authenticated sessions may allocate a persistent rate-limit bucket.
+    // Otherwise arbitrary attacker-supplied cookies could fill D1 with one-off
+    // HMAC buckets before the route handler rejects the unauthenticated request.
+    const activeSession = sessionToken
+      ? await findActiveSession(cfg.db, { sessionToken, now })
+      : null;
+    if (activeSession) {
       const secret = env?.JARVIS_RATE_LIMIT_HMAC_SECRET;
       if (typeof secret !== "string" || secret.length < 32) {
         return fail(request, 503, "rate_limit_not_configured");
