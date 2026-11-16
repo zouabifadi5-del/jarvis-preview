@@ -114,7 +114,13 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       not_authenticated: "Your session has expired. Sign in again.",
       session_or_csrf_invalid: "Your session security check failed. Refresh and sign in again.",
       recovery_failed: "That recovery code could not be used. Check it and try again, or use a different unused code.",
-      reauthentication_required: "Your sign-in is too old for this change. Tap Confirm passkey for security changes, then retry."
+      reauthentication_required: "Your sign-in is too old for this change. Tap Confirm passkey for security changes, then retry.",
+      ai_not_configured: "JARVIS AI is not configured yet.",
+      ai_rate_limit_not_configured: "JARVIS AI safety limits are not configured, so requests are blocked.",
+      ai_temporarily_unavailable: "JARVIS AI is temporarily unavailable. Your message was not saved.",
+      ai_response_unavailable: "JARVIS could not produce a valid reply. Try again later.",
+      daily_ai_limit_reached: "JARVIS reached its daily free-use limit. Try again after 00:00 UTC; no paid upgrade will be used.",
+      rate_limit_exceeded: "Too many requests. Wait a little before trying again."
     };
     if (response.status === 503 && payload.error === "authentication_not_configured") {
       throw new Error("The authentication service is not configured yet.");
