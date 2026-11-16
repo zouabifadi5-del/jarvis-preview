@@ -1624,6 +1624,18 @@ describe("gated encrypted owner memory routes", () => {
     expect(state.memories[0].content).toBeUndefined();
     expect(new TextDecoder().decode(state.memories[0].ciphertext)).not.toContain("concise answers");
 
+    state.memories.push({
+      id: "123e4567-e89b-42d3-a456-426614174099",
+      owner_id: 1,
+      category: "temporary",
+      ciphertext: new Uint8Array(16),
+      nonce: new Uint8Array(12),
+      key_version: 1,
+      schema_version: 1,
+      created_at: Math.floor(Date.now() / 1000) - 100,
+      updated_at: Math.floor(Date.now() / 1000) - 100,
+      expires_at: Math.floor(Date.now() / 1000) - 1
+    });
     const listed = await handleAuthRequest(request("/auth/memories", {
       method: "GET",
       headers: { Cookie: authHeaders.Cookie }
@@ -1632,6 +1644,7 @@ describe("gated encrypted owner memory routes", () => {
     const listBody = await listed.json();
     expect(listBody.memories).toHaveLength(1);
     expect(listBody.memories[0].id).toBe(id);
+    expect(state.memories).toHaveLength(1); // expired record was pruned from active storage
     expect(listBody.memories[0].content).toBeUndefined();
     expect(listBody.memories[0].ciphertext).toBeUndefined();
 
