@@ -1060,7 +1060,8 @@ describe("JARVIS Worker runtime contract", () => {
     }), {
       DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
-      WEBAUTHN_RP_ID: "example.test"
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
     });
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "reauthentication_required" });
