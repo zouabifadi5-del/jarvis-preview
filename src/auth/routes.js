@@ -734,7 +734,7 @@ async function memoryUpdate(request, env, cfg, now, id) {
     nonce: encrypted.nonce, keyVersion: encrypted.keyVersion,
     schemaVersion: encrypted.schemaVersion, now, expiresAt: body.expiresAt ?? null
   });
-  if (!updated) return fail(request, 404, "memory_not_found");
+  if (!updated) return fail(request, 409, "memory_changed_retry");
   return response(request, { updated: true, id });
 }
 
