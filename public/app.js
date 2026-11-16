@@ -22,6 +22,18 @@ const chatLog = document.querySelector("#chat-log");
 const chatMessageInput = document.querySelector("#chat-message");
 const sendChatButton = document.querySelector("#send-chat");
 let chatHistory = [];
+const memoryPanel = document.querySelector("#memory-panel");
+const memoryStatus = document.querySelector("#memory-status");
+const memoryControls = document.querySelector("#memory-controls");
+const memoryCategory = document.querySelector("#memory-category");
+const memoryContent = document.querySelector("#memory-content");
+const memoryExpires = document.querySelector("#memory-expires");
+const memoryListNode = document.querySelector("#memory-list");
+const saveMemoryButton = document.querySelector("#save-memory");
+const clearMemoryButton = document.querySelector("#clear-memory");
+const exportMemoriesButton = document.querySelector("#export-memories");
+const deleteAllMemoriesButton = document.querySelector("#delete-all-memories");
+let selectedMemoryId = null;
 
 function setStatus(message, kind = "info") {
   statusNode.textContent = message;
@@ -29,6 +41,7 @@ function setStatus(message, kind = "info") {
 }
 function setBusy(busy) {
   for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton, recoverButton, copyRecoveryButton, downloadRecoveryButton, acknowledgeRecoveryButton, sendChatButton]) if (button) button.disabled = busy;
+  if (memoryControls) for (const button of memoryControls.querySelectorAll("button")) button.disabled = busy;
 }
 function decodeBase64Url(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("The server returned invalid passkey options.");
@@ -121,12 +134,21 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       ai_temporarily_unavailable: "JARVIS AI is temporarily unavailable. Your message was not saved.",
       ai_response_unavailable: "JARVIS could not produce a valid reply. Try again later.",
       daily_ai_limit_reached: "JARVIS reached its daily free-use limit. Try again after 00:00 UTC; no paid upgrade will be used.",
-      rate_limit_exceeded: "Too many requests. Wait a little before trying again."
+      rate_limit_exceeded: "Too many requests. Wait a little before trying again.",
+      memory_not_enabled: "Persistent memory is disabled until the owner accepts the seven-day D1 backup window and the encryption key is configured.",
+      memory_key_version_unsupported: "This memory uses an unsupported encryption-key version. Do not delete or overwrite it.",
+      memory_integrity_check_failed: "This memory failed its integrity check and was not changed.",
+      memory_not_found: "That memory no longer exists.",
+      memory_limit_reached: "JARVIS has reached its current memory limit.",
+      explicit_confirmation_required: "Confirm the exact memory action before continuing."
     };
     if (response.status === 503 && payload.error === "authentication_not_configured") {
       throw new Error("The authentication service is not configured yet.");
     }
-    throw new Error(messages[payload.error] || "Request failed (" + response.status + ").");
+    const error = new Error(messages[payload.error] || "Request failed (" + response.status + ").");
+    error.code = payload.error;
+    error.status = response.status;
+    throw error;
   }
   return payload;
 }
@@ -137,6 +159,12 @@ function showSignedOut() {
   chatLog.replaceChildren();
   chatMessageInput.value = "";
   chatHistory = [];
+  memoryListNode.replaceChildren();
+  memoryContent.value = "";
+  memoryExpires.value = "";
+  selectedMemoryId = null;
+  memoryControls.hidden = true;
+  memoryStatus.textContent = "Persistent memory is not available while signed out.";
 }
 function showRecoveryCodes(codes) {
   if (!Array.isArray(codes) || codes.length !== 10 || codes.some((code) => typeof code !== "string")) {
@@ -169,7 +197,7 @@ function acknowledgeRecoveryCodes() {
   signedIn.hidden = false;
   setStatus("Recovery codes acknowledged. Owner session active.", "success");
 }
-async function showSignedIn() { signedOut.hidden = true; signedIn.hidden = false; await loadCredentials(); }
+async function showSignedIn() { signedOut.hidden = true; signedIn.hidden = false; await loadCredentials(); await loadMemories(); }
 async function loadCredentials() {
   credentialsNode.replaceChildren();
   const result = await api("/auth/credentials");
