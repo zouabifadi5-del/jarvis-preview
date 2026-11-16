@@ -2,7 +2,7 @@
 
 **Review type:** Maintainer-assisted static review and synthetic-test review; not an independent audit  
 **Reviewed branch:** `jarvis-security-hardening`  
-**Review baseline:** `72da0123ce8528679f56eab6e29c5c185957b757`  
+**Review baseline:** `80abe08600103d0c0ba94ee230cb6e67ada0f186`  
 **Date:** 16 November 2026
 
 ## Scope examined
@@ -34,11 +34,19 @@ This is a code-level review of the isolated prototype. It does not prove product
 
 **Verification:** Added a local SQLite regression test proving a stale edit cannot overwrite a newer encrypted record. Included in CI run #661 and subsequent runs.
 
+### 3. Concurrent session activity updates could move the idle timestamp backwards
+
+**Risk:** Two overlapping requests can capture different timestamps and complete their D1 updates out of order. A slower request with an older timestamp could overwrite a newer `last_seen_at`, shortening the effective idle lifetime and causing an avoidable session expiry.
+
+**Change:** Session activity now uses SQLite/D1 `MAX(COALESCE(last_seen_at, created_at), ?)` so a request can never move the stored activity timestamp backwards. The returned activity timestamp is also monotonic relative to the row observed by that request.
+
+**Verification:** Added a regression test that executes a newer touch followed by an older touch and asserts the stored timestamp remains at the newer value. CI run #671 passed.
+
 ## Controls observed in the reviewed code
 
 - Single-owner enrollment is gated by a high-entropy bootstrap secret and closes after the owner record exists.
 - WebAuthn verification requires user verification and binds challenges to configured origin/RP ID; challenges are short-lived and single-use.
-- Session cookies are Secure, HttpOnly for the session token, SameSite=Strict, hashed at rest, and subject to idle and absolute expiry.
+- Session cookies are Secure, HttpOnly for the session token, SameSite=Strict, hashed at rest, and subject to idle and absolute expiry. Concurrent activity touches are monotonic so an out-of-order request cannot shorten the idle window.
 - Mutating authenticated routes require same-origin and CSRF checks; sensitive memory operations require recent passkey authentication, except the deliberately immediate memory-disable control.
 - Recovery-code use is atomically claimed; recovery replaces credentials/codes and revokes active sessions.
 - The last active passkey cannot be revoked.
@@ -58,6 +66,11 @@ These are implementation observations, not guarantees against all threats. Produ
 - Decide whether inspect, export, and retrieval events should be audited; preserve the privacy rationale.
 - Complete independent review of old-key retirement and crypto-erasure. Keep old keys until every live record is on the current key and at least seven days have elapsed after final rotation.
 - Obtain explicit owner acceptance of the D1 seven-day Time Travel retention window before enabling durable memory.
+
+## Verification update
+
+- CI run #671 passed 37 Node/SQLite checks and 60 Workers-runtime checks (97 total), production dependency audit reported zero vulnerabilities, and Wrangler dry-run completed. This includes the monotonic session-touch regression test.
+- The preceding run #670 failed because the newly added test fixture queried a non-exported helper; the fixture was corrected, and #671 passed on the corrected commit.
 
 ## Current safety boundary
 
