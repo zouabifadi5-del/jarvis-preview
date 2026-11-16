@@ -41,7 +41,7 @@ function setStatus(message, kind = "info") {
 }
 function setBusy(busy) {
   for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton, recoverButton, copyRecoveryButton, downloadRecoveryButton, acknowledgeRecoveryButton, sendChatButton]) if (button) button.disabled = busy;
-  if (memoryControls) for (const button of memoryControls.querySelectorAll("button")) button.disabled = busy;
+  if (memoryControls) for (const control of memoryControls.querySelectorAll("button, input, select, textarea")) control.disabled = busy;
 }
 function decodeBase64Url(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("The server returned invalid passkey options.");
