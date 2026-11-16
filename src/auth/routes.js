@@ -18,6 +18,7 @@ import {
   listActiveCredentials,
   insertMemoryRecord,
   listMemoryRecords,
+  pruneExpiredMemoryRecords,
   findMemoryRecord,
   updateMemoryRecord,
   deleteMemoryRecord,
@@ -613,6 +614,7 @@ async function memoryList(request, env, cfg, now) {
   const auth = await authenticatedOwner(request, cfg, now);
   if (!auth) return fail(request, 401, "not_authenticated");
   if (env?.JARVIS_MEMORY_RETENTION_ACCEPTED !== "true") return fail(request, 503, "memory_not_enabled");
+  await pruneExpiredMemoryRecords(cfg.db, { now });
   const settings = await getMemorySettings(cfg.db);
   const keyAvailable = Boolean(await loadMemoryKey(env));
   const memories = await listMemoryRecords(cfg.db, { now, limit: 100 });
@@ -655,6 +657,7 @@ async function memoryCreate(request, env, cfg, now) {
       !validMemoryExpiry(body.category, body.expiresAt, now)) {
     return fail(request, 400, "invalid_request");
   }
+  await pruneExpiredMemoryRecords(cfg.db, { now });
   const currentMemories = await listMemoryRecords(cfg.db, { now, limit: 100 });
   if (currentMemories.length >= 100) return fail(request, 409, "memory_limit_reached");
   const id = crypto.randomUUID();
