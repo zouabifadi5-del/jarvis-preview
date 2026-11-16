@@ -44,19 +44,19 @@
 - [x] Add negative route tests for replayed ceremonies, wrong origin, tampered signatures, CSRF failure, and owner-enrollment enumeration.
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify synthetic WebAuthn paths in the Cloudflare Workers runtime.
 - [x] Add a CI production-dependency advisory audit (`npm audit --omit=dev --audit-level=moderate`); a committed, reviewed lockfile and full transitive dependency review remain outstanding.
-- [x] Pass 25 local SQLite/Node checks and 51 Workers runtime tests (76 total), including HMAC-keyed rate-limit enforcement, plus production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI.
+- [x] Pass 31 local SQLite/Node checks and 55 Workers runtime tests (86 total), including HMAC-keyed rate-limit enforcement, plus production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI.
 - [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add/remove passkeys, recovery-code display/copy/download, and sign-out.
 - [ ] Complete owner authentication end to end through the deployed Worker and a physical iPhone passkey; D1 storage operations have been smoke-tested, but the real WebAuthn ceremony is not.
 - [x] Add multi-device credential listing/addition/revocation with last-passkey protection, reload-persistent CSRF cookie, sign-out-everywhere, recent-passkey confirmation, session rotation, and idle timeout.
 - [x] Add ten one-time hashed recovery codes, replacement-passkey recovery, and atomic invalidation of old credentials, sessions, and recovery codes.
 - [x] Implement fixed-window D1 rate-limit counters keyed by HMACs of the Cloudflare client IP and auth action; raw IPs are not stored.
 - [x] Add per-session HMAC-keyed throttling for session inspection, credential management, and logout routes; raw session tokens are not stored in rate-limit buckets.
-- [x] Pass CI tests for IP and per-session rate-limit enforcement, unexpected-field rejection, and local migration/storage validation; latest CI run #500 passed 25 local SQLite/Node checks and 51 Workers-runtime tests (76 total), including invalid-session bucket protection, encrypted-memory flows, and recent-passkey enforcement for memory creation: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43886354536. Remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
+- [x] Pass CI tests for IP and per-session rate-limit enforcement, unexpected-field rejection, and local migration/storage validation; latest CI run #500 passed 31 local SQLite/Node checks and 55 Workers-runtime tests (86 total), including invalid-session bucket protection, AES-GCM tamper checks, encrypted-memory CRUD/export/delete flows, and recent-passkey enforcement: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43886354536. Remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
 - [ ] Verify the configured `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through safe non-disclosing checks; never read or print secret values.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [x] Document encrypted, owner-controlled memory lifecycle and release gates in [Private Memory Design](MEMORY_DESIGN.md); persistent memory remains disabled.
 - [x] Implement AES-256-GCM encrypted memory storage and owner CRUD/inspect/export/delete API routes with synthetic tests; activation is blocked unless the explicit seven-day D1 retention acceptance flag and server-side key are configured.
-- [x] Encrypt memory payloads at rest with AES-256-GCM and protect transport with HTTPS; key rotation, management audit events, expiry pruning, UI, and independent review remain outstanding.
+- [x] Encrypt memory payloads at rest with AES-256-GCM and protect transport with HTTPS; key rotation, management audit events, expiry pruning, one-tap disable, bounded chat retrieval, and independent review remain outstanding.
 - [x] Build the owner-facing memory review/edit/export/delete interface; memory writes require recent passkey confirmation in both UI and API.
 - [ ] Add a one-tap memory-disable control and bounded chat retrieval; keep real memory disabled until release gates pass.
 
