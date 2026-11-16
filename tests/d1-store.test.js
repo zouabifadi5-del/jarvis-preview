@@ -27,6 +27,7 @@ import {
   findMemoryRecord,
   updateMemoryRecord,
   deleteMemoryRecord,
+  deleteAllMemoryRecords,
   pruneExpiredMemoryRecords
 } from "../src/auth/d1-store.js";
 
@@ -600,6 +601,10 @@ test("encrypted memory storage supports owner-scoped listing, inspection, update
     assert.equal(await findMemoryRecord(binding, temporaryId, { now: 1005 }), null);
     assert.equal(await deleteMemoryRecord(binding, id), true);
     assert.equal(await deleteMemoryRecord(binding, id), false);
+    await insertMemoryRecord(binding, {
+      id: temporaryId, category: "fact", ciphertext, nonce, keyVersion: 1, now: 1010
+    });
+    assert.equal(await deleteAllMemoryRecords(binding), 1);
     assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM owner_memories").get().n, 0);
   } finally {
     sqlite.close();
