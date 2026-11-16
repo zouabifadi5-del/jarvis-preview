@@ -14,6 +14,10 @@ const memoryMigration = readFileSync(
   fileURLToPath(new URL("../migrations/0003_encrypted_owner_memories.sql", import.meta.url)),
   "utf8"
 );
+const memoryAuditMigration = readFileSync(
+  fileURLToPath(new URL("../migrations/0004_memory_audit.sql", import.meta.url)),
+  "utf8"
+);
 
 function createDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -22,6 +26,7 @@ function createDatabase() {
   db.exec(migration);
   db.exec(rateLimitMigration);
   db.exec(memoryMigration);
+  db.exec(memoryAuditMigration);
   return db;
 }
 
@@ -39,6 +44,7 @@ test("D1 auth migration creates only the intended auth tables", () => {
       "owner_credentials",
       "owner_memories",
       "owner_memory_settings",
+      "owner_memory_audit",
       "owner_recovery_codes"
     ]);
   } finally {
@@ -219,6 +225,46 @@ test("memory settings default off and accept only explicit boolean state", () =>
     assert.throws(() => db.prepare(
       "INSERT INTO owner_memory_settings(owner_id, enabled, updated_at) VALUES(2, 1, 10)"
     ).run());
+  } finally {
+    db.close();
+  }
+});
+
+
+test("memory audit triggers record content-free lifecycle events and retain only 200", () => {
+  const db = createDatabase();
+  try {
+    db.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
+    const auditColumns = db.prepare("PRAGMA table_info(owner_memory_audit)").all().map((row) => row.name);
+    assert.deepEqual(auditColumns, ["id", "owner_id", "event_type", "occurred_at"]);
+    assert.equal(auditColumns.some((name) => ["content", "ciphertext", "record_id", "category", "session_id", "ip_address"].includes(name)), false);
+
+    db.prepare("INSERT INTO owner_memory_settings(owner_id, enabled, updated_at) VALUES(1, 1, 20)").run();
+    db.prepare(
+      "INSERT INTO owner_memories(id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at, expires_at) VALUES(?, 1, 'fact', ?, ?, 1, 1, 30, 30, NULL)"
+    ).run("123e4567-e89b-42d3-a456-426614174000", Buffer.alloc(16), Buffer.alloc(12));
+    db.prepare("UPDATE owner_memories SET updated_at = 40 WHERE id = ?").run("123e4567-e89b-42d3-a456-426614174000");
+    db.prepare("DELETE FROM owner_memories WHERE id = ?").run("123e4567-e89b-42d3-a456-426614174000");
+    db.prepare("UPDATE owner_memory_settings SET enabled = 0, updated_at = 50 WHERE owner_id = 1").run();
+
+    const events = db.prepare(
+      "SELECT event_type, occurred_at FROM owner_memory_audit ORDER BY id"
+    ).all();
+    assert.deepEqual(events.map((row) => row.event_type), ["enabled", "created", "updated", "deleted", "disabled"]);
+    assert.equal(events[0].occurred_at, 20);
+    assert.equal(events[1].occurred_at, 30);
+    assert.equal(events[2].occurred_at, 40);
+    assert.equal(events[4].occurred_at, 50);
+
+    // Repeated updates create metadata-only events; the trigger prunes old rows.
+    const id = "123e4567-e89b-42d3-a456-426614174001";
+    db.prepare(
+      "INSERT INTO owner_memories(id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at, expires_at) VALUES(?, 1, 'fact', ?, ?, 1, 1, 60, 60, NULL)"
+    ).run(id, Buffer.alloc(16), Buffer.alloc(12));
+    for (let timestamp = 61; timestamp <= 270; timestamp += 1) {
+      db.prepare("UPDATE owner_memories SET updated_at = ? WHERE id = ?").run(timestamp, id);
+    }
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM owner_memory_audit WHERE owner_id = 1").get().count, 200);
   } finally {
     db.close();
   }
