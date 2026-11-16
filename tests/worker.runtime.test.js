@@ -1636,6 +1636,17 @@ describe("gated encrypted owner memory routes", () => {
       memory: { id, category: "project", content: "The owner prefers brief replies." }
     });
 
+    const exported = await handleAuthRequest(request("/auth/memories/export", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(exported.status).toBe(200);
+    await expect(exported.json()).resolves.toMatchObject({
+      count: 1,
+      memories: [{ id, content: "The owner prefers brief replies." }]
+    });
+
     const deleted = await handleAuthRequest(request("/auth/memories/" + id, {
       method: "DELETE",
       headers: authHeaders,
@@ -1646,6 +1657,21 @@ describe("gated encrypted owner memory routes", () => {
       deleted: true,
       backupRetentionNotice: expect.stringContaining("seven days")
     });
+    expect(state.memories).toHaveLength(0);
+
+    const secondCreated = await handleAuthRequest(request("/auth/memories", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ content: "Another synthetic memory", category: "fact" })
+    }), env);
+    expect(secondCreated.status).toBe(200);
+    const deleteAll = await handleAuthRequest(request("/auth/memories", {
+      method: "DELETE",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(deleteAll.status).toBe(200);
+    await expect(deleteAll.json()).resolves.toMatchObject({ deleted: true, deletedCount: 1 });
     expect(state.memories).toHaveLength(0);
   });
 
