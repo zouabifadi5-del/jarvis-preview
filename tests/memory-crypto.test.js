@@ -41,6 +41,11 @@ test("AES-GCM memory encryption rejects tampering and altered associated metadat
   await assert.rejects(decryptMemoryText(key, {
     ...metadata, ...encrypted, ciphertext: tampered
   }));
+  const tamperedNonce = new Uint8Array(encrypted.nonce);
+  tamperedNonce[0] ^= 1;
+  await assert.rejects(decryptMemoryText(key, {
+    ...metadata, ...encrypted, nonce: tamperedNonce
+  }));
   await assert.rejects(decryptMemoryText(key, {
     ...metadata, ...encrypted, category: "fact"
   }));
