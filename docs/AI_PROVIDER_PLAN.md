@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Zero-Cost AI Provider Plan
 
-**Status (16 November 2026):** Provider research and a stateless owner-only chat implementation are complete on the isolated branch. No real inference request has been made; the route is tested with a mock AI binding and remains undeployed.
+**Status (16 November 2026):** Provider research and a stateless owner-only chat implementation are complete on the isolated branch. No real inference request has been made; the route is tested with a mock AI binding and remains undeployed. A read-only Cloudflare settings check confirms the live `jarvis-preview-api` Worker has an `AI` binding by name, but the deployed source remains the health-only scaffold and has not invoked it. Authentication secret binding names were confirmed without reading their values.
 
 ## Non-negotiable cost boundary
 
