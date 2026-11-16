@@ -21,6 +21,7 @@ import {
   findMemoryRecord,
   updateMemoryRecord,
   deleteMemoryRecord,
+  deleteAllMemoryRecords,
   revokeAllSessions,
   revokeCredential,
   revokeSession,
@@ -704,6 +705,56 @@ async function memoryUpdate(request, env, cfg, now, id) {
   });
   if (!updated) return fail(request, 404, "memory_not_found");
   return response(request, { updated: true, id });
+}
+
+async function memoryExport(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
+  const config = await loadMemoryKey(env);
+  if (!config) return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["confirm"]) || body.confirm !== true) {
+    return fail(request, 400, "explicit_confirmation_required");
+  }
+  const metadata = await listMemoryRecords(cfg.db, { now, limit: 100 });
+  const memories = [];
+  try {
+    for (const item of metadata) {
+      const record = await findMemoryRecord(cfg.db, item.id, { now });
+      if (!record) continue;
+      if (record.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
+      const content = await decryptMemoryText(config.key, {
+        ...memoryCryptoMetadata(record), ciphertext: record.ciphertext, nonce: record.nonce
+      });
+      memories.push({
+        id: record.id, category: record.category, content,
+        createdAt: record.createdAt, updatedAt: record.updatedAt, expiresAt: record.expiresAt
+      });
+    }
+  } catch {
+    return fail(request, 500, "memory_integrity_check_failed");
+  }
+  return response(request, { exportedAt: now, count: memories.length, memories });
+}
+
+async function memoryDeleteAll(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
+  if (!await loadMemoryKey(env)) return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["confirm"]) || body.confirm !== true) {
+    return fail(request, 400, "explicit_confirmation_required");
+  }
+  const deletedCount = await deleteAllMemoryRecords(cfg.db);
+  return response(request, {
+    deleted: true,
+    deletedCount,
+    backupRetentionNotice: "Provider-managed D1 Time Travel may retain restorable encrypted copies for up to seven days."
+  });
 }
 
 async function memoryDelete(request, env, cfg, now, id) {
