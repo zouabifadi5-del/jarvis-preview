@@ -593,6 +593,7 @@ async function logout(request, cfg, now) {
 
 async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) {
   const sessionPolicies = {
+    "/auth/me": { name: "session_info", limit: 60, windowSeconds: 60, method: "GET" },
     "/auth/credentials": { name: "credential_list", limit: 60, windowSeconds: 60, method: "GET" },
     "/auth/credentials/options": { name: "credential_add", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/credentials/verify": { name: "credential_add", limit: 10, windowSeconds: 60, method: "POST" },
