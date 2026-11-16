@@ -728,7 +728,9 @@ async function memoryUpdate(request, env, cfg, now, id) {
     createdAt: existing.createdAt
   });
   const updated = await updateMemoryRecord(cfg.db, {
-    id, category: body.category, ciphertext: encrypted.ciphertext,
+    id, expectedKeyVersion: existing.keyVersion,
+    expectedCiphertext: existing.ciphertext, expectedNonce: existing.nonce,
+    category: body.category, ciphertext: encrypted.ciphertext,
     nonce: encrypted.nonce, keyVersion: encrypted.keyVersion,
     schemaVersion: encrypted.schemaVersion, now, expiresAt: body.expiresAt ?? null
   });
