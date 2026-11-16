@@ -571,7 +571,7 @@ async function consumeChatDailyBudget(db, env, now) {
   for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
   const bucketHash = btoa(binary).split("+").join("-").split("/").join("_").replace(/=+$/g, "");
   return consumeRateLimit(db, {
-    bucketHash, windowStart, windowSeconds, limit: 100, now
+    bucketHash, windowStart, windowSeconds, limit: 50, now
   });
 }
 
