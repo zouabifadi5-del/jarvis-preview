@@ -16,6 +16,11 @@ import {
   findActiveSession,
   findOwner,
   listActiveCredentials,
+  insertMemoryRecord,
+  listMemoryRecords,
+  findMemoryRecord,
+  updateMemoryRecord,
+  deleteMemoryRecord,
   revokeAllSessions,
   revokeCredential,
   revokeSession,
@@ -24,6 +29,7 @@ import {
   verifySessionCsrf
 } from "./d1-store.js";
 import { verifyStoredCredentialAuthentication } from "./webauthn.js";
+import { importMemoryEncryptionKey, encryptMemoryText, decryptMemoryText } from "./memory-crypto.js";
 
 const SESSION_COOKIE = "__Host-jarvis_session";
 const CSRF_COOKIE = "__Host-jarvis_csrf";
@@ -552,6 +558,159 @@ async function removeCredential(request, cfg, now) {
   const revoked = await revokeCredential(cfg.db, { credentialId: body.credentialId, now });
   if (!revoked) return fail(request, 404, "credential_not_found");
   return response(request, { revoked: true });
+}
+
+const MEMORY_CATEGORIES = new Set(["preference", "fact", "project", "routine", "temporary"]);
+const MEMORY_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function memoryConfiguration(env) {
+  if (env?.JARVIS_MEMORY_RETENTION_ACCEPTED !== "true") return null;
+  if (typeof env?.JARVIS_MEMORY_ENCRYPTION_KEY !== "string") return null;
+  const keyVersion = Number(env.JARVIS_MEMORY_KEY_VERSION ?? "1");
+  if (!Number.isSafeInteger(keyVersion) || keyVersion !== 1) return null;
+  return { encodedKey: env.JARVIS_MEMORY_ENCRYPTION_KEY, keyVersion };
+}
+
+async function loadMemoryKey(env) {
+  const config = memoryConfiguration(env);
+  if (!config) return null;
+  try {
+    return { ...config, key: await importMemoryEncryptionKey(config.encodedKey) };
+  } catch {
+    return null;
+  }
+}
+
+function hasRecentPasskeySession(session, now) {
+  return Number.isSafeInteger(session?.createdAt) &&
+    session.createdAt <= now && now - session.createdAt <= 5 * 60;
+}
+
+function validMemoryExpiry(category, expiresAt, now) {
+  if (expiresAt === undefined || expiresAt === null) return category !== "temporary";
+  return Number.isSafeInteger(expiresAt) &&
+    expiresAt > now &&
+    expiresAt <= now + 365 * 24 * 60 * 60 &&
+    (category !== "temporary" || expiresAt <= now + 90 * 24 * 60 * 60);
+}
+
+async function memoryList(request, env, cfg, now) {
+  const auth = await authenticatedOwner(request, cfg, now);
+  if (!auth) return fail(request, 401, "not_authenticated");
+  if (!memoryConfiguration(env)) return fail(request, 503, "memory_not_enabled");
+  const memories = await listMemoryRecords(cfg.db, { now, limit: 100 });
+  return response(request, { memories });
+}
+
+async function memoryGet(request, env, cfg, now, id) {
+  const auth = await authenticatedOwner(request, cfg, now);
+  if (!auth) return fail(request, 401, "not_authenticated");
+  const config = await loadMemoryKey(env);
+  if (!config) return fail(request, 503, "memory_not_enabled");
+  const record = await findMemoryRecord(cfg.db, id, { now });
+  if (!record) return fail(request, 404, "memory_not_found");
+  if (record.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
+  try {
+    const content = await decryptMemoryText(config.key, record);
+    return response(request, { memory: { ...{
+      id: record.id, category: record.category, content,
+      createdAt: record.createdAt, updatedAt: record.updatedAt, expiresAt: record.expiresAt
+    } } });
+  } catch {
+    return fail(request, 500, "memory_integrity_check_failed");
+  }
+}
+
+async function memoryCreate(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  const config = await loadMemoryKey(env);
+  if (!config) return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["content", "category", "expiresAt"]) ||
+      typeof body.content !== "string" || body.content.trim().length === 0 ||
+      !MEMORY_CATEGORIES.has(body.category) ||
+      encoder.encode(body.content).byteLength > 8000 ||
+      !validMemoryExpiry(body.category, body.expiresAt, now)) {
+    return fail(request, 400, "invalid_request");
+  }
+  const id = crypto.randomUUID();
+  const createdAt = now;
+  let encrypted;
+  try {
+    encrypted = await encryptMemoryText(config.key, {
+      plaintext: body.content,
+      ownerId: 1,
+      recordId: id,
+      category: body.category,
+      keyVersion: config.keyVersion,
+      createdAt
+    });
+  } catch {
+    return fail(request, 400, "invalid_request");
+  }
+  const memory = await insertMemoryRecord(cfg.db, {
+    id, category: body.category, ciphertext: encrypted.ciphertext,
+    nonce: encrypted.nonce, keyVersion: encrypted.keyVersion,
+    schemaVersion: encrypted.schemaVersion, now, expiresAt: body.expiresAt ?? null
+  });
+  return response(request, { memory });
+}
+
+async function memoryUpdate(request, env, cfg, now, id) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
+  const config = await loadMemoryKey(env);
+  if (!config) return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["content", "category", "expiresAt"]) ||
+      typeof body.content !== "string" || body.content.trim().length === 0 ||
+      !MEMORY_CATEGORIES.has(body.category) ||
+      encoder.encode(body.content).byteLength > 8000 ||
+      !validMemoryExpiry(body.category, body.expiresAt, now)) {
+    return fail(request, 400, "invalid_request");
+  }
+  const existing = await findMemoryRecord(cfg.db, id, { now });
+  if (!existing) return fail(request, 404, "memory_not_found");
+  if (existing.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
+  try {
+    await decryptMemoryText(config.key, existing);
+  } catch {
+    return fail(request, 500, "memory_integrity_check_failed");
+  }
+  const encrypted = await encryptMemoryText(config.key, {
+    plaintext: body.content, ownerId: 1, recordId: id,
+    category: body.category, keyVersion: config.keyVersion,
+    createdAt: existing.createdAt
+  });
+  const updated = await updateMemoryRecord(cfg.db, {
+    id, category: body.category, ciphertext: encrypted.ciphertext,
+    nonce: encrypted.nonce, keyVersion: encrypted.keyVersion,
+    schemaVersion: encrypted.schemaVersion, now, expiresAt: body.expiresAt ?? null
+  });
+  if (!updated) return fail(request, 404, "memory_not_found");
+  return response(request, { updated: true, id });
+}
+
+async function memoryDelete(request, env, cfg, now, id) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
+  if (!memoryConfiguration(env)) return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["confirm"]) || body.confirm !== true) {
+    return fail(request, 400, "explicit_confirmation_required");
+  }
+  const deleted = await deleteMemoryRecord(cfg.db, id);
+  if (!deleted) return fail(request, 404, "memory_not_found");
+  return response(request, {
+    deleted: true,
+    backupRetentionNotice: "Provider-managed D1 Time Travel may retain a restorable encrypted copy for up to seven days."
+  });
 }
 
 async function consumeChatDailyBudget(db, env, now) {
