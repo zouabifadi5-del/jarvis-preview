@@ -150,6 +150,7 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       memory_key_version_unsupported: "This memory uses an unsupported encryption-key version. Do not delete or overwrite it.",
       memory_integrity_check_failed: "This memory failed its integrity check and was not changed.",
       memory_not_found: "That memory no longer exists.",
+      memory_changed_retry: "This memory changed in another request. Reopen it and retry your edit.",
       memory_limit_reached: "JARVIS has reached its current memory limit.",
       credential_limit_reached: "JARVIS supports up to ten active passkeys. Remove an unused passkey before adding another.",
       explicit_confirmation_required: "Confirm the exact memory action before continuing."
