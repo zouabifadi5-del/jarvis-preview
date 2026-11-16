@@ -4,7 +4,7 @@
 **Repository:** https://github.com/zouabifadi5-del/jarvis-preview  
 **Branch:** `jarvis-security-hardening`  
 **Current implementation baseline:** `dc8928476ecfaf3df8af2633bddcebc16c5a6d1a` (latest code change; subsequent commits are documentation only)  
-**Latest confirmed implementation CI:** Run #674 — 98 tests passed, zero production dependency vulnerabilities, Wrangler dry run passed  
+**Latest confirmed implementation CI:** Run #677 — 98 tests passed, zero production dependency vulnerabilities, Wrangler dry run passed; workflow actions pinned to immutable SHAs  
 **Scope:** Prototype code review only; no production approval implied.
 
 ## Request to reviewer
