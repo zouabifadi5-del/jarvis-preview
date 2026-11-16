@@ -1954,7 +1954,7 @@ describe("gated encrypted owner memory routes", () => {
       id: rotationId, owner_id: 1, category: "fact",
       ciphertext: rotationFixture.ciphertext, nonce: rotationFixture.nonce,
       key_version: 1, schema_version: 1,
-      created_at: rotationCreatedAt, updated_at: rotationCreatedAt, expires_at: null
+      created_at: rotationCreatedAt, updated_at: Math.floor(Date.now() / 1000) + 1, expires_at: null
     });
     const rotated = await handleAuthRequest(request("/auth/memories/rotate", {
       method: "POST",
