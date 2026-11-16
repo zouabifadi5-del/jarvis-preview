@@ -1531,6 +1531,129 @@ describe("owner-only stateless AI chat", () => {
   });
 
 
+describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
+  it("registers the synthetic owner, logs in, chats through the AI binding, rejects anonymous chat, and logs out", async () => {
+    const { db, state } = makeRouteD1();
+    const bootstrapSecret = "b".repeat(64);
+    let inferenceCalls = 0;
+    const env = {
+      DB: withRateLimitSupport(db),
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      JARVIS_BOOTSTRAP_SECRET: bootstrapSecret,
+      AI: {
+        async run(model, input) {
+          inferenceCalls += 1;
+          expect(model).toBe("@cf/zai-org/glm-4.7-flash");
+          expect(input.prompt).toContain("Owner's latest message:");
+          return { response: "Synthetic JARVIS reply: Ahlan!" };
+        }
+      }
+    };
+    const originHeaders = {
+      Origin: "https://example.test",
+      "X-Jarvis-Bootstrap": bootstrapSecret
+    };
+
+    const registrationOptionsResponse = await worker.fetch(request("/auth/register/options", {
+      method: "POST",
+      headers: originHeaders
+    }), env);
+    expect(registrationOptionsResponse.status).toBe(200);
+    const registrationOptions = await registrationOptionsResponse.json();
+    const credential = await makeRouteRegistration(registrationOptions.challenge);
+    const registrationResponse = await worker.fetch(request("/auth/register/verify", {
+      method: "POST",
+      headers: { ...originHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        challenge: registrationOptions.challenge,
+        response: credential.response
+      })
+    }), env);
+    expect(registrationResponse.status).toBe(200);
+    expect(state.owner?.id).toBe(1);
+    expect(state.credentials).toHaveLength(1);
+
+    const registrationCookie = registrationResponse.headers.get("set-cookie")
+      ?.match(/__Host-jarvis_session=([^;,]+)/)?.[1];
+    expect(registrationCookie).toBeTruthy();
+
+    const loginOptionsResponse = await worker.fetch(request("/auth/login/options", {
+      method: "POST",
+      headers: { Origin: "https://example.test" }
+    }), env);
+    expect(loginOptionsResponse.status).toBe(200);
+    const loginOptions = await loginOptionsResponse.json();
+    const assertion = await makeRouteAssertion({
+      keyPair: credential.keyPair,
+      credentialId: credential.credentialId,
+      challenge: loginOptions.challenge,
+      counter: 1
+    });
+    const loginResponse = await worker.fetch(request("/auth/login/verify", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        "Content-Type": "application/json",
+        Cookie: "__Host-jarvis_session=" + registrationCookie
+      },
+      body: JSON.stringify({ challenge: loginOptions.challenge, response: assertion })
+    }), env);
+    expect(loginResponse.status).toBe(200);
+    const login = await loginResponse.json();
+    const ownerCookie = loginResponse.headers.get("set-cookie")
+      ?.match(/__Host-jarvis_session=([^;,]+)/)?.[1];
+    expect(ownerCookie).toBeTruthy();
+    expect(login.csrfToken).toBeTruthy();
+
+    const anonymousChat = await worker.fetch(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "Hello JARVIS" })
+    }), env);
+    expect(anonymousChat.status).toBe(403);
+
+    const chatResponse = await worker.fetch(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + ownerCookie,
+        "X-CSRF-Token": login.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "Salem JARVIS", history: [] })
+    }), env);
+    expect(chatResponse.status).toBe(200);
+    await expect(chatResponse.json()).resolves.toMatchObject({
+      reply: "Synthetic JARVIS reply: Ahlan!",
+      model: "@cf/zai-org/glm-4.7-flash"
+    });
+    expect(inferenceCalls).toBe(1);
+
+    const logoutResponse = await worker.fetch(request("/auth/logout", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + ownerCookie,
+        "X-CSRF-Token": login.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    }), env);
+    expect(logoutResponse.status).toBe(200);
+
+    const afterLogout = await worker.fetch(request("/auth/me", {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + ownerCookie }
+    }), env);
+    expect(afterLogout.status).toBe(401);
+  });
+});
+
 describe("encrypted memory WebCrypto in Workers runtime", () => {
   it("encrypts and authenticates memory payloads using AES-GCM", async () => {
     const rawKey = crypto.getRandomValues(new Uint8Array(32));
