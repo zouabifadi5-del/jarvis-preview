@@ -554,6 +554,27 @@ async function removeCredential(request, cfg, now) {
   return response(request, { revoked: true });
 }
 
+async function consumeChatDailyBudget(db, env, now) {
+  const secret = env?.JARVIS_RATE_LIMIT_HMAC_SECRET;
+  if (typeof secret !== "string" || secret.length < 32) {
+    throw new Error("AI rate-limit protection is not configured");
+  }
+  const windowSeconds = 24 * 60 * 60;
+  const windowStart = Math.floor(now / windowSeconds) * windowSeconds;
+  const key = await crypto.subtle.importKey(
+    "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC", key, encoder.encode("daily-ai-budget\njarvis-owner-v1")
+  );
+  let binary = "";
+  for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
+  const bucketHash = btoa(binary).split("+").join("-").split("/").join("_").replace(/=+$/g, "");
+  return consumeRateLimit(db, {
+    bucketHash, windowStart, windowSeconds, limit: 100, now
+  });
+}
+
 async function chat(request, env, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   const auth = await authenticatedOwner(request, cfg, now, true);
@@ -565,6 +586,19 @@ async function chat(request, env, cfg, now) {
       typeof body.message !== "string" || body.message.trim().length === 0 ||
       body.message.length > 6000) {
     return fail(request, 400, "invalid_request");
+  }
+
+  let budget;
+  try {
+    budget = await consumeChatDailyBudget(cfg.db, env, now);
+  } catch {
+    return fail(request, 503, "ai_rate_limit_not_configured");
+  }
+  if (!budget.allowed) {
+    return response(request, {
+      error: "daily_ai_limit_reached",
+      retryAfter: budget.resetAt - now
+    }, 429, { "Retry-After": String(Math.max(1, budget.resetAt - now)) });
   }
 
   const prompt = [
