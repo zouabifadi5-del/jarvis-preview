@@ -115,7 +115,7 @@ Unknown routes and methods remain rejected. No AI command, memory, or external-a
 - First owner can enroll only while the server-side bootstrap gate is active.
 - Enrollment closes after successful first registration; second owner and repeat enrollment are rejected.
 - Wrong origin, wrong RP ID, wrong challenge, expired challenge, replayed challenge, invalid signature, missing user presence, and missing user verification are rejected.
-- Malformed, oversized, wrong-content-type, and unexpected-field requests are rejected.
+- Malformed, oversized, wrong-content-type, and unexpected top-level fields in registration, login, recovery, and credential-management requests are rejected.
 
 ### Login and sessions
 - Valid assertion creates a session; unknown credential, bad signature, wrong challenge, wrong origin, expired challenge, and replayed assertion fail.
