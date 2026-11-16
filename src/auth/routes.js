@@ -21,6 +21,7 @@ import {
   pruneExpiredMemoryRecords,
   findMemoryRecord,
   updateMemoryRecord,
+  rotateMemoryRecord,
   deleteMemoryRecord,
   deleteAllMemoryRecords,
   getMemorySettings,
@@ -735,6 +736,73 @@ async function memoryUpdate(request, env, cfg, now, id) {
   return response(request, { updated: true, id });
 }
 
+async function memoryRotate(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
+  if (env?.JARVIS_MEMORY_RETENTION_ACCEPTED !== "true") return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["confirm", "batchSize"]) || body.confirm !== true ||
+      (body.batchSize !== undefined && (!Number.isSafeInteger(body.batchSize) || body.batchSize < 1 || body.batchSize > 10))) {
+    return fail(request, 400, "explicit_confirmation_required");
+  }
+  const config = await loadMemoryKey(env);
+  if (!config) return fail(request, 503, "memory_not_enabled");
+
+  const batchSize = body.batchSize ?? 10;
+  const metadata = await listMemoryRecords(cfg.db, { now, limit: 100 });
+  const candidates = metadata.filter((item) => item.keyVersion !== config.currentVersion).slice(0, batchSize);
+  let rotated = 0;
+  try {
+    for (const item of candidates) {
+      const record = await findMemoryRecord(cfg.db, item.id, { now });
+      if (!record) continue;
+      const oldKey = memoryKeyForRecord(config, record);
+      if (!oldKey) return fail(request, 503, "memory_key_version_unsupported");
+      const plaintext = await decryptMemoryText(oldKey, {
+        ...memoryCryptoMetadata(record), ciphertext: record.ciphertext, nonce: record.nonce
+      });
+      const encrypted = await encryptMemoryText(config.keys.get(config.currentVersion), {
+        plaintext,
+        ownerId: 1,
+        recordId: record.id,
+        category: record.category,
+        keyVersion: config.currentVersion,
+        createdAt: record.createdAt
+      });
+      const updated = await rotateMemoryRecord(cfg.db, {
+        id: record.id,
+        expectedKeyVersion: record.keyVersion,
+        expectedCiphertext: record.ciphertext,
+        expectedNonce: record.nonce,
+        category: record.category,
+        ciphertext: encrypted.ciphertext,
+        nonce: encrypted.nonce,
+        keyVersion: encrypted.keyVersion,
+        schemaVersion: encrypted.schemaVersion,
+        now,
+        expiresAt: record.expiresAt
+      });
+      if (updated) rotated += 1;
+    }
+  } catch {
+    return fail(request, 500, "memory_rotation_integrity_check_failed");
+  }
+
+  const remainingRecords = await listMemoryRecords(cfg.db, { now, limit: 100 });
+  const oldKeyVersions = [...new Set(
+    remainingRecords.filter((item) => item.keyVersion !== config.currentVersion).map((item) => item.keyVersion)
+  )].sort((a, b) => a - b);
+  return response(request, {
+    rotated,
+    remaining: remainingRecords.filter((item) => item.keyVersion !== config.currentVersion).length,
+    currentVersion: config.currentVersion,
+    oldKeyVersions,
+    keyRetirementNotice: "Keep every old key until all live records are rotated and the seven-day D1 Time Travel retention window after the final rotation has elapsed."
+  });
+}
+
 async function memoryEnable(request, env, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   const auth = await authenticatedOwner(request, cfg, now, true);
@@ -1155,6 +1223,9 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/memories" && request.method === "GET") {
       return await memoryList(request, env, cfg, now);
+    }
+    if (pathname === "/auth/memories/rotate" && request.method === "POST") {
+      return await memoryRotate(request, env, cfg, now);
     }
     if (pathname === "/auth/memories/enable" && request.method === "POST") {
       return await memoryEnable(request, env, cfg, now);
