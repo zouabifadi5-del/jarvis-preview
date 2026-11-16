@@ -214,7 +214,11 @@ function makeRouteD1() {
           return { success: true, meta: { changes: 1 } };
         }
         if (sql.includes("INSERT INTO owner_memories")) {
-          const [id, category, ciphertext, nonce, keyVersion, schemaVersion, createdAt, updatedAt, expiresAt] = values;
+          const [id, category, ciphertext, nonce, keyVersion, schemaVersion, createdAt, updatedAt, expiresAt, countNow] = values;
+          const activeCount = state.memories.filter((row) =>
+            row.owner_id === 1 && (row.expires_at === null || row.expires_at > countNow)
+          ).length;
+          if (activeCount >= 100) return { success: true, meta: { changes: 0 } };
           state.memories.push({
             id, owner_id: 1, category, ciphertext, nonce, key_version: keyVersion,
             schema_version: schemaVersion, created_at: createdAt, updated_at: updatedAt,
