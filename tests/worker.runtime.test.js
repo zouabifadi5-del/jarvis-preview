@@ -1273,4 +1273,26 @@ describe("authenticated session rate limits", () => {
     expect(count).toBe(61);
   });
 
+
+  it("rejects unexpected fields in authentication request bodies", async () => {
+    const db = {
+      prepare() { throw new Error("Unexpected fields must be rejected before any recovery-code lookup"); }
+    };
+    const response = await handleAuthRequest(request("/auth/recovery/options", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ recoveryCode: "r".repeat(48), unexpected: "must-not-be-accepted" })
+    }), {
+      DB: withRateLimitSupport(db),
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    });
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "invalid_request" });
+  });
+
 });
