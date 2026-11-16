@@ -226,9 +226,13 @@ function makeRouteD1() {
           });
           return { success: true, meta: { changes: 1 } };
         } else if (sql.includes("DELETE FROM owner_memories")) {
-          const id = values[0];
           const before = state.memories.length;
-          state.memories = state.memories.filter((row) => row.id !== id || row.owner_id !== 1);
+          if (sql.includes("WHERE id = ?")) {
+            const id = values[0];
+            state.memories = state.memories.filter((row) => row.id !== id || row.owner_id !== 1);
+          } else {
+            state.memories = state.memories.filter((row) => row.owner_id !== 1);
+          }
           return { success: true, meta: { changes: before - state.memories.length } };
         }
         if (sql.includes("DELETE FROM auth_rate_limits")) {
