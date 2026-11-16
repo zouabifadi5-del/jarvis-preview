@@ -1675,10 +1675,23 @@ describe("gated encrypted owner memory routes", () => {
     expect(state.memories).toHaveLength(0);
   });
 
-  it("requires recent passkey reauthentication before memory edits and deletion", async () => {
+  it("requires recent passkey reauthentication before memory creation, edits, export, and deletion", async () => {
     const { db } = makeRouteD1();
     const session = await createSession(db, { now: Math.floor(Date.now() / 1000) - 600 });
     const env = memoryEnv(db);
+    const authHeaders = {
+      Origin: "https://example.test",
+      Cookie: "__Host-jarvis_session=" + session.sessionToken,
+      "X-CSRF-Token": session.csrfToken,
+      "Content-Type": "application/json"
+    };
+    const createResponse = await handleAuthRequest(request("/auth/memories", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ content: "synthetic sensitive memory", category: "fact" })
+    }), env);
+    expect(createResponse.status).toBe(403);
+    await expect(createResponse.json()).resolves.toEqual({ error: "reauthentication_required" });
     const response = await handleAuthRequest(request("/auth/memories/123e4567-e89b-42d3-a456-426614174000", {
       method: "DELETE",
       headers: {
