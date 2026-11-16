@@ -7,7 +7,7 @@
 - Name: `jarvis-owner-auth`
 - Binding: `DB`
 - Database ID: `2bee8195-488a-4c73-ba42-d21950e890c4`
-- Scope: created for the isolated JARVIS owner-auth work. Cloudflare currently lists a `DB` binding on the deployed Worker settings as well; the currently deployed health-only source does not use it. Do not deploy authentication code until the separate deployment gate is approved.
+- Scope: this is one account-level D1 database, not a branch-specific database. Cloudflare also lists a `DB` binding on the currently deployed Worker settings; the health-only deployed source does not use it. The security branch points to this same database ID. Therefore code-branch isolation does not provide database isolation: any Worker version configured with this binding can access the same records. Do not deploy authentication code or run write tests until the owner explicitly approves the operation and the target environment is re-verified.
 
 ## What the authentication database stores
 
@@ -23,7 +23,7 @@ It must not store conversations, prompts, private memory, email, contact lists, 
 
 ## Required Worker configuration
 
-The isolated branch configures Workers Static Assets and the D1 binding above. The deployed Worker settings also currently list the D1 binding, but the deployed source remains a health-only scaffold.
+The security branch configures Workers Static Assets and the account-level D1 binding above. The deployed Worker settings also list this same binding, but the deployed source remains a health-only scaffold. Branches and Worker deployments do not create separate D1 databases.
 
 Required non-secret Worker variables:
 - `AUTH_ORIGIN`: the exact HTTPS origin serving the owner page and API.
@@ -42,7 +42,7 @@ These values must be verified against the actual served owner page immediately b
 ## Remaining approval-gated sequence
 
 1. [x] Read-only verification confirmed all six application tables, five indexes, two migration-history records, empty application tables, and no foreign-key violations.
-2. Perform real D1 read/write/delete smoke tests using synthetic records only; this is a separate write operation and still needs explicit approval. The Worker settings expose the required binding names, but the secret values and exact origin configuration still need safe verification.
+2. Before any deployment, explicitly approve and perform real D1 read/write/delete smoke tests using synthetic records only. Confirm that the test target is the intended account-level database and that the live Worker cannot accidentally expose the test data. The Worker settings expose the required binding names, but secret values and exact origin configuration still need safe verification.
 3. Obtain separate explicit owner approval before deploying the isolated Worker branch.
 4. Verify the served page origin, CSP, cookies, and static assets. Only then perform the first passkey enrollment on the owner's iPhone.
 5. Immediately after successful first-owner enrollment, remove the temporary `JARVIS_BOOTSTRAP_SECRET` from the Worker. The database's singleton owner marker permanently closes first-owner enrollment.
