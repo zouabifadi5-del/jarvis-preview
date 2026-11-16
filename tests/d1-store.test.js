@@ -577,6 +577,48 @@ test("recovery challenges are purpose-bound, single-use, and require a code hash
 });
 
 
+test("two concurrent recovery attempts cannot spend the same recovery code", async () => {
+  const { sqlite, binding } = makeD1({ seedOwner: false });
+  try {
+    const initial = await createOwnerWithCredential(binding, {
+      id: "recovery-race-original",
+      publicKey: new Uint8Array([1, 2, 3]),
+      now: 1000
+    });
+    const recoveryCodeHash = await findActiveRecoveryCode(binding, initial.recoveryCodes[0]);
+    const firstChallenge = await createChallenge(binding, {
+      purpose: "recovery", recoveryCodeHash, now: 1001
+    });
+    const secondChallenge = await createChallenge(binding, {
+      purpose: "recovery", recoveryCodeHash, now: 1001
+    });
+    assert.ok(await consumeRecoveryChallenge(binding, {
+      challenge: firstChallenge.challenge, now: 1002
+    }));
+    assert.ok(await consumeRecoveryChallenge(binding, {
+      challenge: secondChallenge.challenge, now: 1002
+    }));
+
+    const attempts = await Promise.allSettled([
+      completeOwnerRecovery(binding, {
+        recoveryCodeHash, id: "recovery-race-a",
+        publicKey: new Uint8Array([4, 5, 6]), now: 1003
+      }),
+      completeOwnerRecovery(binding, {
+        recoveryCodeHash, id: "recovery-race-b",
+        publicKey: new Uint8Array([7, 8, 9]), now: 1003
+      })
+    ]);
+    assert.equal(attempts.filter((item) => item.status === "fulfilled").length, 1);
+    assert.equal(attempts.filter((item) => item.status === "rejected").length, 1);
+    const active = await listActiveCredentials(binding);
+    assert.equal(active.length, 1);
+    assert.ok(["recovery-race-a", "recovery-race-b"].includes(active[0].id));
+  } finally {
+    sqlite.close();
+  }
+});
+
 test("rate-limit counters increment atomically within a fixed window and expire", async () => {
   const { sqlite, binding } = makeD1();
   try {
