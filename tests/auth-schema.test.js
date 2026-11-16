@@ -10,6 +10,10 @@ const rateLimitMigration = readFileSync(
   fileURLToPath(new URL("../migrations/0002_auth_rate_limits.sql", import.meta.url)),
   "utf8"
 );
+const memoryMigration = readFileSync(
+  fileURLToPath(new URL("../migrations/0003_encrypted_owner_memories.sql", import.meta.url)),
+  "utf8"
+);
 
 function createDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -17,6 +21,7 @@ function createDatabase() {
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(migration);
   db.exec(rateLimitMigration);
+  db.exec(memoryMigration);
   return db;
 }
 
@@ -32,6 +37,7 @@ test("D1 auth migration creates only the intended auth tables", () => {
       "auth_sessions",
       "jarvis_owner",
       "owner_credentials",
+      "owner_memories",
       "owner_recovery_codes"
     ]);
   } finally {
@@ -172,6 +178,30 @@ test("rate-limit migration stores opaque bucket hashes and bounded counters only
       "INSERT INTO auth_rate_limits(bucket_hash, window_start, request_count, expires_at) VALUES(?, ?, ?, ?)"
     ).run("opaque-bucket", 100, 1, 200);
     assert.equal(db.prepare("SELECT request_count FROM auth_rate_limits WHERE bucket_hash = ?").get("opaque-bucket").request_count, 1);
+  } finally {
+    db.close();
+  }
+});
+
+test("memory schema stores encrypted payloads only and enforces nonce/category/owner constraints", () => {
+  const db = createDatabase();
+  try {
+    const columns = db.prepare("PRAGMA table_info(owner_memories)").all().map((row) => row.name);
+    assert.deepEqual(columns, [
+      "id", "owner_id", "category", "ciphertext", "nonce", "key_version",
+      "schema_version", "created_at", "updated_at", "expires_at"
+    ]);
+    assert.equal(columns.some((name) => ["content", "title", "summary", "tags", "plaintext"].includes(name)), false);
+    db.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
+    const insert = db.prepare(
+      "INSERT INTO owner_memories(id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at, expires_at) VALUES(?, 1, ?, ?, ?, 1, 1, ?, ?, NULL)"
+    );
+    insert.run("123e4567-e89b-42d3-a456-426614174000", "fact", Buffer.alloc(16), Buffer.alloc(12), 10, 10);
+    assert.throws(() => insert.run("123e4567-e89b-42d3-a456-426614174001", "secret", Buffer.alloc(16), Buffer.alloc(12), 10, 10));
+    assert.throws(() => insert.run("123e4567-e89b-42d3-a456-426614174002", "fact", Buffer.alloc(16), Buffer.alloc(11), 10, 10));
+    assert.throws(() => db.prepare(
+      "INSERT INTO owner_memories(id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at) VALUES(?, 2, 'fact', ?, ?, 1, 1, 10, 10)"
+    ).run("123e4567-e89b-42d3-a456-426614174003", Buffer.alloc(16), Buffer.alloc(12)));
   } finally {
     db.close();
   }
