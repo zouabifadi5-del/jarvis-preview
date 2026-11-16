@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Private Memory Design
 
-**Status (16 November 2026):** Encrypted memory storage helpers and owner-only API routes (create, list, inspect, update, export, delete-one, delete-all) are implemented on `jarvis-security-hardening` with synthetic tests. Memory remains disabled unless both the explicit D1-retention acceptance flag and a valid server-side encryption key are configured. No owner memory or chat transcript has been stored. There is no memory-management UI, model retrieval integration, key-rotation workflow, or management audit trail yet. The stateless chat route retains only bounded recent conversation in browser page memory; it clears on reload or sign-out.
+**Status (16 November 2026):** Encrypted memory storage helpers and owner-only API routes (create, list, inspect, update, export, delete-one, delete-all) are implemented on `jarvis-security-hardening` with synthetic tests. Memory remains disabled unless both the explicit D1-retention acceptance flag and a valid server-side encryption key are configured. No owner memory or chat transcript has been stored. The iPhone-first owner UI supports explicit save, list, inspect, edit, export, and delete actions. Model retrieval integration, a one-tap memory-disable control, key-rotation workflow, and management audit trail are still outstanding. The stateless chat route retains only bounded recent conversation in browser page memory; it clears on reload or sign-out.
 
 ## Goals
 
@@ -65,7 +65,8 @@ Cloudflare's current D1 documentation lists the Workers Free limits as 5 million
 - [x] Implement AES-256-GCM encryption/decryption, fresh 96-bit nonces, AAD binding, and negative tamper/key/metadata tests.
 - [x] Implement owner-only CRUD, JSON export, and deletion routes with strict schemas, CSRF on writes, recent-passkey checks, and request throttles.
 - [x] Test backend flows with synthetic data only.
-- [ ] Add an owner-facing memory management UI with explicit review, edit, export, delete, and disable controls.
+- [x] Add an owner-facing memory UI for explicit review, edit, export, and delete actions.
+- [ ] Add a one-tap memory-disable control and bounded memory retrieval to chat.
 - [ ] Add bounded memory retrieval to chat, with retrieved text treated as untrusted context and no automatic writes.
 - [ ] Implement and test key rotation, crypto-erasure options, expiry pruning, and privacy-preserving management audit events.
 - [ ] Review the full design independently before enabling memory for the owner.
