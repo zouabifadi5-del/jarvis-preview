@@ -66,7 +66,7 @@ Cloudflare's current D1 documentation lists the Workers Free limits as 5 million
 - [x] Implement owner-only CRUD, JSON export, and deletion routes with strict schemas, CSRF on writes, recent-passkey checks, and request throttles.
 - [x] Test backend flows with synthetic data only.
 - [x] Add an owner-facing memory UI for explicit review, edit, export, and delete actions.
-- [ ] Add a one-tap memory-disable control and bounded memory retrieval to chat.
+- [ ] Add a one-tap memory-disable control.
 - [ ] Add bounded memory retrieval to chat, with retrieved text treated as untrusted context and no automatic writes.
 - [ ] Implement and test key rotation, crypto-erasure options, expiry pruning, and privacy-preserving management audit events.
 - [ ] Review the full design independently before enabling memory for the owner.
