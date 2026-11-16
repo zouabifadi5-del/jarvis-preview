@@ -610,9 +610,16 @@ test("encrypted memory storage supports owner-scoped listing, inspection, update
     const updatedCiphertext = new Uint8Array(32).fill(8);
     const updatedNonce = new Uint8Array(12).fill(4);
     assert.equal(await updateMemoryRecord(binding, {
-      id, category: "project", ciphertext: updatedCiphertext, nonce: updatedNonce,
+      id, expectedKeyVersion: found.keyVersion,
+      expectedCiphertext: found.ciphertext, expectedNonce: found.nonce,
+      category: "project", ciphertext: updatedCiphertext, nonce: updatedNonce,
       keyVersion: 1, now: 1002, expiresAt: 2000
     }), true);
+    assert.equal(await updateMemoryRecord(binding, {
+      id, expectedKeyVersion: found.keyVersion,
+      expectedCiphertext: found.ciphertext, expectedNonce: found.nonce,
+      category: "fact", ciphertext, nonce, keyVersion: 1, now: 1003
+    }), false, "a stale edit must not overwrite a newer encrypted record");
     const updated = await findMemoryRecord(binding, id, { now: 1003 });
     assert.equal(updated.category, "project");
     assert.equal(updated.updatedAt, 1002);
