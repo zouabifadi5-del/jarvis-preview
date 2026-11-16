@@ -58,7 +58,8 @@
 - [ ] Encrypt sensitive data at rest and in transit.
 
 ## Milestone 4 — AI and integrations
-- [ ] Verify a no-cost AI path and its limitations before integration.
+- [x] Research the Workers AI Free allocation and shortlist Free-eligible models; document cost, quota, privacy, and test boundaries in [AI Provider Plan](AI_PROVIDER_PLAN.md). No inference request has been made.
+- [ ] Implement a stateless, passkey-protected chat route with a mocked AI binding and synthetic tests.
 - [ ] Start with read-only connectors.
 - [ ] Require confirmation for messages, sharing, schedule changes, and destructive actions.
 - [ ] Require strong confirmation for financial and security actions.
