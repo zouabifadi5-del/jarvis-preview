@@ -25,7 +25,7 @@
 
 ## Milestone 3 — Owner security and memory (current phase)
 
-**Current position:** The local authentication implementation and synthetic route tests are complete. The owner-auth D1 database has been created on Cloudflare Free and its binding is configured on this isolated branch. The owner confirmed that both migrations, `0001_owner_auth.sql` and `0002_auth_rate_limits.sql`, were applied in the remote D1 console. The read-only schema verification output and real D1 smoke tests are not yet confirmed. No Worker variables/secrets are configured and no deployment has occurred.
+**Current position (16 November 2026):** The isolated branch contains the owner passkey/authentication implementation and synthetic Workers-runtime tests. The remote `jarvis-owner-auth` D1 database has both migrations recorded; all six expected application tables and five supporting indexes were verified with read-only SQL. A temporary synthetic table was created, written, read, emptied, and dropped successfully. No owner account or real passkey has been enrolled. The authentication branch remains undeployed. Cloudflare reports the live Worker has authentication-related secret bindings by name, but their values were not read or independently validated.
 - [x] Document and implement the initial single-owner passkey, session, privacy, and command-approval foundation (not production-ready or security-audited).
 - [x] Pin `@simplewebauthn/server@14.1.0` and verify compatibility in the Cloudflare Workers runtime.
 - [x] Document the one-owner enrollment/login/session design and negative-test matrix.
@@ -35,7 +35,8 @@
 - [x] Owner confirmed Cloudflare Free plan and created the `jarvis-owner-auth` D1 database; the isolated branch has the `DB` binding configured.
 - [x] Owner confirmed applying `migrations/0001_owner_auth.sql` successfully in the remote D1 console.
 - [x] Owner confirmed applying `migrations/0002_auth_rate_limits.sql` successfully in the remote D1 console.
-- [ ] Confirm the read-only schema query returns the six expected tables and the expiry index; run real D1 smoke tests for both migrations.
+- [x] Verify the remote schema: six expected application tables, five supporting indexes, and both migration records are present.
+- [x] Run a temporary synthetic D1 create/insert/read/delete/drop smoke test; verify cleanup and zero remaining rows.
 - [x] Document the approval-gated D1 provisioning and first-owner enrollment sequence: [Remote D1 Provisioning Gate](REMOTE_D1_PROVISIONING_GATE.md).
 - [x] Add initial passkey registration/login/session/logout handlers and fail-closed behavior on the isolated branch.
 - [x] Add synthetic Worker tests for origin checks, bootstrap secret, registration/login options, and content-type enforcement.
@@ -45,12 +46,12 @@
 - [x] Add a CI production-dependency advisory audit (`npm audit --omit=dev --audit-level=moderate`); a committed, reviewed lockfile and full transitive dependency review remain outstanding.
 - [x] Pass 25 local SQLite/Node checks and 40 Workers runtime tests (65 total), including HMAC-keyed rate-limit enforcement, plus production dependency audit, browser syntax validation, and a Wrangler non-deploying dry run in CI.
 - [x] Add a same-origin native browser passkey UI for first-owner setup, sign-in, session status, add/remove passkeys, recovery-code display/copy/download, and sign-out.
-- [ ] Complete owner authentication end to end against a real D1 binding and a physical iPhone passkey; the browser interface is not deployed or device-tested.
+- [ ] Complete owner authentication end to end through the deployed Worker and a physical iPhone passkey; D1 storage operations have been smoke-tested, but the real WebAuthn ceremony is not.
 - [x] Add multi-device credential listing/addition/revocation with last-passkey protection, reload-persistent CSRF cookie, sign-out-everywhere, recent-passkey confirmation, session rotation, and idle timeout.
 - [x] Add ten one-time hashed recovery codes, replacement-passkey recovery, and atomic invalidation of old credentials, sessions, and recovery codes.
 - [x] Implement fixed-window D1 rate-limit counters keyed by HMACs of the Cloudflare client IP and auth action; raw IPs are not stored.
-- [x] Pass CI tests for rate-limit enforcement and local migration/storage validation; remote application of migration 0002 is owner-confirmed, while schema-output verification and real D1 smoke tests remain pending.
-- [ ] Configure `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through Cloudflare controls; never put secret values in Git or chat.
+- [x] Pass CI tests for rate-limit enforcement and local migration/storage validation; remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
+- [ ] Verify the configured `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through safe non-disclosing checks; never read or print secret values.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [ ] Explicit memory review, correction, export, and deletion.
 - [ ] Encrypt sensitive data at rest and in transit.
