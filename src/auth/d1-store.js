@@ -541,10 +541,15 @@ export async function insertMemoryRecord(db, {
 }) {
   assertD1(db);
   const input = assertMemoryRecordInput({ id, category, ciphertext, nonce, keyVersion, schemaVersion, now, expiresAt });
-  await db.prepare(
+  const inserted = await db.prepare(
     "INSERT INTO owner_memories (id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at, expires_at) " +
-    "VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(id, category, input.ciphertext, input.nonce, keyVersion, schemaVersion, now, now, input.expiresAt).run();
+    "SELECT ?, 1, ?, ?, ?, ?, ?, ?, ?, ? " +
+    "WHERE (SELECT COUNT(*) FROM owner_memories WHERE owner_id = 1 AND (expires_at IS NULL OR expires_at > ?)) < 100"
+  ).bind(
+    id, category, input.ciphertext, input.nonce, keyVersion, schemaVersion,
+    now, now, input.expiresAt, now
+  ).run();
+  if (inserted.meta?.changes !== 1) return null;
   return { id, category, createdAt: now, updatedAt: now, expiresAt: input.expiresAt, keyVersion };
 }
 
