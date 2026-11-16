@@ -55,8 +55,9 @@
 - [ ] Verify the configured `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through safe non-disclosing checks; never read or print secret values.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [x] Document encrypted, owner-controlled memory lifecycle and release gates in [Private Memory Design](MEMORY_DESIGN.md); persistent memory remains disabled.
-- [ ] Implement encrypted memory storage and owner CRUD/export/delete routes with synthetic tests.
-- [ ] Encrypt sensitive data at rest and in transit.
+- [x] Implement AES-256-GCM encrypted memory storage and owner CRUD/inspect/export/delete API routes with synthetic tests; activation is blocked unless the explicit seven-day D1 retention acceptance flag and server-side key are configured.
+- [x] Encrypt memory payloads at rest with AES-256-GCM and protect transport with HTTPS; key rotation, management audit events, expiry pruning, UI, and independent review remain outstanding.
+- [ ] Build the owner-facing memory review/edit/export/delete/disable interface and bounded chat retrieval; keep all real memory disabled until release gates pass.
 
 ## Milestone 4 — AI and integrations
 - [x] Research the Workers AI Free allocation and shortlist Free-eligible models; document cost, quota, privacy, and test boundaries in [AI Provider Plan](AI_PROVIDER_PLAN.md). No inference request has been made.
