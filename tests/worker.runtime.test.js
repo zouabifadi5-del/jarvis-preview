@@ -1184,3 +1184,56 @@ describe("authentication rate limits", () => {
     }));
   });
 });
+
+
+describe("authenticated session rate limits", () => {
+  it("limits logout attempts per opaque session bucket", async () => {
+    let count = 0;
+    const db = {
+      prepare(sql) {
+        if (sql.startsWith("INSERT INTO auth_rate_limits")) {
+          return {
+            bind() {
+              return {
+                async first() { count += 1; return { request_count: count }; }
+              };
+            }
+          };
+        }
+        if (sql.startsWith("DELETE FROM auth_rate_limits")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 0 } }; } }; } };
+        }
+        if (sql.includes("SELECT csrf_token_hash")) {
+          return { bind() { return { async first() { return null; } }; } };
+        }
+        throw new Error("Unexpected database query in session rate-limit test");
+      }
+    };
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    };
+    let last;
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      last = await handleAuthRequest(request("/auth/logout", {
+        method: "POST",
+        headers: {
+          Origin: "https://example.test",
+          Cookie: "__Host-jarvis_session=" + "s".repeat(48),
+          "X-CSRF-Token": "c".repeat(48),
+          "Content-Type": "application/json"
+        },
+        body: "{}"
+      }), env);
+      if (attempt < 5) expect(last.status).toBe(403);
+    }
+    expect(last.status).toBe(429);
+    expect(count).toBe(6);
+    expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
+    await expect(last.json()).resolves.toEqual(expect.objectContaining({
+      error: "rate_limit_exceeded"
+    }));
+  });
+});
