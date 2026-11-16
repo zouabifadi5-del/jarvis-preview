@@ -32,3 +32,17 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px; border: 1px
 .chat-message strong { font-size: 11px; color: #9bc8ff; }
 .chat-message p { margin: 5px 0 0; white-space: pre-wrap; }
 textarea { width: 100%; resize: vertical; min-height: 76px; border: 1px solid #34445b; border-radius: 10px; padding: 12px; color: #edf3ff; background: #090f19; font: inherit; font-size: 14px; line-height: 1.5; }
+
+.memory-panel { border-top: 1px solid #26364d; margin-top: 24px; padding-top: 20px; }
+.memory-panel select { width: 100%; border: 1px solid #34445b; border-radius: 10px; padding: 11px 12px; color: #edf3ff; background: #090f19; font: inherit; }
+.memory-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.memory-actions button { flex: 1 1 140px; }
+.memory-list { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+.memory-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #2d4058; border-radius: 10px; padding: 10px; }
+.memory-item .memory-actions { margin: 0; }
+.memory-item .memory-actions button { flex: 0 1 auto; }
+.memory-item .muted { margin: 5px 0 0; }
+@media (max-width: 480px) {
+  .memory-item { align-items: stretch; flex-direction: column; }
+  .memory-item .memory-actions button { flex: 1 1 0; }
+}
