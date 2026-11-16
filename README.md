@@ -13,7 +13,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Owner security design](docs/SECURITY.md) (design and implementation in progress; not deployed or security-audited)
 - [Authentication implementation plan](docs/AUTHENTICATION_PLAN.md) (current route implementation, storage design, flows, and remaining security gates)
 - [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
-- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; verified run #350 has 40 runtime tests plus 25 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
+- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; verified run #368 has 45 runtime tests plus 25 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
 
 ## Repository boundaries
 
@@ -22,7 +22,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 
 ## Development
 
-The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments, owner authentication/recovery routes, the browser interface, and Workers Static Assets configuration are isolated on `jarvis-worker-runtime-tests` and are not merged into the foundation branch or deployed.
+The active foundation branch is `jarvis-foundation`. Changes will be developed there first and reviewed before merging into `main`. Runtime compatibility experiments, owner authentication/recovery routes, per-IP and per-session throttling, strict request-field validation, the browser interface, and Workers Static Assets configuration are isolated on `jarvis-security-hardening` and are not merged into the foundation branch or deployed.
 
 Run the worker's zero-dependency tests with `npm test` using Node.js. They cover the health response, strict route matching, unsupported methods, hardened response headers, cache prevention, HTTPS-only HSTS behavior, and static-shell safety/configuration.
 
