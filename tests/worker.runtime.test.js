@@ -3,6 +3,7 @@ import { exports } from "cloudflare:workers";
 import { handleAuthRequest, readJson } from "../src/auth/routes.js";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { createSession } from "../src/auth/d1-store.js";
+import { encodeMemoryKeyForSetup, importMemoryEncryptionKey, encryptMemoryText, decryptMemoryText } from "../src/auth/memory-crypto.js";
 
 const worker = exports.default;
 
@@ -1476,3 +1477,29 @@ describe("owner-only stateless AI chat", () => {
     await expect(oversizedMessage.json()).resolves.toEqual({ error: "invalid_request" });
     expect(calls).toBe(1);
   });
+
+
+describe("encrypted memory WebCrypto in Workers runtime", () => {
+  it("encrypts and authenticates memory payloads using AES-GCM", async () => {
+    const rawKey = crypto.getRandomValues(new Uint8Array(32));
+    const key = await importMemoryEncryptionKey(encodeMemoryKeyForSetup(rawKey));
+    const metadata = {
+      ownerId: 1,
+      recordId: "123e4567-e89b-42d3-a456-426614174000",
+      category: "preference",
+      keyVersion: 1,
+      createdAt: 1700000000
+    };
+    const encrypted = await encryptMemoryText(key, {
+      ...metadata,
+      plaintext: "synthetic memory stays encrypted"
+    });
+    expect(encrypted.nonce.byteLength).toBe(12);
+    await expect(decryptMemoryText(key, { ...metadata, ...encrypted })).resolves.toBe(
+      "synthetic memory stays encrypted"
+    );
+    await expect(decryptMemoryText(key, {
+      ...metadata, ...encrypted, category: "fact"
+    })).rejects.toThrow();
+  });
+});
