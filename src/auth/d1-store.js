@@ -265,10 +265,12 @@ export async function findActiveSession(db, { sessionToken, now = Math.floor(Dat
   const previousActivity = row.last_seen_at ?? row.created_at;
   let lastSeenAt = previousActivity;
   if (now - previousActivity >= SESSION_TOUCH_INTERVAL_SECONDS) {
+    // Concurrent requests can finish out of order. Never let a slower,
+    // older request move the idle-activity timestamp backwards.
     await db.prepare(
-      "UPDATE auth_sessions SET last_seen_at = ? WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL"
+      "UPDATE auth_sessions SET last_seen_at = MAX(COALESCE(last_seen_at, created_at), ?) WHERE session_hash = ? AND expires_at > ? AND revoked_at IS NULL"
     ).bind(now, sessionHash, now).run();
-    lastSeenAt = now;
+    lastSeenAt = Math.max(previousActivity, now);
   }
 
   return {
