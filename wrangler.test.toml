@@ -1,0 +1,12 @@
+name = "jarvis-preview-api-test"
+main = "src/worker.js"
+compatibility_date = "2026-11-14"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jarvis-owner-auth"
+database_id = "2bee8195-488a-4c73-ba42-d21950e890c4"
