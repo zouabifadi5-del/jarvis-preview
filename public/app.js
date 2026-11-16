@@ -33,7 +33,11 @@ const saveMemoryButton = document.querySelector("#save-memory");
 const clearMemoryButton = document.querySelector("#clear-memory");
 const exportMemoriesButton = document.querySelector("#export-memories");
 const deleteAllMemoriesButton = document.querySelector("#delete-all-memories");
+const enableMemoryButton = document.querySelector("#enable-memory");
+const disableMemoryButton = document.querySelector("#disable-memory");
 let selectedMemoryId = null;
+let memoryEnabled = false;
+let memoryKeyAvailable = false;
 
 function setStatus(message, kind = "info") {
   statusNode.textContent = message;
@@ -42,6 +46,10 @@ function setStatus(message, kind = "info") {
 function setBusy(busy) {
   for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton, recoverButton, copyRecoveryButton, downloadRecoveryButton, acknowledgeRecoveryButton, sendChatButton]) if (button) button.disabled = busy;
   if (memoryControls) for (const control of memoryControls.querySelectorAll("button, input, select, textarea")) control.disabled = busy;
+  if (enableMemoryButton) enableMemoryButton.disabled = busy || !memoryKeyAvailable;
+  if (disableMemoryButton) disableMemoryButton.disabled = busy || !memoryEnabled;
+  if (saveMemoryButton) saveMemoryButton.disabled = busy || !memoryEnabled || !memoryKeyAvailable;
+  if (exportMemoriesButton) exportMemoriesButton.disabled = busy || !memoryKeyAvailable;
 }
 function decodeBase64Url(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("The server returned invalid passkey options.");
@@ -136,6 +144,7 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       daily_ai_limit_reached: "JARVIS reached its daily free-use limit. Try again after 00:00 UTC; no paid upgrade will be used.",
       rate_limit_exceeded: "Too many requests. Wait a little before trying again.",
       memory_not_enabled: "Persistent memory is disabled until the owner accepts the seven-day D1 backup window and the encryption key is configured.",
+      memory_disabled: "Persistent memory is switched off. Enable it before saving or editing memories.",
       memory_key_version_unsupported: "This memory uses an unsupported encryption-key version. Do not delete or overwrite it.",
       memory_integrity_check_failed: "This memory failed its integrity check and was not changed.",
       memory_not_found: "That memory no longer exists.",
@@ -165,6 +174,10 @@ function showSignedOut() {
   memoryExpires.value = "";
   selectedMemoryId = null;
   memoryControls.hidden = true;
+  memoryEnabled = false;
+  memoryKeyAvailable = false;
+  enableMemoryButton.hidden = true;
+  disableMemoryButton.hidden = true;
   memoryStatus.textContent = "Persistent memory is not available while signed out.";
 }
 function showRecoveryCodes(codes) {
@@ -289,6 +302,7 @@ function clearMemoryEditor() {
 }
 
 async function openMemory(id) {
+  if (!memoryKeyAvailable) throw new Error("The memory encryption key is unavailable; records can still be deleted.");
   const result = await api("/auth/memories/" + encodeURIComponent(id));
   const memory = result.memory;
   selectedMemoryId = memory.id;
@@ -324,6 +338,7 @@ function renderMemoryList(memories) {
     view.type = "button";
     view.className = "secondary";
     view.textContent = "View / edit";
+    view.disabled = !memoryKeyAvailable;
     view.addEventListener("click", () => runAction(() => openMemory(memory.id)));
     const remove = document.createElement("button");
     remove.type = "button";
@@ -342,7 +357,17 @@ async function loadMemories() {
   try {
     const result = await api("/auth/memories");
     memoryControls.hidden = false;
-    memoryStatus.textContent = result.memories.length + " encrypted memory record(s). Content is decrypted only when you open a record.";
+    memoryEnabled = result.enabled === true;
+    memoryKeyAvailable = result.keyAvailable === true;
+    enableMemoryButton.hidden = memoryEnabled || !memoryKeyAvailable;
+    disableMemoryButton.hidden = !memoryEnabled;
+    saveMemoryButton.disabled = !memoryEnabled || !memoryKeyAvailable;
+    exportMemoriesButton.disabled = !memoryKeyAvailable;
+    memoryStatus.textContent = !memoryKeyAvailable
+      ? "The encryption key is unavailable. Existing records can still be deleted, but they cannot be opened or exported."
+      : memoryEnabled
+        ? result.memories.length + " encrypted memory record(s). Memory is ON; you can switch it off instantly."
+        : "Memory is OFF. Saved records remain encrypted and are not used; enable it only after reviewing the seven-day backup notice.";
     renderMemoryList(result.memories);
   } catch (error) {
     if (error.code === "memory_not_enabled") {
@@ -354,6 +379,7 @@ async function loadMemories() {
 }
 
 async function saveMemory() {
+  if (!memoryEnabled || !memoryKeyAvailable) throw new Error("Enable memory and verify its encryption key before saving.");
   const content = memoryContent.value.trim();
   const category = memoryCategory.value;
   if (!content) throw new Error("Enter the exact memory text you want to save.");
@@ -381,6 +407,21 @@ async function deleteMemory(id) {
   if (selectedMemoryId === id) clearMemoryEditor();
   await loadMemories();
   setStatus("Memory deleted from active storage. Backup retention may last up to seven days.", "success");
+}
+
+async function enableMemory() {
+  if (!memoryKeyAvailable) throw new Error("The memory encryption key is unavailable.");
+  if (!window.confirm("Enable persistent memory? You accept that Cloudflare D1 Time Travel may retain restorable encrypted copies for up to seven days after deletion. Only explicitly saved items will be stored.")) return;
+  await signIn();
+  await api("/auth/memories/enable", { method: "POST", body: { confirm: true } });
+  await loadMemories();
+  setStatus("Persistent memory enabled. Save only information you explicitly want JARVIS to remember.", "success");
+}
+
+async function disableMemory() {
+  await api("/auth/memories/disable", { method: "POST", body: { confirm: true } });
+  await loadMemories();
+  setStatus("Persistent memory is now off. Existing encrypted records remain available for inspection or deletion.", "success");
 }
 
 async function exportMemories() {
@@ -505,6 +546,8 @@ saveMemoryButton.addEventListener("click", () => runAction(saveMemory));
 clearMemoryButton.addEventListener("click", clearMemoryEditor);
 exportMemoriesButton.addEventListener("click", () => runAction(exportMemories));
 deleteAllMemoriesButton.addEventListener("click", () => runAction(deleteAllMemories));
+enableMemoryButton.addEventListener("click", () => runAction(enableMemory));
+disableMemoryButton.addEventListener("click", () => runAction(disableMemory));
 
 async function initialize() {
   try {
