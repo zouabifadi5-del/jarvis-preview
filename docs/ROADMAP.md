@@ -59,7 +59,8 @@
 - [x] Encrypt memory payloads at rest with AES-256-GCM and protect transport with HTTPS; explicit enable and one-tap disable are implemented. Key rotation, management audit events, bounded chat retrieval, and independent review remain outstanding. Expired records are lazily pruned when the owner lists or saves memories; there is no background scheduled cleanup.
 - [x] Build the owner-facing memory review/edit/export/delete interface; memory writes require recent passkey confirmation in both UI and API.
 - [x] Add explicit owner-controlled memory enable and one-tap disable controls; persistent memory remains disabled until separate release gates pass.
-- [ ] Add bounded chat retrieval with retrieved text treated as untrusted context; keep real memory disabled until release gates pass.
+- [x] Add bounded, per-request opt-in chat retrieval (maximum five recent memories / 4,000 UTF-8 bytes); default chat remains memory-free and retrieved text is untrusted reference data.
+- [ ] Independently review the retrieval and key-rotation design; keep real memory disabled until release gates pass.
 
 ## Milestone 4 — AI and integrations
 - [x] Research the Workers AI Free allocation and shortlist Free-eligible models; document cost, quota, privacy, and test boundaries in [AI Provider Plan](AI_PROVIDER_PLAN.md). No inference request has been made.
