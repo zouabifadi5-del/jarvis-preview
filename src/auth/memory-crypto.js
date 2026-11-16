@@ -11,7 +11,11 @@ function decodeBase64Url(value) {
   }
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
   const binary = atob(base64 + "=");
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  if (encodeBase64Url(bytes) !== value) {
+    throw new TypeError("Memory encryption key must use canonical base64url encoding");
+  }
+  return bytes;
 }
 
 function encodeBase64Url(bytes) {
