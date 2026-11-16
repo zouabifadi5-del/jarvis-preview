@@ -140,6 +140,7 @@ async function api(path, { method = "GET", body, headers = {} } = {}) {
       memory_integrity_check_failed: "This memory failed its integrity check and was not changed.",
       memory_not_found: "That memory no longer exists.",
       memory_limit_reached: "JARVIS has reached its current memory limit.",
+      credential_limit_reached: "JARVIS supports up to ten active passkeys. Remove an unused passkey before adding another.",
       explicit_confirmation_required: "Confirm the exact memory action before continuing."
     };
     if (response.status === 503 && payload.error === "authentication_not_configured") {
