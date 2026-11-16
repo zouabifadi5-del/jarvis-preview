@@ -563,6 +563,17 @@ async function removeCredential(request, cfg, now) {
 const MEMORY_CATEGORIES = new Set(["preference", "fact", "project", "routine", "temporary"]);
 const MEMORY_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function memoryCryptoMetadata(record) {
+  return {
+    ownerId: record.ownerId,
+    recordId: record.id,
+    category: record.category,
+    keyVersion: record.keyVersion,
+    schemaVersion: record.schemaVersion,
+    createdAt: record.createdAt
+  };
+}
+
 function memoryConfiguration(env) {
   if (env?.JARVIS_MEMORY_RETENTION_ACCEPTED !== "true") return null;
   if (typeof env?.JARVIS_MEMORY_ENCRYPTION_KEY !== "string") return null;
@@ -611,11 +622,11 @@ async function memoryGet(request, env, cfg, now, id) {
   if (!record) return fail(request, 404, "memory_not_found");
   if (record.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
   try {
-    const content = await decryptMemoryText(config.key, record);
-    return response(request, { memory: { ...{
+    const content = await decryptMemoryText(config.key, { ...memoryCryptoMetadata(record), ciphertext: record.ciphertext, nonce: record.nonce });
+    return response(request, { memory: {
       id: record.id, category: record.category, content,
       createdAt: record.createdAt, updatedAt: record.updatedAt, expiresAt: record.expiresAt
-    } } });
+    } });
   } catch {
     return fail(request, 500, "memory_integrity_check_failed");
   }
@@ -677,7 +688,7 @@ async function memoryUpdate(request, env, cfg, now, id) {
   if (!existing) return fail(request, 404, "memory_not_found");
   if (existing.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
   try {
-    await decryptMemoryText(config.key, existing);
+    await decryptMemoryText(config.key, { ...memoryCryptoMetadata(existing), ciphertext: existing.ciphertext, nonce: existing.nonce });
   } catch {
     return fail(request, 500, "memory_integrity_check_failed");
   }
