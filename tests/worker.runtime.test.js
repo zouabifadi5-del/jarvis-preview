@@ -339,7 +339,7 @@ describe("JARVIS Worker runtime contract", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("x-frame-options")).toBe("DENY");
     expect(response.headers.get("strict-transport-security")).toBe("max-age=31536000");
-    await expect(response.text()).resolves.toContain("<title>JARVIS</title>");
+    await expect(response.text()).resolves.toContain("<title>J.A.R.V.I.S.");
   });
 
   it("accepts a query string on the exact health route", async () => {
