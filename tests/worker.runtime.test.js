@@ -1398,3 +1398,48 @@ describe("owner-only stateless AI chat", () => {
     await expect(response.json()).resolves.toEqual({ error: "ai_not_configured" });
   });
 });
+
+  it("enforces one shared daily AI budget across sessions and IP addresses", async () => {
+    const { db } = makeRouteD1();
+    const now = Math.floor(Date.now() / 1000);
+    const sessions = [];
+    for (let i = 0; i < 11; i += 1) {
+      sessions.push(await createSession(db, { now }));
+    }
+    let aiCalls = 0;
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      AI: {
+        async run() {
+          aiCalls += 1;
+          return { response: "synthetic reply" };
+        }
+      }
+    };
+    let last;
+    for (let attempt = 0; attempt < 101; attempt += 1) {
+      const sessionIndex = Math.floor(attempt / 10);
+      const session = sessions[sessionIndex];
+      last = await handleAuthRequest(request("/auth/chat", {
+        method: "POST",
+        headers: {
+          Origin: "https://example.test",
+          Cookie: "__Host-jarvis_session=" + session.sessionToken,
+          "X-CSRF-Token": session.csrfToken,
+          "Content-Type": "application/json",
+          "CF-Connecting-IP": "192.0.2." + (sessionIndex + 1)
+        },
+        body: JSON.stringify({ message: "hello" })
+      }), env);
+      if (attempt < 100) expect(last.status).toBe(200);
+    }
+    expect(last.status).toBe(429);
+    expect(aiCalls).toBe(100);
+    expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
+    await expect(last.json()).resolves.toEqual(expect.objectContaining({
+      error: "daily_ai_limit_reached"
+    }));
+  });
