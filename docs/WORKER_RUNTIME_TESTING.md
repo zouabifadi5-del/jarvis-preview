@@ -56,7 +56,7 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 - Browser client syntax check: passed with Node.js 24.
 - Wrangler `deploy --dry-run`: successful; it validated the Worker and static assets without uploading or deploying.
 - Total test cases: 70 passed.
-- Verified run #368: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43879861916
+- Verified run #387: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43880925921
 
 ### Static shell and Wrangler validation
 
