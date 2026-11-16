@@ -51,10 +51,13 @@ Function-calling documentation: https://developers.cloudflare.com/workers-ai/fea
 
 Do not use models that Cloudflare marks as Workers Paid-only, including `@cf/moonshotai/kimi-k2.6`, `@cf/moonshotai/kimi-k2.7-code`, and `@cf/zai-org/glm-5.2`, unless the owner later changes the zero-budget constraint. Do not configure AI Gateway Unified Billing or prepaid credits for this project.
 
+## Current implementation status
+
+The stateless chat route, owner-only UI, HMAC-backed per-session/per-IP throttles, and 100-request UTC-day budget are implemented on `jarvis-security-hardening`. Synthetic tests use a mocked `env.AI.run()` binding; no real inference has been performed. CI run #387 passed 25 local SQLite/Node checks and 49 Workers-runtime tests (74 total), plus the dependency audit, browser syntax check, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43880925921. The route is not deployed, and no owner conversation data is stored.
+
 ## Next steps
 
-1. Keep the authentication and deployment gates separate from AI feature development.
-2. Add a stateless, passkey-protected chat route with a mocked AI binding and synthetic tests.
-3. Add a small owner-only evaluation harness for GLM-4.7-Flash and Gemma 4; no real inference in CI.
-4. Only after authentication is safely deployed and tested, request explicit approval for one live, low-volume inference smoke test.
-5. Build memory only after its security and lifecycle design is approved and implemented.
+1. Keep authentication and deployment gates separate from AI feature development.
+2. Add a small owner-only evaluation harness for GLM-4.7-Flash and Gemma 4; no real inference in CI.
+3. Only after authentication is safely deployed and tested, request explicit approval for one live, low-volume inference smoke test.
+4. Build memory only after its security and lifecycle design is approved and implemented.
