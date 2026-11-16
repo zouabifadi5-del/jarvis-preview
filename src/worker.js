@@ -5,18 +5,39 @@
  */
 import { handleAuthRequest } from "./auth/routes.js";
 
-function jsonResponse(request, body, status = 200) {
-  const headers = {
-    "Cache-Control": "no-store",
+function securityHeaders(request, { noStore = false } = {}) {
+  const headers = new Headers({
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
-  };
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin"
+  });
+  if (noStore) headers.set("Cache-Control", "no-store");
   if (new URL(request.url).protocol === "https:") {
-    headers["Strict-Transport-Security"] = "max-age=31536000";
+    headers.set("Strict-Transport-Security", "max-age=31536000");
   }
-  return Response.json(body, { status, headers });
+  return headers;
+}
+
+function jsonResponse(request, body, status = 200) {
+  return Response.json(body, { status, headers: securityHeaders(request, { noStore: true }) });
+}
+
+async function secureAssetResponse(request, assets) {
+  const upstream = await assets.fetch(request);
+  const headers = new Headers(upstream.headers);
+  for (const [name, value] of securityHeaders(request)) headers.set(name, value);
+  headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; upgrade-insecure-requests"
+  );
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers
+  });
 }
 
 export default {
@@ -46,7 +67,7 @@ export default {
       (request.method === "GET" || request.method === "HEAD") &&
       (isStaticAsset || acceptsHtml)
     ) {
-      return env.ASSETS.fetch(request);
+      return secureAssetResponse(request, env.ASSETS);
     }
 
     return jsonResponse(request, {
