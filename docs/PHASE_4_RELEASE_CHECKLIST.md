@@ -23,6 +23,7 @@ A reviewer other than the implementer should inspect the exact commit proposed f
 
 - [ ] Confirm account remains within the user's zero-cost constraint; do not enable billing, paid add-ons, or trials.
 - [ ] Confirm the intended Worker name, environment, branch/commit, and deployment target.
+- [ ] Enable branch protection for the release branch: require pull requests, require the Worker runtime CI check, block force pushes, and restrict direct pushes where available. **Current observation:** `jarvis-security-hardening` is not protected.
 - [ ] Verify `AUTH_ORIGIN` is the exact HTTPS origin served by the Worker.
 - [ ] Verify `WEBAUTHN_RP_ID` is the exact host corresponding to that origin.
 - [ ] Verify required bootstrap and HMAC secrets are present, sufficiently random, and correctly scoped without printing or retrieving their values.
