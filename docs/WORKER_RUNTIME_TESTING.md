@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status (16 November 2026):** Latest verified run #399 passed 49 Workers-runtime tests and 25 local SQLite/Node checks (74 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication and stateless chat branch remains isolated, undeployed, and not production-ready.  
+**Status (16 November 2026):** Latest verified run #413 passed 51 Workers-runtime tests and 25 local SQLite/Node checks (76 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication and stateless chat branch remains isolated, undeployed, and not production-ready.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -51,12 +51,12 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 
 - Local SQLite/Node checks: 25 passed.
 - Workers runtime test files: 2 passed.
-- Workers runtime test cases: 49 passed, including synthetic end-to-end registration/login/session/logout, recovery, IP and session throttling, daily AI budget enforcement, unexpected-field rejection, and owner-only chat tests using a mocked AI binding.
+- Workers runtime test cases: 51 passed, including synthetic end-to-end registration/login/session/logout, recovery, valid-session-only rate-limit bucket allocation, IP and session throttling, daily AI budget enforcement, unexpected-field rejection, bounded chat input, and owner-only chat tests using a mocked AI binding.
 - Production dependency audit: passed at moderate severity and above.
 - Browser client syntax check: passed with Node.js 24.
 - Wrangler `deploy --dry-run`: successful; it validated the Worker and static assets without uploading or deploying.
 - Total test cases: 70 passed.
-- Verified run #399: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43881271121
+- Verified run #413: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43882501898
 
 ### Static shell and Wrangler validation
 
