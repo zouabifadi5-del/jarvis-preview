@@ -34,7 +34,7 @@ test("D1 auth migration creates only the intended auth tables", () => {
   const db = createDatabase();
   try {
     const names = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     ).all().map((row) => row.name);
     assert.deepEqual(names, [
       "auth_challenges",
@@ -42,8 +42,8 @@ test("D1 auth migration creates only the intended auth tables", () => {
       "auth_sessions",
       "jarvis_owner",
       "owner_credentials",
-      "owner_memory_audit",
       "owner_memories",
+      "owner_memory_audit",
       "owner_memory_settings",
       "owner_recovery_codes"
     ]);
