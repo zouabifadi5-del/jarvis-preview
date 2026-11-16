@@ -4,7 +4,7 @@
 
 This repository contains the public-facing prototype and non-sensitive project documentation.
 
-> The foundation website remains a visual preview, not a deployed AI assistant. The isolated `jarvis-security-hardening` branch contains synthetic-tested owner passkey enrollment/login, session protection, multi-device credential management, recovery, and a stateless owner-only chat route. The chat route is tested with a mocked AI binding; no real inference has been made. The branch is not deployed, no owner passkey is enrolled, and no persistent memory or account integrations are enabled; chat context is temporary in-page only.
+> The foundation website remains a visual preview, not a deployed AI assistant. The isolated `jarvis-security-hardening` branch contains synthetic-tested owner passkey enrollment/login, session protection, multi-device credential management, recovery, encrypted owner-memory controls, and a stateless owner-only chat route. The latest successful CI run (#542) passed 34 local SQLite/Node checks and 55 Workers-runtime tests (89 total), plus the production dependency audit, browser syntax validation, and Wrangler dry run. Chat tests use a mocked AI binding; no real inference has been made. The branch is not deployed, no owner passkey is enrolled, persistent memory is not enabled, and no real owner memory or chat transcript has been stored; chat context is temporary in-page only.
 
 ## Project documents
 
@@ -14,9 +14,9 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Authentication implementation plan](docs/AUTHENTICATION_PLAN.md) (current route implementation, storage design, flows, and remaining security gates)
 - [Zero-cost AI provider plan](docs/AI_PROVIDER_PLAN.md) (Workers AI Free quota, model candidates, privacy and integration gates; no inference enabled)
 - [Private memory design](docs/MEMORY_DESIGN.md) (AES-GCM schema, routes and UI prepared behind retention/key gate; no personal data stored)
-- [Owner acceptance checklist](docs/OWNER_ACCEPTANCE_CHECKLIST.md) (future iPhone passkey acceptance and first live AI smoke-test gates)
+- [Owner acceptance checklist](docs/OWNER_ACCEPTANCE.md) (future iPhone passkey acceptance and first live AI smoke-test gates)
 - [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
-- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; verified run #516 has 55 runtime tests plus 31 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
+- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; verified run #542 has 55 runtime tests plus 34 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
 
 ## Repository boundaries
 
