@@ -42,9 +42,9 @@ test("D1 auth migration creates only the intended auth tables", () => {
       "auth_sessions",
       "jarvis_owner",
       "owner_credentials",
+      "owner_memory_audit",
       "owner_memories",
       "owner_memory_settings",
-      "owner_memory_audit",
       "owner_recovery_codes"
     ]);
   } finally {
