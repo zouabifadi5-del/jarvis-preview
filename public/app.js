@@ -271,6 +271,141 @@ async function sendChatMessage() {
   setStatus("Reply received. This prototype does not save chat history.", "success");
 }
 
+function memoryExpirySeconds() {
+  if (!memoryExpires.value) return null;
+  const date = new Date(memoryExpires.value + "T23:59:59");
+  const timestamp = Math.floor(date.getTime() / 1000);
+  if (!Number.isSafeInteger(timestamp)) throw new Error("Choose a valid memory expiry date.");
+  return timestamp;
+}
+
+function clearMemoryEditor() {
+  selectedMemoryId = null;
+  memoryContent.value = "";
+  memoryCategory.value = "preference";
+  memoryExpires.value = "";
+  saveMemoryButton.textContent = "Save memory";
+}
+
+async function openMemory(id) {
+  const result = await api("/auth/memories/" + encodeURIComponent(id));
+  const memory = result.memory;
+  selectedMemoryId = memory.id;
+  memoryCategory.value = memory.category;
+  memoryContent.value = memory.content;
+  memoryExpires.value = memory.expiresAt ? new Date(memory.expiresAt * 1000).toISOString().slice(0, 10) : "";
+  saveMemoryButton.textContent = "Update selected memory";
+  setStatus("Memory loaded for inspection. Editing requires a fresh passkey check.");
+}
+
+function renderMemoryList(memories) {
+  memoryListNode.replaceChildren();
+  if (!memories.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No saved memories yet.";
+    memoryListNode.append(empty);
+    return;
+  }
+  for (const memory of memories) {
+    const item = document.createElement("div");
+    item.className = "memory-item";
+    const summary = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = memory.category.charAt(0).toUpperCase() + memory.category.slice(1);
+    const date = document.createElement("p");
+    date.className = "muted";
+    date.textContent = "Updated " + new Date(memory.updatedAt * 1000).toLocaleString();
+    summary.append(title, date);
+    const actions = document.createElement("div");
+    actions.className = "memory-actions";
+    const view = document.createElement("button");
+    view.type = "button";
+    view.className = "secondary";
+    view.textContent = "View / edit";
+    view.addEventListener("click", () => runAction(() => openMemory(memory.id)));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "danger";
+    remove.textContent = "Delete";
+    remove.addEventListener("click", () => runAction(() => deleteMemory(memory.id)));
+    actions.append(view, remove);
+    item.append(summary, actions);
+    memoryListNode.append(item);
+  }
+}
+
+async function loadMemories() {
+  memoryListNode.replaceChildren();
+  memoryControls.hidden = true;
+  try {
+    const result = await api("/auth/memories");
+    memoryControls.hidden = false;
+    memoryStatus.textContent = result.memories.length + " encrypted memory record(s). Content is decrypted only when you open a record.";
+    renderMemoryList(result.memories);
+  } catch (error) {
+    if (error.code === "memory_not_enabled") {
+      memoryStatus.textContent = error.message;
+      return;
+    }
+    throw error;
+  }
+}
+
+async function saveMemory() {
+  const content = memoryContent.value.trim();
+  const category = memoryCategory.value;
+  if (!content) throw new Error("Enter the exact memory text you want to save.");
+  if (!window.confirm((selectedMemoryId ? "Update" : "Save") + " this exact text in your private encrypted memory?")) return;
+  const body = { content, category, expiresAt: memoryExpirySeconds() };
+  if (selectedMemoryId) {
+    await signIn();
+    await api("/auth/memories/" + encodeURIComponent(selectedMemoryId), { method: "PUT", body });
+    setStatus("Memory updated and encrypted.", "success");
+  } else {
+    await api("/auth/memories", { method: "POST", body });
+    setStatus("Memory saved and encrypted.", "success");
+  }
+  clearMemoryEditor();
+  await loadMemories();
+}
+
+async function deleteMemory(id) {
+  if (!window.confirm("Delete this memory from active storage? A restorable encrypted copy may remain in provider backups for up to seven days.")) return;
+  await signIn();
+  await api("/auth/memories/" + encodeURIComponent(id), {
+    method: "DELETE", body: { confirm: true }
+  });
+  if (selectedMemoryId === id) clearMemoryEditor();
+  await loadMemories();
+  setStatus("Memory deleted from active storage. Backup retention may last up to seven days.", "success");
+}
+
+async function exportMemories() {
+  if (!window.confirm("Export all your saved memories to a JSON file? The file will contain decrypted private text.")) return;
+  await signIn();
+  const result = await api("/auth/memories/export", {
+    method: "POST", body: { confirm: true }
+  });
+  const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "jarvis-memory-export.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setStatus("Memory export created. Keep the downloaded file private.", "success");
+}
+
+async function deleteAllMemories() {
+  if (!window.confirm("Delete ALL saved memories from active storage? Provider backups may retain restorable encrypted copies for up to seven days.")) return;
+  await signIn();
+  await api("/auth/memories", { method: "DELETE", body: { confirm: true } });
+  clearMemoryEditor();
+  await loadMemories();
+  setStatus("All memories deleted from active storage. Backup retention may last up to seven days.", "success");
+}
+
 async function requireWebAuthn() {
   if (!window.isSecureContext || !navigator.credentials || typeof navigator.credentials.create !== "function" ||
       typeof navigator.credentials.get !== "function" || !window.PublicKeyCredential) {
