@@ -1729,6 +1729,19 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       headers: { Cookie: "__Host-jarvis_session=" + ownerCookie }
     }), env);
     expect(afterLogout.status).toBe(401);
+
+    const postLogoutChat = await workerModule.fetch(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + ownerCookie,
+        "X-CSRF-Token": login.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "Try to continue after logout", history: [] })
+    }), env);
+    expect(postLogoutChat.status).toBe(403);
+    expect(inferenceCalls).toBe(2);
   });
 });
 
