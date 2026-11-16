@@ -602,7 +602,9 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/logout-all": { name: "session_logout", limit: 5, windowSeconds: 60, method: "POST" }
   };
   const sessionPolicy = sessionPolicies[pathname];
-  if (sessionPolicy && request.method === sessionPolicy.method && sameOrigin(request, cfg.origin)) {
+  if (sessionPolicy && request.method === sessionPolicy.method &&
+      new URL(request.url).origin === cfg.origin &&
+      (request.method === "GET" || sameOrigin(request, cfg.origin))) {
     const sessionToken = getCookie(request, SESSION_COOKIE);
     if (sessionToken) {
       const secret = env?.JARVIS_RATE_LIMIT_HMAC_SECRET;
