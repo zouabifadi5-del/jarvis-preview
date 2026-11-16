@@ -48,9 +48,10 @@
 
 ### Persistent memory
 
-- Persistent memory is not implemented or enabled.
-- The design requires AES-256-GCM encryption with a server-only key, owner-controlled save/inspect/correct/export/delete, strict lifecycle controls, and no plaintext in D1 or logs.
-- The model may suggest memory candidates, but must not save durable memories without explicit owner confirmation.
+- An isolated prototype includes migration 0003, AES-256-GCM primitives, encrypted D1 helpers, owner-only CRUD/export/delete routes, and a browser memory manager.
+- The feature remains disabled by default: migration 0003 is not applied to remote D1, the encryption secret and explicit seven-day-retention acceptance flag are absent, and no owner memory has been stored.
+- Saving, editing, export, and deletion require explicit owner action, CSRF, and recent passkey authentication. Deletion warns that D1 Time Travel may retain restorable encrypted copies for up to seven days.
+- Model retrieval, key rotation, a one-tap disable control, and privacy-preserving management audit metadata remain outstanding.
 - See [Private Memory Design](MEMORY_DESIGN.md).
 
 ### Integrations and actions
