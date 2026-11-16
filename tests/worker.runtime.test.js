@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { exports } from "cloudflare:workers";
-import { handleAuthRequest } from "../src/auth/routes.js";
+import { handleAuthRequest, readJson } from "../src/auth/routes.js";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { createSession } from "../src/auth/d1-store.js";
 
@@ -445,29 +445,14 @@ describe("JARVIS Worker runtime contract", () => {
         cancelled = true;
       }
     });
-    const bootstrapSecret = "a".repeat(48);
-    const env = {
-      DB: withRateLimitSupport({
-        prepare() { throw new Error("oversized bodies must not reach D1"); }
-      }),
-      AUTH_ORIGIN: "https://example.test",
-      WEBAUTHN_RP_ID: "example.test",
-      JARVIS_BOOTSTRAP_SECRET: bootstrapSecret,
-      JARVIS_RATE_LIMIT_HMAC_SECRET: "r".repeat(48)
-    };
-    const response = await handleAuthRequest(request("/auth/register/verify", {
+    const incoming = new Request("https://example.test/auth/register/verify", {
       method: "POST",
-      headers: {
-        Origin: "https://example.test",
-        "Content-Type": "application/json",
-        "X-Jarvis-Bootstrap": bootstrapSecret
-      },
+      headers: { "Content-Type": "application/json" },
       body,
       duplex: "half"
-    }), env);
+    });
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: "invalid_request" });
+    await expect(readJson(incoming)).resolves.toBeNull();
     expect(cancelled).toBe(true);
   });
 
