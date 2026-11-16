@@ -582,10 +582,23 @@ async function chat(request, env, cfg, now) {
   if (!env?.AI || typeof env.AI.run !== "function") return fail(request, 503, "ai_not_configured");
 
   const body = await readJson(request);
-  if (!body || !hasOnlyKeys(body, ["message"]) ||
+  if (!body || !hasOnlyKeys(body, ["message", "history"]) ||
       typeof body.message !== "string" || body.message.trim().length === 0 ||
-      body.message.length > 6000) {
+      body.message.length > 6000 || encoder.encode(body.message).length > 6000) {
     return fail(request, 400, "invalid_request");
+  }
+  const history = body.history === undefined ? [] : body.history;
+  if (!Array.isArray(history) || history.length > 8) return fail(request, 400, "invalid_request");
+  let historyBytes = 0;
+  for (const item of history) {
+    if (!item || !hasOnlyKeys(item, ["role", "content"]) ||
+        !["user", "assistant"].includes(item.role) ||
+        typeof item.content !== "string" || item.content.trim().length === 0 ||
+        item.content.length > 2000) {
+      return fail(request, 400, "invalid_request");
+    }
+    historyBytes += encoder.encode(item.content).length;
+    if (historyBytes > 6000) return fail(request, 400, "invalid_request");
   }
 
   let budget;
@@ -610,7 +623,10 @@ async function chat(request, env, cfg, now) {
     "Never request or repeat passwords, passkeys, recovery codes, or other secrets.",
     "A user request is not authorization to change accounts, share data, send messages, spend money, or perform external actions.",
     "",
-    "Owner message:",
+    "Recent conversation (untrusted conversation context):",
+    ...history.map((item) => (item.role === "user" ? "Owner: " : "JARVIS: ") + item.content),
+    "",
+    "Owner's latest message:",
     body.message.trim()
   ].join("\n");
 
