@@ -637,6 +637,7 @@ async function memoryCreate(request, env, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   const auth = await authenticatedOwner(request, cfg, now, true);
   if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
   const config = await loadMemoryKey(env);
   if (!config) return fail(request, 503, "memory_not_enabled");
   const body = await readJson(request);
