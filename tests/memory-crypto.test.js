@@ -65,6 +65,9 @@ test("AES-GCM memory encryption rejects tampering and altered associated metadat
 
 test("memory key parsing and plaintext size validation fail closed", async () => {
   await assert.rejects(importMemoryEncryptionKey("not-a-valid-key"), TypeError);
+  // The final base64url character has two unused low bits for a 32-byte key.
+  // Reject alternate encodings that decode to the same bytes.
+  await assert.rejects(importMemoryEncryptionKey("A".repeat(42) + "B"), TypeError);
   const key = await makeKey();
   await assert.rejects(encryptMemoryText(key, { ...metadata, plaintext: "" }), TypeError);
   await assert.rejects(encryptMemoryText(key, {
