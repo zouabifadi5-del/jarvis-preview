@@ -592,6 +592,44 @@ async function logout(request, cfg, now) {
 
 
 async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) {
+  const sessionPolicies = {
+    "/auth/credentials": { name: "credential_list", limit: 60, windowSeconds: 60, method: "GET" },
+    "/auth/credentials/options": { name: "credential_add", limit: 10, windowSeconds: 60, method: "POST" },
+    "/auth/credentials/verify": { name: "credential_add", limit: 10, windowSeconds: 60, method: "POST" },
+    "/auth/credentials/revoke": { name: "credential_revoke", limit: 10, windowSeconds: 60, method: "POST" },
+    "/auth/logout": { name: "session_logout", limit: 10, windowSeconds: 60, method: "POST" },
+    "/auth/logout-all": { name: "session_logout", limit: 5, windowSeconds: 60, method: "POST" }
+  };
+  const sessionPolicy = sessionPolicies[pathname];
+  if (sessionPolicy && request.method === sessionPolicy.method && sameOrigin(request, cfg.origin)) {
+    const sessionToken = getCookie(request, SESSION_COOKIE);
+    if (sessionToken) {
+      const secret = env?.JARVIS_RATE_LIMIT_HMAC_SECRET;
+      if (typeof secret !== "string" || secret.length < 32) {
+        return fail(request, 503, "rate_limit_not_configured");
+      }
+      const windowStart = Math.floor(now / sessionPolicy.windowSeconds) * sessionPolicy.windowSeconds;
+      const key = await crypto.subtle.importKey(
+        "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+      );
+      const digest = await crypto.subtle.sign(
+        "HMAC", key, encoder.encode("session\n" + sessionPolicy.name + "\n" + sessionToken)
+      );
+      let binary = "";
+      for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
+      const bucketHash = btoa(binary).split("+").join("-").split("/").join("_").replace(/=+$/g, "");
+      const result = await consumeRateLimit(cfg.db, {
+        bucketHash, windowStart, windowSeconds: sessionPolicy.windowSeconds,
+        limit: sessionPolicy.limit, now
+      });
+      if (!result.allowed) {
+        return response(request, { error: "rate_limit_exceeded", retryAfter: result.resetAt - now }, 429, {
+          "Retry-After": String(Math.max(1, result.resetAt - now))
+        });
+      }
+    }
+  }
+
   const groups = {
     "/auth/login/options": { name: "login", limit: 20, windowSeconds: 15 * 60 },
     "/auth/login/verify": { name: "login", limit: 20, windowSeconds: 15 * 60 },
