@@ -236,7 +236,12 @@ function makeRouteD1() {
           return { success: true, meta: { changes: 1 } };
         } else if (sql.includes("DELETE FROM owner_memories")) {
           const before = state.memories.length;
-          if (sql.includes("WHERE id = ?")) {
+          if (sql.includes("expires_at IS NOT NULL AND expires_at <= ?")) {
+            const cutoff = values[0];
+            state.memories = state.memories.filter((row) =>
+              row.owner_id !== 1 || row.expires_at === null || row.expires_at > cutoff
+            );
+          } else if (sql.includes("WHERE id = ?")) {
             const id = values[0];
             state.memories = state.memories.filter((row) => row.id !== id || row.owner_id !== 1);
           } else {
