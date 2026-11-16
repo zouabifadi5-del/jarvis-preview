@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status (16 November 2026):** Latest verified run #571 passed 56 Workers-runtime tests and 35 local SQLite/Node checks (91 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication, encrypted-memory controls, and stateless chat branch remains isolated, undeployed, and not production-ready.  
+**Status (16 November 2026):** Latest verified run #577 passed 56 Workers-runtime tests and 35 local SQLite/Node checks (91 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication, encrypted-memory controls, and stateless chat branch remains isolated, undeployed, and not production-ready.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
@@ -51,12 +51,12 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 
 - Local SQLite/Node checks: 35 passed.
 - Workers runtime test files: 2 passed.
-- Workers runtime test cases: 56 passed, including synthetic end-to-end Worker-entrypoint registration/login/AI-chat/anonymous-chat-rejection/logout, route-level registration/login/session/logout, recovery, valid-session-only rate-limit bucket allocation, IP and session throttling, daily AI budget enforcement, unexpected-field rejection, bounded chat input, encrypted-memory CRUD/export/delete, atomic 100-active-record memory cap, explicit memory enable/disable, and owner-only chat tests using a mocked AI binding.
+- Workers runtime test cases: 56 passed, including synthetic end-to-end Worker-entrypoint registration/login/AI-chat/anonymous-chat-rejection/encrypted-memory-enable-save-inspect-delete-disable/logout, route-level registration/login/session/logout, recovery, valid-session-only rate-limit bucket allocation, IP and session throttling, daily AI budget enforcement, unexpected-field rejection, bounded chat input, encrypted-memory CRUD/export/delete, atomic 100-active-record memory cap, explicit memory enable/disable, and owner-only chat tests using a mocked AI binding.
 - Production dependency audit: passed at moderate severity and above.
 - Browser client syntax check: passed with Node.js 24.
 - Wrangler `deploy --dry-run`: successful; it validated the Worker and static assets without uploading or deploying.
 - Total test cases: 90 passed.
-- Verified run #571: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43897834849
+- Verified run #571: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43898466609
 
 ### Static shell and Wrangler validation
 
