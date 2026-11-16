@@ -1691,5 +1691,17 @@ describe("gated encrypted owner memory routes", () => {
     }), env);
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "reauthentication_required" });
+    const exportResponse = await handleAuthRequest(request("/auth/memories/export", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + session.sessionToken,
+        "X-CSRF-Token": session.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(exportResponse.status).toBe(403);
+    await expect(exportResponse.json()).resolves.toEqual({ error: "reauthentication_required" });
   });
 });
