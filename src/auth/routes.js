@@ -608,7 +608,7 @@ function validMemoryExpiry(category, expiresAt, now) {
 async function memoryList(request, env, cfg, now) {
   const auth = await authenticatedOwner(request, cfg, now);
   if (!auth) return fail(request, 401, "not_authenticated");
-  if (!memoryConfiguration(env)) return fail(request, 503, "memory_not_enabled");
+  if (!await loadMemoryKey(env)) return fail(request, 503, "memory_not_enabled");
   const memories = await listMemoryRecords(cfg.db, { now, limit: 100 });
   return response(request, { memories });
 }
@@ -711,7 +711,7 @@ async function memoryDelete(request, env, cfg, now, id) {
   const auth = await authenticatedOwner(request, cfg, now, true);
   if (!auth) return fail(request, 403, "session_or_csrf_invalid");
   if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
-  if (!memoryConfiguration(env)) return fail(request, 503, "memory_not_enabled");
+  if (!await loadMemoryKey(env)) return fail(request, 503, "memory_not_enabled");
   const body = await readJson(request);
   if (!body || !hasOnlyKeys(body, ["confirm"]) || body.confirm !== true) {
     return fail(request, 400, "explicit_confirmation_required");
