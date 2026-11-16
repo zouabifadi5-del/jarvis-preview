@@ -101,6 +101,7 @@ All routes are same-origin HTTPS. JSON bodies are content-type checked and cappe
 - `POST /auth/login/options` — issues a short-lived authentication challenge for active owner credentials.
 - `POST /auth/login/verify` — verifies the assertion, compare-and-set updates the counter, and issues a session.
 - `GET /auth/me` — returns only whether the owner session is active and its expiry.
+- `POST /auth/chat` — accepts one bounded message from an authenticated owner with CSRF protection and calls the Free-plan GLM-4.7-Flash model through `env.AI`; it does not store conversation text or expose tools. It is protected by per-session, per-IP, and daily HMAC-keyed request limits.
 - `POST /auth/logout` — verifies Origin and CSRF, revokes the current session, and clears cookies.
 - `POST /auth/logout-all` — verifies Origin and CSRF, revokes every active session, and clears the current cookies.
 - `GET /auth/credentials` — returns limited metadata for active owner passkeys.
