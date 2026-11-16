@@ -1191,7 +1191,7 @@ describe("authentication rate limits", () => {
 describe("authenticated session rate limits", () => {
   it("limits authenticated credential-list requests per opaque session bucket", async () => {
     const { db, state } = makeRouteD1();
-    const session = await createSession(db);
+    const session = await createSession(db, { now: Math.floor(Date.now() / 1000) });
     const env = {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
@@ -1217,7 +1217,7 @@ describe("authenticated session rate limits", () => {
 
   it("applies session throttling to same-origin GET requests without an Origin header", async () => {
     const { db, state } = makeRouteD1();
-    const session = await createSession(db);
+    const session = await createSession(db, { now: Math.floor(Date.now() / 1000) });
     const env = {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
