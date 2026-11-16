@@ -22,7 +22,7 @@ function encodeBase64Url(bytes) {
 
 function memoryAad({ ownerId, recordId, category, keyVersion, schemaVersion = 1, createdAt }) {
   if (!Number.isSafeInteger(ownerId) || ownerId !== 1) throw new TypeError("Invalid memory owner");
-  if (typeof recordId !== "string" || !/^[0-9a-f-]{36}$/i.test(recordId)) throw new TypeError("Invalid memory record ID");
+  if (typeof recordId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recordId)) throw new TypeError("Invalid memory record ID");
   if (!["preference", "fact", "project", "routine", "temporary"].includes(category)) {
     throw new TypeError("Invalid memory category");
   }
