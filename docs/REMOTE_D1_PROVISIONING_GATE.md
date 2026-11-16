@@ -1,13 +1,13 @@
 # Remote D1 provisioning and deployment gate
 
-**Status:** The remote D1 database `jarvis-owner-auth` exists. Both migrations were applied directly and their history was recorded; a read-only query verified all six application tables and five expected indexes. All application tables remain empty, and `PRAGMA foreign_key_check` returned no violations. The deployed Worker settings list `DB`, `AI`, `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `JARVIS_BOOTSTRAP_SECRET`, and `JARVIS_RATE_LIMIT_HMAC_SECRET` bindings; secret values are not readable through this inspection. The deployed Worker source is still the health-check scaffold and does not execute the isolated authentication routes. No authentication code has been deployed and no owner passkey has been enrolled.
+**Status:** The remote D1 database `jarvis-owner-auth` exists. Both migrations were applied directly and their history was recorded; a read-only query verified all six application tables and five expected indexes. A temporary synthetic table passed create/insert/read/delete/drop testing and was confirmed absent afterward. All six application tables remain empty, and `PRAGMA foreign_key_check` returned no violations. The deployed Worker settings list `DB`, `AI`, `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `JARVIS_BOOTSTRAP_SECRET`, and `JARVIS_RATE_LIMIT_HMAC_SECRET` bindings; secret values are not readable through this inspection. The deployed Worker source is still the health-check scaffold and does not execute the isolated authentication routes. No authentication code has been deployed and no owner passkey has been enrolled.
 
 ## Provisioned database
 
 - Name: `jarvis-owner-auth`
 - Binding: `DB`
 - Database ID: `2bee8195-488a-4c73-ba42-d21950e890c4`
-- Scope: this is one account-level D1 database, not a branch-specific database. Cloudflare also lists a `DB` binding on the currently deployed Worker settings; the health-only deployed source does not use it. The security branch points to this same database ID. Therefore code-branch isolation does not provide database isolation: any Worker version configured with this binding can access the same records. Do not deploy authentication code or run write tests until the owner explicitly approves the operation and the target environment is re-verified.
+- Scope: this is one account-level D1 database, not a branch-specific database. Cloudflare also lists a `DB` binding on the currently deployed Worker settings; the health-only deployed source does not use it. The security branch points to this same database ID. Therefore code-branch isolation does not provide database isolation: any Worker version configured with this binding can access the same records. Owner has now authorized routine project reads, edits, and modifications. The approved synthetic D1 smoke test is complete; no owner data was written. Deployment remains a separate release action.
 
 ## What the authentication database stores
 
@@ -42,7 +42,7 @@ These values must be verified against the actual served owner page immediately b
 ## Remaining approval-gated sequence
 
 1. [x] Read-only verification confirmed all six application tables, five indexes, two migration-history records, empty application tables, and no foreign-key violations.
-2. Before any deployment, explicitly approve and perform real D1 read/write/delete smoke tests using synthetic records only. Confirm that the test target is the intended account-level database and that the live Worker cannot accidentally expose the test data. The Worker settings expose the required binding names, but secret values and exact origin configuration still need safe verification.
+2. [x] Perform the approved D1 read/write/delete smoke test using a temporary synthetic table only. Verify the target database, read the inserted value back, delete the row, confirm zero rows remain, and drop the table. No owner record was created. All six application tables remain empty. The Worker settings expose the required binding names, but secret values and exact origin configuration still need safe verification.
 3. Obtain separate explicit owner approval before deploying the isolated Worker branch.
 4. Verify the served page origin, CSP, cookies, and static assets. Only then perform the first passkey enrollment on the owner's iPhone.
 5. Immediately after successful first-owner enrollment, remove the temporary `JARVIS_BOOTSTRAP_SECRET` from the Worker. The database's singleton owner marker permanently closes first-owner enrollment.
@@ -52,6 +52,6 @@ These values must be verified against the actual served owner page immediately b
 
 - Keep the Cloudflare account on the Free plan. Do not enable billing, paid features, or a trial.
 - D1 Free quotas are finite. Monitor usage; do not automatically upgrade if a quota is reached.
-- Deploying or merging is a separate remote action and requires separate explicit approval.
+- Deploying authentication code or merging it into the production branch remains a separate release action and is not authorized by routine edit permission alone.
 - Do not register a real passkey against an unverified or non-live origin.
 - Do not ask the owner to paste the bootstrap secret into chat. The owner should generate and enter it locally through the intended secure setup process.
