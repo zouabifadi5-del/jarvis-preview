@@ -30,6 +30,7 @@ const CSRF_COOKIE = "__Host-jarvis_csrf";
 const CHALLENGE_TTL_SECONDS = 5 * 60;
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
 const MAX_BODY_BYTES = 16 * 1024;
+const OVERSIZED_BODY = Symbol("oversized-authentication-body");
 const encoder = new TextEncoder();
 
 function response(request, body, status = 200, extraHeaders = {}) {
@@ -84,11 +85,14 @@ function equalSecret(a, b) {
   return difference === 0;
 }
 
-async function readJson(request) {
+async function readJson(request, { distinguishOversize = false } = {}) {
   const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
   if (contentType !== "application/json") return null;
   const declaredLength = Number(request.headers.get("Content-Length") || 0);
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) return null;
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    try { await request.body?.cancel(); } catch { /* body may already be locked or closed */ }
+    return distinguishOversize ? OVERSIZED_BODY : null;
+  }
   if (!request.body) return null;
 
   const reader = request.body.getReader();
@@ -100,8 +104,8 @@ async function readJson(request) {
       if (done) break;
       totalBytes += value.byteLength;
       if (totalBytes > MAX_BODY_BYTES) {
-        await reader.cancel();
-        return null;
+        try { await reader.cancel(); } catch { /* stream may already be closed */ }
+        return distinguishOversize ? OVERSIZED_BODY : null;
       }
       chunks.push(value);
     }
@@ -205,13 +209,13 @@ async function registrationOptions(request, env, cfg, now) {
   return response(request, options);
 }
 
-async function registrationVerify(request, env, cfg, now) {
+async function registrationVerify(request, env, cfg, now, preParsedBody) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   if (!equalSecret(request.headers.get("X-Jarvis-Bootstrap"), env.JARVIS_BOOTSTRAP_SECRET)) {
     return fail(request, 403, "bootstrap_not_authorized");
   }
   if (await findOwner(cfg.db)) return fail(request, 409, "enrollment_closed");
-  const body = await readJson(request);
+  const body = preParsedBody === undefined ? await readJson(request) : preParsedBody;
   if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
   }
@@ -297,9 +301,9 @@ async function recoveryOptions(request, cfg, now) {
   return response(request, options);
 }
 
-async function recoveryVerify(request, cfg, now) {
+async function recoveryVerify(request, cfg, now, preParsedBody) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
-  const body = await readJson(request);
+  const body = preParsedBody === undefined ? await readJson(request) : preParsedBody;
   if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
   }
@@ -369,9 +373,9 @@ async function loginOptions(request, cfg, now) {
   return response(request, options);
 }
 
-async function loginVerify(request, cfg, now) {
+async function loginVerify(request, cfg, now, preParsedBody) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
-  const body = await readJson(request);
+  const body = preParsedBody === undefined ? await readJson(request) : preParsedBody;
   if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
   }
@@ -591,6 +595,31 @@ async function logout(request, cfg, now) {
 
 
 
+async function preflightVerifyBody(request, env, cfg, pathname) {
+  const verifyRoutes = new Set([
+    "/auth/register/verify",
+    "/auth/login/verify",
+    "/auth/recovery/verify"
+  ]);
+  if (request.method !== "POST" || !verifyRoutes.has(pathname)) return { body: undefined };
+  // Preserve the existing origin and bootstrap gates before reading request data.
+  if (!sameOrigin(request, cfg.origin)) return { body: undefined };
+  if (pathname === "/auth/register/verify" &&
+      !equalSecret(request.headers.get("X-Jarvis-Bootstrap"), env?.JARVIS_BOOTSTRAP_SECRET)) {
+    return { body: undefined };
+  }
+  const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (contentType !== "application/json") return { body: undefined };
+
+  // Read the bounded body before any D1 operation. Parsed small requests still
+  // pass through rate limiting, including malformed JSON (represented by null).
+  const body = await readJson(request, { distinguishOversize: true });
+  if (body === OVERSIZED_BODY) {
+    return { response: fail(request, 400, "invalid_request") };
+  }
+  return { body };
+}
+
 async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) {
   const groups = {
     "/auth/login/options": { name: "login", limit: 20, windowSeconds: 15 * 60 },
@@ -657,6 +686,9 @@ export async function handleAuthRequest(request, env) {
   const { pathname } = new URL(request.url);
 
   try {
+    const preflight = await preflightVerifyBody(request, env, cfg, pathname);
+    if (preflight.response) return preflight.response;
+
     const limited = await enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now);
     if (limited) return limited;
 
@@ -664,19 +696,19 @@ export async function handleAuthRequest(request, env) {
       return await registrationOptions(request, env, cfg, now);
     }
     if (pathname === "/auth/register/verify" && request.method === "POST") {
-      return await registrationVerify(request, env, cfg, now);
+      return await registrationVerify(request, env, cfg, now, preflight.body);
     }
     if (pathname === "/auth/recovery/options" && request.method === "POST") {
       return await recoveryOptions(request, cfg, now);
     }
     if (pathname === "/auth/recovery/verify" && request.method === "POST") {
-      return await recoveryVerify(request, cfg, now);
+      return await recoveryVerify(request, cfg, now, preflight.body);
     }
     if (pathname === "/auth/login/options" && request.method === "POST") {
       return await loginOptions(request, cfg, now);
     }
     if (pathname === "/auth/login/verify" && request.method === "POST") {
-      return await loginVerify(request, cfg, now);
+      return await loginVerify(request, cfg, now, preflight.body);
     }
     if (pathname === "/auth/me" && request.method === "GET") {
       return await currentSession(request, cfg, now);
