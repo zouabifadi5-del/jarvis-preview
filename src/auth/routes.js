@@ -675,7 +675,7 @@ async function memoryCreate(request, env, cfg, now) {
   const createdAt = now;
   let encrypted;
   try {
-    encrypted = await encryptMemoryText(config.key, {
+    encrypted = await encryptMemoryText(config.keys.get(config.currentVersion), {
       plaintext: body.content,
       ownerId: 1,
       recordId: id,
@@ -721,7 +721,7 @@ async function memoryUpdate(request, env, cfg, now, id) {
   } catch {
     return fail(request, 500, "memory_integrity_check_failed");
   }
-  const encrypted = await encryptMemoryText(config.key, {
+  const encrypted = await encryptMemoryText(config.keys.get(config.currentVersion), {
     plaintext: body.content, ownerId: 1, recordId: id,
     category: body.category, keyVersion: config.currentVersion,
     createdAt: existing.createdAt
