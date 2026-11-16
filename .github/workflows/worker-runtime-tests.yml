@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - jarvis-worker-runtime-tests
+      - jarvis-security-hardening
   pull_request:
     branches:
       - jarvis-foundation
