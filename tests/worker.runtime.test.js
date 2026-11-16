@@ -1537,3 +1537,129 @@ describe("encrypted memory WebCrypto in Workers runtime", () => {
     })).rejects.toThrow();
   });
 });
+
+describe("gated encrypted owner memory routes", () => {
+  function memoryEnv(db) {
+    return {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      JARVIS_MEMORY_RETENTION_ACCEPTED: "true",
+      JARVIS_MEMORY_ENCRYPTION_KEY: encodeMemoryKeyForSetup(crypto.getRandomValues(new Uint8Array(32))),
+      JARVIS_MEMORY_KEY_VERSION: "1"
+    };
+  }
+
+  it("keeps memory disabled until the retention gate and encryption key are configured", async () => {
+    const { db } = makeRouteD1();
+    const session = await createSession(db, { now: Math.floor(Date.now() / 1000) });
+    const response = await handleAuthRequest(request("/auth/memories", {
+      method: "GET",
+      headers: { Cookie: "__Host-jarvis_session=" + session.sessionToken }
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    });
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "memory_not_enabled" });
+  });
+
+  it("creates, lists, decrypts, updates, and deletes only encrypted owner memories", async () => {
+    const { db, state } = makeRouteD1();
+    const session = await createSession(db, { now: Math.floor(Date.now() / 1000) });
+    const env = memoryEnv(db);
+    const authHeaders = {
+      Origin: "https://example.test",
+      Cookie: "__Host-jarvis_session=" + session.sessionToken,
+      "X-CSRF-Token": session.csrfToken,
+      "Content-Type": "application/json"
+    };
+
+    const invalidTemporary = await handleAuthRequest(request("/auth/memories", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ content: "temporary note", category: "temporary" })
+    }), env);
+    expect(invalidTemporary.status).toBe(400);
+
+    const created = await handleAuthRequest(request("/auth/memories", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ content: "The owner prefers concise answers.", category: "preference" })
+    }), env);
+    expect(created.status).toBe(200);
+    const createdBody = await created.json();
+    const id = createdBody.memory.id;
+    expect(state.memories).toHaveLength(1);
+    expect(state.memories[0].ciphertext).toBeInstanceOf(Uint8Array);
+    expect(state.memories[0].content).toBeUndefined();
+    expect(new TextDecoder().decode(state.memories[0].ciphertext)).not.toContain("concise answers");
+
+    const listed = await handleAuthRequest(request("/auth/memories", {
+      method: "GET",
+      headers: { Cookie: authHeaders.Cookie }
+    }), env);
+    expect(listed.status).toBe(200);
+    const listBody = await listed.json();
+    expect(listBody.memories).toHaveLength(1);
+    expect(listBody.memories[0].id).toBe(id);
+    expect(listBody.memories[0].content).toBeUndefined();
+    expect(listBody.memories[0].ciphertext).toBeUndefined();
+
+    const detail = await handleAuthRequest(request("/auth/memories/" + id, {
+      method: "GET",
+      headers: { Cookie: authHeaders.Cookie }
+    }), env);
+    expect(detail.status).toBe(200);
+    await expect(detail.json()).resolves.toMatchObject({
+      memory: { id, content: "The owner prefers concise answers." }
+    });
+
+    const updated = await handleAuthRequest(request("/auth/memories/" + id, {
+      method: "PUT",
+      headers: authHeaders,
+      body: JSON.stringify({ content: "The owner prefers brief replies.", category: "project" })
+    }), env);
+    expect(updated.status).toBe(200);
+    const updatedDetail = await handleAuthRequest(request("/auth/memories/" + id, {
+      method: "GET",
+      headers: { Cookie: authHeaders.Cookie }
+    }), env);
+    await expect(updatedDetail.json()).resolves.toMatchObject({
+      memory: { id, category: "project", content: "The owner prefers brief replies." }
+    });
+
+    const deleted = await handleAuthRequest(request("/auth/memories/" + id, {
+      method: "DELETE",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(deleted.status).toBe(200);
+    await expect(deleted.json()).resolves.toMatchObject({
+      deleted: true,
+      backupRetentionNotice: expect.stringContaining("seven days")
+    });
+    expect(state.memories).toHaveLength(0);
+  });
+
+  it("requires recent passkey reauthentication before memory edits and deletion", async () => {
+    const { db } = makeRouteD1();
+    const session = await createSession(db, { now: Math.floor(Date.now() / 1000) - 600 });
+    const env = memoryEnv(db);
+    const response = await handleAuthRequest(request("/auth/memories/123e4567-e89b-42d3-a456-426614174000", {
+      method: "DELETE",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + session.sessionToken,
+        "X-CSRF-Token": session.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "reauthentication_required" });
+  });
+});
