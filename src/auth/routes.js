@@ -532,7 +532,7 @@ async function addCredentialVerify(request, cfg, now) {
   }
   const credential = verification.registrationInfo.credential;
   try {
-    await storeCredential(cfg.db, {
+    const stored = await storeCredential(cfg.db, {
       id: credential.id,
       publicKey: credential.publicKey,
       counter: credential.counter,
@@ -541,6 +541,7 @@ async function addCredentialVerify(request, cfg, now) {
       backedUp: verification.registrationInfo.credentialBackedUp || false,
       now
     });
+    if (!stored) return fail(request, 409, "credential_limit_reached");
   } catch {
     return fail(request, 409, "credential_already_registered_or_invalid");
   }
