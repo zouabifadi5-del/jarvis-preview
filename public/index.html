@@ -58,15 +58,16 @@
     <section id="signed-in" hidden>
       <div class="panel">
         <h2>Owner session active</h2>
-        <p>Your owner session is active. Chat uses a stateless AI prototype; persistent memory stays disabled until its encryption and backup-retention gates are accepted.</p>
+        <p>Your owner session is active. Chat does not use saved memories unless you explicitly opt in for an individual message. Persistent memory requires separate enablement and encryption/retention safeguards.</p>
         <div id="credentials"></div>
         <section class="chat-panel" aria-label="JARVIS chat">
           <h2>Talk to JARVIS</h2>
           <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
           <label for="chat-message">Your message</label>
           <textarea id="chat-message" rows="3" maxlength="6000" placeholder="Write a message to JARVIS…"></textarea>
+          <label><input id="use-memory" type="checkbox" disabled> Use my saved memories for this message only</label>
           <button id="send-chat" type="button">Send message</button>
-          <p class="muted">Recent chat context stays in this page only and clears on reload or sign-out. No long-term memory, tools, or device control yet.</p>
+          <p class="muted">Recent chat context stays in this page only and clears on reload or sign-out. Saved memories are included only for a message where you tick the box; the choice resets after sending. No tools or device control yet.</p>
         </section>
         <section id="memory-panel" class="memory-panel" aria-label="Private memory">
           <h2>Private memory</h2>
