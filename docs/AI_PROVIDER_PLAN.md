@@ -34,7 +34,7 @@ The documentation does not establish reliable Tunisian Arabic dialect quality fo
 ## Integration design
 
 - Use the native Workers AI binding (`env.AI.run()`) from the Worker. No third-party provider key is required for this binding.
-- A stateless `POST /auth/chat` route and an owner-only browser chat panel now exist on the isolated branch. The route requires an active owner session and CSRF token, accepts one message of at most 6,000 characters, and returns a bounded reply. It does not persist conversation text or expose tools.
+- A stateless `POST /auth/chat` route and an owner-only browser chat panel now exist on the isolated branch. The route requires an active owner session and CSRF token, accepts one latest message plus up to eight recent user/assistant messages held only in browser page memory; the request is byte-bounded and returns a bounded reply. It does not persist conversation text or expose tools.
 - Chat calls are capped at 10 per session per minute, 30 per client IP per minute, and 50 per owner per UTC day using HMAC-derived D1 buckets. The 50-request daily cap is an application-side safety ceiling, not a guarantee of exact Neuron usage; it leaves margin below the provider's 10,000-Neuron daily allocation.
 - The isolated branch's `wrangler.toml` declares `[ai] binding = "AI"` for deployment. `wrangler.test.toml` intentionally omits that binding so local workerd tests do not open a remote AI proxy or consume the account's daily quota.
 - All chat routes must require a valid owner session and CSRF protection for state-changing requests. Apply per-session and per-IP limits, strict JSON schemas, input/output size caps, bounded generation tokens, and request timeouts.
@@ -53,7 +53,7 @@ Do not use models that Cloudflare marks as Workers Paid-only, including `@cf/moo
 
 ## Current implementation status
 
-The stateless chat route, owner-only UI, HMAC-backed per-session/per-IP throttles, and 100-request UTC-day budget are implemented on `jarvis-security-hardening`. Synthetic tests use a mocked `env.AI.run()` binding; no real inference has been performed. CI run #413 passed 25 local SQLite/Node checks and 51 Workers-runtime tests (76 total), plus the dependency audit, browser syntax check, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43882501898. The route is not deployed, and no owner conversation data is stored.
+The stateless chat route, owner-only UI, HMAC-backed per-session/per-IP throttles, and 100-request UTC-day budget are implemented on `jarvis-security-hardening`. Synthetic tests use a mocked `env.AI.run()` binding; no real inference has been performed. CI run #428 passed 25 local SQLite/Node checks and 51 Workers-runtime tests (76 total), plus the dependency audit, browser syntax check, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43883074168. The route is not deployed, and no owner conversation data is stored.
 
 ## Next steps
 
