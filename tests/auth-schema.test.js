@@ -38,6 +38,7 @@ test("D1 auth migration creates only the intended auth tables", () => {
       "jarvis_owner",
       "owner_credentials",
       "owner_memories",
+      "owner_memory_settings",
       "owner_recovery_codes"
     ]);
   } finally {
@@ -202,6 +203,22 @@ test("memory schema stores encrypted payloads only and enforces nonce/category/o
     assert.throws(() => db.prepare(
       "INSERT INTO owner_memories(id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at) VALUES(?, 2, 'fact', ?, ?, 1, 1, 10, 10)"
     ).run("123e4567-e89b-42d3-a456-426614174003", Buffer.alloc(16), Buffer.alloc(12)));
+  } finally {
+    db.close();
+  }
+});
+
+test("memory settings default off and accept only explicit boolean state", () => {
+  const db = createDatabase();
+  try {
+    db.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
+    const columns = db.prepare("PRAGMA table_info(owner_memory_settings)").all().map((row) => row.name);
+    assert.deepEqual(columns, ["owner_id", "enabled", "updated_at"]);
+    db.prepare("INSERT INTO owner_memory_settings(owner_id, updated_at) VALUES(1, ?)").run(10);
+    assert.equal(db.prepare("SELECT enabled FROM owner_memory_settings WHERE owner_id = 1").get().enabled, 0);
+    assert.throws(() => db.prepare(
+      "INSERT INTO owner_memory_settings(owner_id, enabled, updated_at) VALUES(2, 1, 10)"
+    ).run());
   } finally {
     db.close();
   }
