@@ -927,7 +927,7 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/chat": { name: "chat", limit: 30, windowSeconds: 60 },
     "/auth/memories": { name: "memory", limit: 30, windowSeconds: 60 }
   };
-  const memoryRecordPath = /^\/auth\/memories\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname);
+  const memoryIpRecordPath = /^\/auth\/memories\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname);
   const policy = groups[pathname] || (memoryRecordPath ? { name: "memory_record", limit: 30, windowSeconds: 60 } : null);
   if (!policy || !["POST", "PUT", "DELETE"].includes(request.method)) return null;
   // Bootstrap enrollment already has a high-entropy shared-secret gate;
