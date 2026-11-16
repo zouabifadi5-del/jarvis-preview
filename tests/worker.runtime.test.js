@@ -435,40 +435,50 @@ describe("JARVIS Worker runtime contract", () => {
     await expect(response.json()).resolves.toEqual({ error: "invalid_request" });
   });
 
-  it("cancels oversized authentication JSON streams without buffering the full body", async () => {
-    let cancelled = false;
-    const body = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new Uint8Array(16 * 1024 + 1));
-      },
-      cancel() {
-        cancelled = true;
-      }
-    });
+  it("cancels oversized authentication JSON streams before any D1 access", async () => {
     const bootstrapSecret = "a".repeat(48);
     const env = {
-      DB: withRateLimitSupport({
+      DB: {
         prepare() { throw new Error("oversized bodies must not reach D1"); }
-      }),
+      },
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_BOOTSTRAP_SECRET: bootstrapSecret,
       JARVIS_RATE_LIMIT_HMAC_SECRET: "r".repeat(48)
     };
-    const response = await handleAuthRequest(request("/auth/register/verify", {
-      method: "POST",
-      headers: {
-        Origin: "https://example.test",
-        "Content-Type": "application/json",
-        "X-Jarvis-Bootstrap": bootstrapSecret
-      },
-      body,
-      duplex: "half"
-    }), env);
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: "invalid_request" });
-    expect(cancelled).toBe(true);
+    for (const pathname of [
+      "/auth/register/verify",
+      "/auth/login/verify",
+      "/auth/recovery/verify"
+    ]) {
+      let cancelled = false;
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(16 * 1024 + 1));
+        },
+        cancel() {
+          cancelled = true;
+        }
+      });
+      const headers = {
+        Origin: "https://example.test",
+        "Content-Type": "application/json"
+      };
+      if (pathname === "/auth/register/verify") {
+        headers["X-Jarvis-Bootstrap"] = bootstrapSecret;
+      }
+      const response = await handleAuthRequest(request(pathname, {
+        method: "POST",
+        headers,
+        body,
+        duplex: "half"
+      }), env);
+
+      expect(response.status, pathname).toBe(400);
+      await expect(response.json()).resolves.toEqual({ error: "invalid_request" });
+      expect(cancelled, pathname).toBe(true);
+    }
   });
 
   it("rejects a missing bootstrap secret before touching storage", async () => {
@@ -1171,6 +1181,38 @@ describe("authentication rate limits", () => {
     }
     expect(last.status).toBe(429);
     expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
+    await expect(last.json()).resolves.toEqual(expect.objectContaining({
+      error: "rate_limit_exceeded"
+    }));
+  });
+
+  it("continues rate-limiting malformed but bounded registration verification bodies", async () => {
+    const { db } = makeRouteD1();
+    const bootstrapSecret = "b".repeat(48);
+    const env = {
+      DB: withRateLimitSupport(db),
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      JARVIS_BOOTSTRAP_SECRET: bootstrapSecret
+    };
+    let last;
+    for (let attempt = 0; attempt < 7; attempt += 1) {
+      last = await handleAuthRequest(request("/auth/register/verify", {
+        method: "POST",
+        headers: {
+          Origin: "https://example.test",
+          "Content-Type": "application/json",
+          "X-Jarvis-Bootstrap": bootstrapSecret
+        },
+        body: "{malformed"
+      }), env);
+      if (attempt < 6) {
+        expect(last.status).toBe(400);
+        await expect(last.json()).resolves.toEqual({ error: "invalid_request" });
+      }
+    }
+    expect(last.status).toBe(429);
     await expect(last.json()).resolves.toEqual(expect.objectContaining({
       error: "rate_limit_exceeded"
     }));
