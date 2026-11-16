@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Owner Security Design
 
-**Status:** Partially implemented on an isolated test branch; not deployed, not connected to real storage, and not security-audited  
+**Status (16 November 2026):** Partially implemented on an isolated test branch; not deployed or security-audited. Remote D1 schema and synthetic data-path smoke test are verified, but auth routes have not been exercised end to end against the deployed Worker.  
 **Scope:** Future private JARVIS service and its iPhone-first client  
 **Constraint:** Zero-cost only. Do not activate a paid service, billing, trial, or resource until its cost and limits have been checked.
 
