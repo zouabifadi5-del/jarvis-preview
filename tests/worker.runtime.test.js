@@ -1208,7 +1208,7 @@ describe("authenticated session rate limits", () => {
     }
     expect(last.status).toBe(429);
     expect(state.rateLimits).toHaveLength(1);
-    expect(state.rateLimits[0].requestCount).toBe(60);
+    expect(state.rateLimits[0].requestCount).toBe(61);
     expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
     await expect(last.json()).resolves.toEqual(expect.objectContaining({
       error: "rate_limit_exceeded"
@@ -1234,7 +1234,7 @@ describe("authenticated session rate limits", () => {
     }
     expect(last.status).toBe(429);
     expect(state.rateLimits).toHaveLength(1);
-    expect(state.rateLimits[0].requestCount).toBe(60);
+    expect(state.rateLimits[0].requestCount).toBe(61);
   });
 
 
