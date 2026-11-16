@@ -995,6 +995,22 @@ export async function handleAuthRequest(request, env) {
     if (pathname === "/auth/login/verify" && request.method === "POST") {
       return await loginVerify(request, cfg, now);
     }
+    if (pathname === "/auth/memories" && request.method === "GET") {
+      return await memoryList(request, env, cfg, now);
+    }
+    if (pathname === "/auth/memories" && request.method === "POST") {
+      return await memoryCreate(request, env, cfg, now);
+    }
+    const memoryMatch = pathname.match(/^\/auth\/memories\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i);
+    if (memoryMatch && request.method === "GET") {
+      return await memoryGet(request, env, cfg, now, memoryMatch[1]);
+    }
+    if (memoryMatch && request.method === "PUT") {
+      return await memoryUpdate(request, env, cfg, now, memoryMatch[1]);
+    }
+    if (memoryMatch && request.method === "DELETE") {
+      return await memoryDelete(request, env, cfg, now, memoryMatch[1]);
+    }
     if (pathname === "/auth/chat" && request.method === "POST") {
       return await chat(request, env, cfg, now);
     }
