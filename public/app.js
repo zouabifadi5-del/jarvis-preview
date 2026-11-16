@@ -18,13 +18,16 @@ const downloadRecoveryButton = document.querySelector("#download-recovery");
 const acknowledgeRecoveryButton = document.querySelector("#acknowledge-recovery");
 const secretInput = document.querySelector("#bootstrap-secret");
 const credentialsNode = document.querySelector("#credentials");
+const chatLog = document.querySelector("#chat-log");
+const chatMessageInput = document.querySelector("#chat-message");
+const sendChatButton = document.querySelector("#send-chat");
 
 function setStatus(message, kind = "info") {
   statusNode.textContent = message;
   statusNode.dataset.kind = kind;
 }
 function setBusy(busy) {
-  for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton, recoverButton, copyRecoveryButton, downloadRecoveryButton, acknowledgeRecoveryButton]) if (button) button.disabled = busy;
+  for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton, recoverButton, copyRecoveryButton, downloadRecoveryButton, acknowledgeRecoveryButton, sendChatButton]) if (button) button.disabled = busy;
 }
 function decodeBase64Url(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("The server returned invalid passkey options.");
@@ -124,6 +127,8 @@ function showSignedOut() {
   signedOut.hidden = false;
   signedIn.hidden = true;
   recoveryPanel.hidden = true;
+  chatLog.replaceChildren();
+  chatMessageInput.value = "";
 }
 function showRecoveryCodes(codes) {
   if (!Array.isArray(codes) || codes.length !== 10 || codes.some((code) => typeof code !== "string")) {
@@ -199,6 +204,35 @@ async function loadCredentials() {
     credentialsNode.append(item);
   }
 }
+function appendChatMessage(role, content) {
+  const item = document.createElement("div");
+  item.className = "chat-message " + role;
+  const label = document.createElement("strong");
+  label.textContent = role === "assistant" ? "JARVIS" : "You";
+  const body = document.createElement("p");
+  body.textContent = content;
+  item.append(label, body);
+  chatLog.append(item);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const message = chatMessageInput.value.trim();
+  if (!message) {
+    setStatus("Write a message first.", "error");
+    return;
+  }
+  setStatus("JARVIS is thinking…");
+  const result = await api("/auth/chat", {
+    method: "POST",
+    body: { message }
+  });
+  appendChatMessage("user", message);
+  appendChatMessage("assistant", result.reply);
+  chatMessageInput.value = "";
+  setStatus("Reply received. This prototype does not save chat history.", "success");
+}
+
 async function requireWebAuthn() {
   if (!window.isSecureContext || !navigator.credentials || typeof navigator.credentials.create !== "function" ||
       typeof navigator.credentials.get !== "function" || !window.PublicKeyCredential) {
@@ -291,6 +325,7 @@ recoverButton.addEventListener("click", () => runAction(recoverOwner));
 copyRecoveryButton.addEventListener("click", () => runAction(copyRecoveryCodes));
 downloadRecoveryButton.addEventListener("click", () => runAction(downloadRecoveryCodes));
 acknowledgeRecoveryButton.addEventListener("click", () => runAction(acknowledgeRecoveryCodes));
+sendChatButton.addEventListener("click", () => runAction(sendChatMessage));
 
 async function initialize() {
   try {
