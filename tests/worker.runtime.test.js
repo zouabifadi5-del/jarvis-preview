@@ -1554,9 +1554,9 @@ describe("scheduled memory expiry cleanup", () => {
         return { bind() { return { async run() { return { meta: { changes: 0 } }; } }; } };
       }
     };
-    await worker.scheduled({ cron: "0 2 * * *" }, { DB: db }, {});
+    await workerModule.scheduled({ cron: "0 2 * * *" }, { DB: db }, {});
     expect(calls).toBe(0);
-    await worker.scheduled({ cron: "0 2 * * *" }, {
+    await workerModule.scheduled({ cron: "0 2 * * *" }, {
       DB: db, JARVIS_MEMORY_RETENTION_ACCEPTED: "false"
     }, {});
     expect(calls).toBe(0);
@@ -1576,7 +1576,7 @@ describe("scheduled memory expiry cleanup", () => {
         };
       }
     };
-    await worker.scheduled({ cron: "0 2 * * *" }, {
+    await workerModule.scheduled({ cron: "0 2 * * *" }, {
       DB: db, JARVIS_MEMORY_RETENTION_ACCEPTED: "true"
     }, {});
     expect(sqlSeen).toContain("DELETE FROM owner_memories");
