@@ -16,7 +16,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Private memory design](docs/MEMORY_DESIGN.md) (AES-GCM schema, routes and UI prepared behind retention/key gate; no personal data stored)
 - [Owner acceptance checklist](docs/OWNER_ACCEPTANCE_CHECKLIST.md) (future iPhone passkey acceptance and first live AI smoke-test gates)
 - [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
-- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; verified run #490 has 55 runtime tests plus 31 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
+- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; verified run #500 has 55 runtime tests plus 31 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
 
 ## Repository boundaries
 
