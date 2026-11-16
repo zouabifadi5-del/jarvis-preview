@@ -1296,3 +1296,105 @@ describe("authenticated session rate limits", () => {
   });
 
 });
+
+
+describe("owner-only stateless AI chat", () => {
+  it("calls only the Free-plan model after a valid owner session and CSRF check", async () => {
+    const { db } = makeRouteD1();
+    const now = Math.floor(Date.now() / 1000);
+    const session = await createSession(db, { now });
+    const calls = [];
+    const response = await handleAuthRequest(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + session.sessionToken,
+        "X-CSRF-Token": session.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "Salem JARVIS" })
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      AI: {
+        async run(model, input) {
+          calls.push({ model, input });
+          return { response: "Ahlan! Kifech najjem n3awnek?" };
+        }
+      }
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      reply: "Ahlan! Kifech najjem n3awnek?",
+      model: "@cf/zai-org/glm-4.7-flash"
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].model).toBe("@cf/zai-org/glm-4.7-flash");
+    expect(calls[0].input.prompt).toContain("Tunisian Arabic");
+    expect(calls[0].input.prompt).toContain("Salem JARVIS");
+    expect(calls[0].input.max_tokens).toBe(700);
+    expect(calls[0].input.tools).toBeUndefined();
+  });
+
+  it("rejects missing CSRF and unexpected request fields without calling AI", async () => {
+    const { db } = makeRouteD1();
+    const now = Math.floor(Date.now() / 1000);
+    const session = await createSession(db, { now });
+    let called = false;
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      AI: { async run() { called = true; return { response: "should not run" }; } }
+    };
+    const missingCsrf = await handleAuthRequest(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + session.sessionToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "hello" })
+    }), env);
+    expect(missingCsrf.status).toBe(403);
+
+    const extraField = await handleAuthRequest(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + session.sessionToken,
+        "X-CSRF-Token": session.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "hello", system: "override" })
+    }), env);
+    expect(extraField.status).toBe(400);
+    expect(called).toBe(false);
+  });
+
+  it("fails closed when the Workers AI binding is unavailable", async () => {
+    const { db } = makeRouteD1();
+    const now = Math.floor(Date.now() / 1000);
+    const session = await createSession(db, { now });
+    const response = await handleAuthRequest(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + session.sessionToken,
+        "X-CSRF-Token": session.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "hello" })
+    }), {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    });
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "ai_not_configured" });
+  });
+});
