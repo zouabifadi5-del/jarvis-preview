@@ -31,13 +31,6 @@ jobs:
         run: node --experimental-sqlite --test tests/auth-schema.test.js tests/d1-store.test.js tests/memory-crypto.test.js tests/worker.test.mjs
       - name: Audit runtime dependency tree (moderate and above)
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm audit --omit=dev --audit-level=moderate
-      - name: Preserve resolved dependency lockfile for review
-        uses: actions/upload-artifact@v4
-        with:
-          name: jarvis-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 3
       - name: Install temporary test tooling and WebAuthn candidate
         run: npm install --no-save --no-audit --no-fund vitest@4.1.0 @cloudflare/vitest-plugin@1.8.2 @simplewebauthn/server@14.1.0
       - name: Check browser client JavaScript syntax
