@@ -33,7 +33,7 @@ import {
   verifySessionCsrf
 } from "./d1-store.js";
 import { verifyStoredCredentialAuthentication } from "./webauthn.js";
-import { importMemoryEncryptionKey, encryptMemoryText, decryptMemoryText } from "./memory-crypto.js";
+import { importMemoryEncryptionKey, importMemoryEncryptionKeyring, encryptMemoryText, decryptMemoryText } from "./memory-crypto.js";
 
 const SESSION_COOKIE = "__Host-jarvis_session";
 const CSRF_COOKIE = "__Host-jarvis_csrf";
@@ -588,13 +588,23 @@ function memoryConfiguration(env) {
 }
 
 async function loadMemoryKey(env) {
-  const config = memoryConfiguration(env);
-  if (!config) return null;
+  if (env?.JARVIS_MEMORY_RETENTION_ACCEPTED !== "true") return null;
   try {
-    return { ...config, key: await importMemoryEncryptionKey(config.encodedKey) };
+    if (typeof env?.JARVIS_MEMORY_KEYRING === "string") {
+      const keyring = await importMemoryEncryptionKeyring(env.JARVIS_MEMORY_KEYRING);
+      return { currentVersion: keyring.currentVersion, keys: keyring.keys };
+    }
+    const config = memoryConfiguration(env);
+    if (!config) return null;
+    const key = await importMemoryEncryptionKey(config.encodedKey);
+    return { currentVersion: config.keyVersion, keys: new Map([[config.keyVersion, key]]) };
   } catch {
     return null;
   }
+}
+
+function memoryKeyForRecord(config, record) {
+  return config?.keys instanceof Map ? config.keys.get(record.keyVersion) : null;
 }
 
 function hasRecentPasskeySession(session, now) {
@@ -628,9 +638,10 @@ async function memoryGet(request, env, cfg, now, id) {
   if (!config) return fail(request, 503, "memory_not_enabled");
   const record = await findMemoryRecord(cfg.db, id, { now });
   if (!record) return fail(request, 404, "memory_not_found");
-  if (record.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
+  const recordKey = memoryKeyForRecord(config, record);
+  if (!recordKey) return fail(request, 503, "memory_key_version_unsupported");
   try {
-    const content = await decryptMemoryText(config.key, { ...memoryCryptoMetadata(record), ciphertext: record.ciphertext, nonce: record.nonce });
+    const content = await decryptMemoryText(recordKey, { ...memoryCryptoMetadata(record), ciphertext: record.ciphertext, nonce: record.nonce });
     return response(request, { memory: {
       id: record.id, category: record.category, content,
       createdAt: record.createdAt, updatedAt: record.updatedAt, expiresAt: record.expiresAt
@@ -669,7 +680,7 @@ async function memoryCreate(request, env, cfg, now) {
       ownerId: 1,
       recordId: id,
       category: body.category,
-      keyVersion: config.keyVersion,
+      keyVersion: config.currentVersion,
       createdAt
     });
   } catch {
@@ -703,15 +714,16 @@ async function memoryUpdate(request, env, cfg, now, id) {
   }
   const existing = await findMemoryRecord(cfg.db, id, { now });
   if (!existing) return fail(request, 404, "memory_not_found");
-  if (existing.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
+  const existingKey = memoryKeyForRecord(config, existing);
+  if (!existingKey) return fail(request, 503, "memory_key_version_unsupported");
   try {
-    await decryptMemoryText(config.key, { ...memoryCryptoMetadata(existing), ciphertext: existing.ciphertext, nonce: existing.nonce });
+    await decryptMemoryText(existingKey, { ...memoryCryptoMetadata(existing), ciphertext: existing.ciphertext, nonce: existing.nonce });
   } catch {
     return fail(request, 500, "memory_integrity_check_failed");
   }
   const encrypted = await encryptMemoryText(config.key, {
     plaintext: body.content, ownerId: 1, recordId: id,
-    category: body.category, keyVersion: config.keyVersion,
+    category: body.category, keyVersion: config.currentVersion,
     createdAt: existing.createdAt
   });
   const updated = await updateMemoryRecord(cfg.db, {
@@ -765,8 +777,9 @@ async function memoryExport(request, env, cfg, now) {
     for (const item of metadata) {
       const record = await findMemoryRecord(cfg.db, item.id, { now });
       if (!record) continue;
-      if (record.keyVersion !== config.keyVersion) return fail(request, 503, "memory_key_version_unsupported");
-      const content = await decryptMemoryText(config.key, {
+      const recordKey = memoryKeyForRecord(config, record);
+      if (!recordKey) return fail(request, 503, "memory_key_version_unsupported");
+      const content = await decryptMemoryText(recordKey, {
         ...memoryCryptoMetadata(record), ciphertext: record.ciphertext, nonce: record.nonce
       });
       memories.push({
