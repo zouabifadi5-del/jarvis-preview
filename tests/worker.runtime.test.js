@@ -1190,7 +1190,7 @@ describe("authentication rate limits", () => {
     const { db } = makeRouteD1();
     const bootstrapSecret = "b".repeat(48);
     const env = {
-      DB: withRateLimitSupport(db),
+      DB: db,
       AUTH_ORIGIN: "https://example.test",
       WEBAUTHN_RP_ID: "example.test",
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
