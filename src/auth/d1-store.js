@@ -631,6 +631,6 @@ export async function deleteAllMemoryRecords(db) {
   assertD1(db);
   const result = await db.prepare(
     "DELETE FROM owner_memories WHERE owner_id = 1"
-  ).run();
+  ).bind().run();
   return result.meta?.changes || 0;
 }
