@@ -50,6 +50,14 @@ This is a code-level review of the isolated prototype. It does not prove product
 
 **Verification:** Added a concurrent two-attempt regression test using separate valid recovery challenges but the same underlying recovery-code hash. Exactly one recovery operation must succeed and exactly one active replacement credential must remain. CI run #674 passed.
 
+### 5. CI actions were referenced by mutable version tags
+
+**Risk:** Referencing GitHub Actions by tags alone permits the tag target to change without a repository code change, weakening reproducibility and supply-chain review.
+
+**Change:** The workflow now pins checkout and setup-node to the immutable commit SHAs observed in the successful runner execution, retaining their human-readable version comments. Workflow permissions remain explicitly limited to `contents: read`.
+
+**Verification:** The updated workflow is queued for CI validation. Independent review should still confirm the pinned commits and action provenance.
+
 ## Controls observed in the reviewed code
 
 - Single-owner enrollment is gated by a high-entropy bootstrap secret and closes after the owner record exists.
@@ -61,6 +69,7 @@ This is a code-level review of the isolated prototype. It does not prove product
 - Memory payloads use AES-256-GCM with fresh nonces and authenticated metadata; keyring parsing is bounded and rejects malformed keys.
 - Memory retrieval is off by default and requires an explicit per-message choice; retrieved text is treated as untrusted data.
 - The chat route has bounded input/history/output and no tools or external-action capability.
+- The CI workflow requests only `contents: read` and pins its two GitHub-maintained actions to immutable commit SHAs.
 - Scheduled expiry cleanup is a no-op unless the explicit retention-acceptance flag is enabled.
 
 These are implementation observations, not guarantees against all threats. Production behavior still depends on correct runtime configuration and provider semantics.
