@@ -1571,7 +1571,7 @@ describe("scheduled memory expiry cleanup", () => {
         return {
           bind(value) {
             boundTime = value;
-            return { async run() { return { meta: { changes: 2 }; } }; }
+            return { async run() { return { meta: { changes: 2 } }; } };
           }
         };
       }
