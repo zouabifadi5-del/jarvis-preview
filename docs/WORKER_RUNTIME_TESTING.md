@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Worker Runtime Compatibility Test
 
-**Status (16 November 2026):** Latest verified run #368 passed 45 Workers-runtime tests and 25 local SQLite/Node checks (70 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication branch remains isolated, undeployed, and not production-ready.  
+**Status (16 November 2026):** Latest verified run #387 passed 49 Workers-runtime tests and 25 local SQLite/Node checks (74 total), plus production dependency audit, browser JavaScript syntax validation, and Wrangler dry-run validation. The authentication and stateless chat branch remains isolated, undeployed, and not production-ready.  
 **Purpose:** Test the Worker scaffold and the server-side WebAuthn library inside the Cloudflare Workers runtime without deploying to Cloudflare.  
 **Cost:** Uses the standard GitHub-hosted runner for this public repository; no paid runner, Cloudflare resource, account secret, or billing change.
 
