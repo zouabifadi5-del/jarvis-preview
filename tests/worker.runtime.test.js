@@ -763,7 +763,9 @@ describe("JARVIS Worker runtime contract", () => {
       ["/", "J.A.R.V.I.S."],
       ["/index.html", "J.A.R.V.I.S."],
       ["/app.js", "navigator.credentials.create"],
-      ["/style.css", "color-scheme: dark"]
+      ["/style.css", "color-scheme: dark"],
+      ["/manifest.webmanifest", "J.A.R.V.I.S. — Owner Assistant"],
+      ["/icon.svg", "viewBox=\"0 0 512 512\""]
     ]) {
       const response = await worker.fetch(request(path));
       expect(response.status, path).toBe(200);
