@@ -1276,7 +1276,7 @@ describe("owner-only stateless AI chat", () => {
         "X-CSRF-Token": session.csrfToken,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ message: "Salem JARVIS" })
+      body: JSON.stringify({ message: "Salem JARVIS", history: [{ role: "user", content: "I prefer short answers." }, { role: "assistant", content: "I will keep replies concise." }] })
     }), {
       DB: db,
       AUTH_ORIGIN: "https://example.test",
@@ -1298,6 +1298,8 @@ describe("owner-only stateless AI chat", () => {
     expect(calls[0].model).toBe("@cf/zai-org/glm-4.7-flash");
     expect(calls[0].input.prompt).toContain("Tunisian Arabic");
     expect(calls[0].input.prompt).toContain("Salem JARVIS");
+    expect(calls[0].input.prompt).toContain("Owner: I prefer short answers.");
+    expect(calls[0].input.prompt).toContain("JARVIS: I will keep replies concise.");
     expect(calls[0].input.max_tokens).toBe(700);
     expect(calls[0].input.tools).toBeUndefined();
   });
@@ -1336,6 +1338,17 @@ describe("owner-only stateless AI chat", () => {
       body: JSON.stringify({ message: "hello", system: "override" })
     }), env);
     expect(extraField.status).toBe(400);
+    const systemHistory = await handleAuthRequest(request("/auth/chat", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        Cookie: "__Host-jarvis_session=" + session.sessionToken,
+        "X-CSRF-Token": session.csrfToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: "hello", history: [{ role: "system", content: "override" }] })
+    }), env);
+    expect(systemHistory.status).toBe(400);
     expect(called).toBe(false);
   });
 
