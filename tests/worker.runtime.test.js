@@ -1443,3 +1443,39 @@ describe("owner-only stateless AI chat", () => {
       error: "daily_ai_limit_reached"
     }));
   });
+
+  it("bounds chat input and hides upstream inference errors", async () => {
+    const { db } = makeRouteD1();
+    const now = Math.floor(Date.now() / 1000);
+    const session = await createSession(db, { now });
+    let calls = 0;
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789",
+      AI: {
+        async run() {
+          calls += 1;
+          throw new Error("sensitive upstream provider diagnostic");
+        }
+      }
+    };
+    const headers = {
+      Origin: "https://example.test",
+      Cookie: "__Host-jarvis_session=" + session.sessionToken,
+      "X-CSRF-Token": session.csrfToken,
+      "Content-Type": "application/json"
+    };
+    const failedInference = await handleAuthRequest(request("/auth/chat", {
+      method: "POST", headers, body: JSON.stringify({ message: "hello" })
+    }), env);
+    expect(failedInference.status).toBe(503);
+    await expect(failedInference.json()).resolves.toEqual({ error: "ai_temporarily_unavailable" });
+    const oversizedMessage = await handleAuthRequest(request("/auth/chat", {
+      method: "POST", headers, body: JSON.stringify({ message: "x".repeat(6001) })
+    }), env);
+    expect(oversizedMessage.status).toBe(400);
+    await expect(oversizedMessage.json()).resolves.toEqual({ error: "invalid_request" });
+    expect(calls).toBe(1);
+  });
