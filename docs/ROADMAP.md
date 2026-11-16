@@ -51,7 +51,7 @@
 - [x] Add ten one-time hashed recovery codes, replacement-passkey recovery, and atomic invalidation of old credentials, sessions, and recovery codes.
 - [x] Implement fixed-window D1 rate-limit counters keyed by HMACs of the Cloudflare client IP and auth action; raw IPs are not stored.
 - [x] Add per-session HMAC-keyed throttling for session inspection, credential management, and logout routes; raw session tokens are not stored in rate-limit buckets.
-- [x] Pass CI tests for rate-limit enforcement and local migration/storage validation; remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
+- [x] Pass CI tests for IP and per-session rate-limit enforcement and local migration/storage validation; latest CI run #360 passed 25 local SQLite/Node checks and 44 Workers-runtime tests (69 total): https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43879553747. Remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
 - [ ] Verify the configured `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through safe non-disclosing checks; never read or print secret values.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [ ] Explicit memory review, correction, export, and deletion.
