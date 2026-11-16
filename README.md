@@ -13,7 +13,7 @@ This repository contains the public-facing prototype and non-sensitive project d
 - [Owner security design](docs/SECURITY.md) (design and implementation in progress; not deployed or security-audited)
 - [Authentication implementation plan](docs/AUTHENTICATION_PLAN.md) (current route implementation, storage design, flows, and remaining security gates)
 - [Zero-cost authentication test plan](docs/AUTHENTICATION_FREE_TIER_TEST_PLAN.md) (staged local, account-eligibility, and isolated tests; no deployment authorized)
-- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; latest verified run #345 has 40 runtime tests plus 25 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
+- [Worker runtime compatibility test](docs/WORKER_RUNTIME_TESTING.md) (isolated workerd test harness; verified run #350 has 40 runtime tests plus 25 local SQLite/Node tests, dependency audit, browser syntax check, and Wrangler dry run)
 
 ## Repository boundaries
 
