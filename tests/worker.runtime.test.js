@@ -319,6 +319,29 @@ describe("JARVIS Worker runtime contract", () => {
     });
   });
 
+  it("applies a strict same-origin CSP and security headers to static owner assets", async () => {
+    const response = await worker.fetch(request("/", {
+      headers: { Accept: "text/html" }
+    }), {
+      ASSETS: {
+        async fetch() {
+          return new Response("<!doctype html><title>JARVIS</title>", {
+            headers: { "Content-Type": "text/html; charset=utf-8" }
+          });
+        }
+      }
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-security-policy")).toContain("default-src 'self'");
+    expect(response.headers.get("content-security-policy")).toContain("script-src 'self'");
+    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+    expect(response.headers.get("strict-transport-security")).toBe("max-age=31536000");
+    await expect(response.text()).resolves.toContain("<title>JARVIS</title>");
+  });
+
   it("accepts a query string on the exact health route", async () => {
     const response = await worker.fetch(request("/health?check=1"));
 
