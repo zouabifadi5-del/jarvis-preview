@@ -49,6 +49,10 @@ Do not automatically store credentials, passkeys, recovery codes, financial acco
 
 ## Data lifecycle and backups
 
+Cloudflare's current D1 documentation lists the Workers Free limits as 5 million rows read per day, 100,000 rows written per day, 5 GB total account storage, and 500 MB maximum size per database. Free-plan D1 Time Travel is always on and retains up to 7 days of point-in-time history; it can restore deleted or changed data within that window. Sources: https://developers.cloudflare.com/d1/platform/pricing/ https://developers.cloudflare.com/d1/platform/limits/ https://developers.cloudflare.com/d1/reference/time-travel/
+
+- A live-row deletion is not immediate physical erasure: historical D1 state may be restorable for up to seven days. The product must disclose this retention window and must not promise immediate deletion from backups.
+- Do not store sensitive owner memory until the owner accepts the seven-day recovery window or a separately reviewed crypto-erasure design is available.
 - Define an expiry policy for temporary notes and prune expired items through bounded, authenticated maintenance.
 - Do not enable backups or replication for memory until retention, access, and deletion semantics are understood.
 - Document that deleting a live D1 row may not immediately remove provider-managed backups. Never promise complete erasure without evidence.
