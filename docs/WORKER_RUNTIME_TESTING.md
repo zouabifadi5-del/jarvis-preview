@@ -51,7 +51,7 @@ The synthetic attestation uses the WebAuthn `none` format and is not evidence of
 
 - Local SQLite/Node checks: 25 passed.
 - Workers runtime test files: 2 passed.
-- Workers runtime test cases: 45 passed, including synthetic end-to-end registration/login/session/logout, recovery, rate limiting, same-origin GET throttling, and unexpected-field rejection.
+- Workers runtime test cases: 49 passed, including synthetic end-to-end registration/login/session/logout, recovery, IP and session throttling, daily AI budget enforcement, unexpected-field rejection, and owner-only chat tests using a mocked AI binding.
 - Production dependency audit: passed at moderate severity and above.
 - Browser client syntax check: passed with Node.js 24.
 - Wrangler `deploy --dry-run`: successful; it validated the Worker and static assets without uploading or deploying.
