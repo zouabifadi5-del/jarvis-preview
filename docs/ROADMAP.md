@@ -54,7 +54,8 @@
 - [x] Pass CI tests for IP and per-session rate-limit enforcement, unexpected-field rejection, and local migration/storage validation; latest CI run #428 passed 25 local SQLite/Node checks and 51 Workers-runtime tests (76 total), including rejection of invalid-session rate-limit bucket allocation and bounded chat-context validation: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43883074168. Remote migration records, schema, indexes, and synthetic D1 data-path smoke test are verified.
 - [ ] Verify the configured `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, persistent `JARVIS_RATE_LIMIT_HMAC_SECRET`, and temporary `JARVIS_BOOTSTRAP_SECRET` through safe non-disclosing checks; never read or print secret values.
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
-- [ ] Explicit memory review, correction, export, and deletion.
+- [x] Document encrypted, owner-controlled memory lifecycle and release gates in [Private Memory Design](MEMORY_DESIGN.md); persistent memory remains disabled.
+- [ ] Implement encrypted memory storage and owner CRUD/export/delete routes with synthetic tests.
 - [ ] Encrypt sensitive data at rest and in transit.
 
 ## Milestone 4 — AI and integrations
