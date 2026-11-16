@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Zero-Cost AI Provider Plan
 
-**Status (16 November 2026):** Provider research completed; no inference request has been made and no AI feature is enabled. The authentication implementation remains isolated and undeployed.
+**Status (16 November 2026):** Provider research and a stateless owner-only chat implementation are complete on the isolated branch. No real inference request has been made; the route is tested with a mock AI binding and remains undeployed.
 
 ## Non-negotiable cost boundary
 
@@ -36,7 +36,7 @@ The documentation does not establish reliable Tunisian Arabic dialect quality fo
 - Use the native Workers AI binding (`env.AI.run()`) from the Worker. No third-party provider key is required for this binding.
 - A stateless `POST /auth/chat` route and an owner-only browser chat panel now exist on the isolated branch. The route requires an active owner session and CSRF token, accepts one message of at most 6,000 characters, and returns a bounded reply. It does not persist conversation text or expose tools.
 - Chat calls are capped at 10 per session per minute, 30 per client IP per minute, and 50 per owner per UTC day using HMAC-derived D1 buckets. The 50-request daily cap is an application-side safety ceiling, not a guarantee of exact Neuron usage; it leaves margin below the provider's 10,000-Neuron daily allocation.
-- The current `wrangler.toml` on the security branch does not declare an AI binding. Add `[ai]\nbinding = "AI"` only in a reviewed feature commit; do not assume a dashboard binding is inherited by a Wrangler deployment.
+- The isolated branch's `wrangler.toml` declares `[ai] binding = "AI"` for deployment. `wrangler.test.toml` intentionally omits that binding so local workerd tests do not open a remote AI proxy or consume the account's daily quota.
 - All chat routes must require a valid owner session and CSRF protection for state-changing requests. Apply per-session and per-IP limits, strict JSON schemas, input/output size caps, bounded generation tokens, and request timeouts.
 - The model must never receive direct access to arbitrary shell, SQL, filesystem, or unrestricted network tools. Tool calls must be mapped to a server-side allowlist and validated independently.
 - Start with stateless chat: do not persist prompts, replies, or memory until data retention, encryption, backup, export, deletion, and access controls are designed and tested.
@@ -53,7 +53,7 @@ Do not use models that Cloudflare marks as Workers Paid-only, including `@cf/moo
 
 ## Current implementation status
 
-The stateless chat route, owner-only UI, HMAC-backed per-session/per-IP throttles, and 100-request UTC-day budget are implemented on `jarvis-security-hardening`. Synthetic tests use a mocked `env.AI.run()` binding; no real inference has been performed. CI run #387 passed 25 local SQLite/Node checks and 49 Workers-runtime tests (74 total), plus the dependency audit, browser syntax check, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43880925921. The route is not deployed, and no owner conversation data is stored.
+The stateless chat route, owner-only UI, HMAC-backed per-session/per-IP throttles, and 100-request UTC-day budget are implemented on `jarvis-security-hardening`. Synthetic tests use a mocked `env.AI.run()` binding; no real inference has been performed. CI run #399 passed 25 local SQLite/Node checks and 49 Workers-runtime tests (74 total), plus the dependency audit, browser syntax check, and Wrangler dry run: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43881271121. The route is not deployed, and no owner conversation data is stored.
 
 ## Next steps
 
