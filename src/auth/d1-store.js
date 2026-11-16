@@ -506,3 +506,116 @@ export async function consumeRateLimit(
   }
   return { allowed: count <= limit, count, remaining: Math.max(0, limit - count), resetAt: expiresAt };
 }
+
+
+const MEMORY_CATEGORIES = new Set(["preference", "fact", "project", "routine", "temporary"]);
+const MEMORY_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function assertMemoryRecordInput({ id, category, ciphertext, nonce, keyVersion, schemaVersion = 1, now, expiresAt }) {
+  if (typeof id !== "string" || !MEMORY_ID_PATTERN.test(id)) throw new TypeError("Memory ID is invalid");
+  if (!MEMORY_CATEGORIES.has(category)) throw new TypeError("Memory category is invalid");
+  const encrypted = ciphertext instanceof Uint8Array ? ciphertext : new Uint8Array(ciphertext || []);
+  const iv = nonce instanceof Uint8Array ? nonce : new Uint8Array(nonce || []);
+  if (encrypted.byteLength < 16 || iv.byteLength !== 12) throw new TypeError("Encrypted memory payload is invalid");
+  assertPositiveInteger(keyVersion, "keyVersion");
+  if (schemaVersion !== 1) throw new TypeError("Memory schema version is unsupported");
+  assertUnixSeconds(now, "now");
+  if (expiresAt !== null && expiresAt !== undefined) {
+    assertUnixSeconds(expiresAt, "expiresAt");
+    if (expiresAt <= now) throw new RangeError("Memory expiry must be in the future");
+  }
+  return { ciphertext: encrypted, nonce: iv, expiresAt: expiresAt ?? null };
+}
+
+export async function insertMemoryRecord(db, {
+  id, category, ciphertext, nonce, keyVersion, schemaVersion = 1,
+  now = Math.floor(Date.now() / 1000), expiresAt = null
+}) {
+  assertD1(db);
+  const input = assertMemoryRecordInput({ id, category, ciphertext, nonce, keyVersion, schemaVersion, now, expiresAt });
+  await db.prepare(
+    "INSERT INTO owner_memories (id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at, expires_at) " +
+    "VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, category, input.ciphertext, input.nonce, keyVersion, schemaVersion, now, now, input.expiresAt).run();
+  return { id, category, createdAt: now, updatedAt: now, expiresAt: input.expiresAt, keyVersion };
+}
+
+export async function listMemoryRecords(db, {
+  now = Math.floor(Date.now() / 1000), limit = 100
+} = {}) {
+  assertD1(db);
+  assertUnixSeconds(now, "now");
+  assertPositiveInteger(limit, "limit");
+  if (limit > 100) throw new RangeError("Memory list limit cannot exceed 100");
+  const result = await db.prepare(
+    "SELECT id, category, key_version, created_at, updated_at, expires_at " +
+    "FROM owner_memories WHERE owner_id = 1 AND (expires_at IS NULL OR expires_at > ?) " +
+    "ORDER BY updated_at DESC LIMIT ?"
+  ).bind(now, limit).all();
+  return (result.results || []).map((row) => ({
+    id: row.id,
+    category: row.category,
+    keyVersion: row.key_version,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at ?? null
+  }));
+}
+
+export async function findMemoryRecord(db, id, {
+  now = Math.floor(Date.now() / 1000)
+} = {}) {
+  assertD1(db);
+  if (typeof id !== "string" || !MEMORY_ID_PATTERN.test(id)) throw new TypeError("Memory ID is invalid");
+  assertUnixSeconds(now, "now");
+  const row = await db.prepare(
+    "SELECT id, owner_id, category, ciphertext, nonce, key_version, schema_version, created_at, updated_at, expires_at " +
+    "FROM owner_memories WHERE id = ? AND owner_id = 1 AND (expires_at IS NULL OR expires_at > ?)"
+  ).bind(id, now).first();
+  if (!row) return null;
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    category: row.category,
+    ciphertext: row.ciphertext,
+    nonce: row.nonce,
+    keyVersion: row.key_version,
+    schemaVersion: row.schema_version,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at ?? null
+  };
+}
+
+export async function updateMemoryRecord(db, {
+  id, category, ciphertext, nonce, keyVersion, schemaVersion = 1,
+  now = Math.floor(Date.now() / 1000), expiresAt = null
+}) {
+  assertD1(db);
+  const input = assertMemoryRecordInput({ id, category, ciphertext, nonce, keyVersion, schemaVersion, now, expiresAt });
+  const result = await db.prepare(
+    "UPDATE owner_memories SET category = ?, ciphertext = ?, nonce = ?, key_version = ?, schema_version = ?, updated_at = ?, expires_at = ? " +
+    "WHERE id = ? AND owner_id = 1"
+  ).bind(category, input.ciphertext, input.nonce, keyVersion, schemaVersion, now, input.expiresAt, id).run();
+  return (result.meta?.changes || 0) === 1;
+}
+
+export async function deleteMemoryRecord(db, id) {
+  assertD1(db);
+  if (typeof id !== "string" || !MEMORY_ID_PATTERN.test(id)) throw new TypeError("Memory ID is invalid");
+  const result = await db.prepare(
+    "DELETE FROM owner_memories WHERE id = ? AND owner_id = 1"
+  ).bind(id).run();
+  return (result.meta?.changes || 0) === 1;
+}
+
+export async function pruneExpiredMemoryRecords(db, {
+  now = Math.floor(Date.now() / 1000)
+} = {}) {
+  assertD1(db);
+  assertUnixSeconds(now, "now");
+  const result = await db.prepare(
+    "DELETE FROM owner_memories WHERE owner_id = 1 AND expires_at IS NOT NULL AND expires_at <= ?"
+  ).bind(now).run();
+  return result.meta?.changes || 0;
+}
