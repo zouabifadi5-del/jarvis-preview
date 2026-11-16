@@ -20,7 +20,7 @@
 - **Development branch:** `jarvis-security-hardening` contains owner authentication, the browser interface, and stateless AI chat. It is not merged into `jarvis-foundation` or `main`, and is not deployed.
 - **Live Worker:** Cloudflare Worker `jarvis-preview-api` remains a health-only scaffold. A read-only settings check confirms its D1 and AI binding names and authentication secret binding names, but secret values were not read. The deployed Worker does not yet execute the isolated authentication or chat routes.
 - **D1:** account-scoped database `jarvis-owner-auth` has both authentication migrations applied. Six application tables and five supporting indexes were verified. A disposable synthetic table passed create/write/read/delete/drop and cleanup checks; the six application tables remain empty and foreign-key checks were clean. D1 is not branch-isolated, so development code must not assume that the database is isolated by Git branch.
-- **CI:** latest verified run #449 passed 25 local SQLite/Node checks and 51 Workers-runtime tests (76 total), production dependency audit, browser JavaScript syntax validation, PWA manifest validation, and Wrangler dry-run validation: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43883804734.
+- **CI:** latest verified run #500 passed 25 local SQLite/Node checks and 51 Workers-runtime tests (76 total), production dependency audit, browser JavaScript syntax validation, PWA manifest validation, and Wrangler dry-run validation: https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43886354536.
 
 ## Components
 
