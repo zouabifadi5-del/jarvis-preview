@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Private Memory Design
 
-**Status (16 November 2026):** Encrypted memory storage helpers and owner-only API routes (create, list, inspect, update, export, delete-one, delete-all) are implemented on `jarvis-security-hardening` with synthetic tests. Memory remains disabled unless both the explicit D1-retention acceptance flag and a valid server-side encryption key are configured. No owner memory or chat transcript has been stored. The iPhone-first owner UI supports explicit save, list, inspect, edit, export, and delete actions. Model retrieval integration, a one-tap memory-disable control, key-rotation workflow, and management audit trail are still outstanding. The stateless chat route retains only bounded recent conversation in browser page memory; it clears on reload or sign-out.
+**Status (16 November 2026):** Encrypted memory storage helpers, owner-only API routes (create, list, inspect, update, export, delete-one, delete-all), and explicit owner-controlled enable/disable endpoints are implemented on `jarvis-security-hardening`. The iPhone-first owner UI supports explicit save, list, inspect, edit, export, delete, explicit enable after a retention warning, and one-tap disable. CI run #539 passed 34 local SQLite/Node checks and 55 Workers-runtime tests (89 total): https://github.com/zouabifadi5-del/jarvis-preview/actions/runs/43887807565. Memory remains disabled unless the explicit D1-retention acceptance flag and a valid server-side encryption key are configured. No owner memory or chat transcript has been stored. Bounded model retrieval, key-rotation workflow, expiry pruning, and a privacy-preserving management audit trail remain outstanding. The stateless chat route retains only bounded recent conversation in browser page memory; it clears on reload or sign-out.
 
 ## Goals
 
@@ -45,7 +45,7 @@ Do not automatically store credentials, passkeys, recovery codes, financial acco
 - Edit by decrypting, validating, and re-encrypting with a fresh nonce.
 - Export a user-readable JSON file only after recent passkey confirmation; do not include encryption keys.
 - Delete an individual memory or all memories only after an explicit, high-assurance confirmation. Do not claim deletion from backups until the provider's backup retention and purge behavior has been verified.
-- Provide a visible memory status and a way to disable memory use without deleting the account.
+- [x] Provide a visible memory status, explicit owner-controlled enable after retention disclosure, and one-tap disable without deleting the account.
 
 ## Data lifecycle and backups
 
@@ -66,7 +66,7 @@ Cloudflare's current D1 documentation lists the Workers Free limits as 5 million
 - [x] Implement owner-only CRUD, JSON export, and deletion routes with strict schemas, CSRF on writes, recent-passkey checks, and request throttles.
 - [x] Test backend flows with synthetic data only.
 - [x] Add an owner-facing memory UI for explicit review, edit, export, and delete actions.
-- [ ] Add a one-tap memory-disable control.
+- [x] Add an owner-facing one-tap memory-disable control and explicit enable confirmation; disable preserves encrypted records for inspection or deletion.
 - [ ] Add bounded memory retrieval to chat, with retrieved text treated as untrusted context and no automatic writes.
 - [ ] Implement and test key rotation, crypto-erasure options, expiry pruning, and privacy-preserving management audit events.
 - [ ] Review the full design independently before enabling memory for the owner.
