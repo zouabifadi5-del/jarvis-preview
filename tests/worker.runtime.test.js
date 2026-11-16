@@ -1544,6 +1544,47 @@ describe("owner-only stateless AI chat", () => {
   });
 
 
+describe("scheduled memory expiry cleanup", () => {
+  it("does nothing until the owner has accepted the retention window", async () => {
+    let calls = 0;
+    const db = {
+      prepare(sql) {
+        calls += 1;
+        expect(sql).toContain("DELETE FROM owner_memories");
+        return { bind() { return { async run() { return { meta: { changes: 0 } }; } }; } };
+      }
+    };
+    await worker.scheduled({ cron: "0 2 * * *" }, { DB: db }, {});
+    expect(calls).toBe(0);
+    await worker.scheduled({ cron: "0 2 * * *" }, {
+      DB: db, JARVIS_MEMORY_RETENTION_ACCEPTED: "false"
+    }, {});
+    expect(calls).toBe(0);
+  });
+
+  it("prunes expired rows only after explicit retention acceptance", async () => {
+    let sqlSeen = null;
+    let boundTime = null;
+    const db = {
+      prepare(sql) {
+        sqlSeen = sql;
+        return {
+          bind(value) {
+            boundTime = value;
+            return { async run() { return { meta: { changes: 2 }; } }; }
+          }
+        };
+      }
+    };
+    await worker.scheduled({ cron: "0 2 * * *" }, {
+      DB: db, JARVIS_MEMORY_RETENTION_ACCEPTED: "true"
+    }, {});
+    expect(sqlSeen).toContain("DELETE FROM owner_memories");
+    expect(sqlSeen).toContain("expires_at <= ?");
+    expect(Number.isSafeInteger(boundTime)).toBe(true);
+  });
+});
+
 describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
   it("registers the synthetic owner, logs in, chats through the AI binding, rejects anonymous chat, and logs out", async () => {
     const { db, state } = makeRouteD1();
