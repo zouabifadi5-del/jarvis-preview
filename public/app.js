@@ -499,6 +499,10 @@ copyRecoveryButton.addEventListener("click", () => runAction(copyRecoveryCodes))
 downloadRecoveryButton.addEventListener("click", () => runAction(downloadRecoveryCodes));
 acknowledgeRecoveryButton.addEventListener("click", () => runAction(acknowledgeRecoveryCodes));
 sendChatButton.addEventListener("click", () => runAction(sendChatMessage));
+saveMemoryButton.addEventListener("click", () => runAction(saveMemory));
+clearMemoryButton.addEventListener("click", clearMemoryEditor);
+exportMemoriesButton.addEventListener("click", () => runAction(exportMemories));
+deleteAllMemoriesButton.addEventListener("click", () => runAction(deleteAllMemories));
 
 async function initialize() {
   try {
