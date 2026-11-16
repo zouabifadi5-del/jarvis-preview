@@ -1648,6 +1648,15 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       "X-CSRF-Token": login.csrfToken,
       "Content-Type": "application/json"
     };
+    const memoryWhileDisabled = await workerModule.fetch(request("/auth/chat", {
+      method: "POST",
+      headers: ownerHeaders,
+      body: JSON.stringify({ message: "Use saved memory", useMemory: true })
+    }), env);
+    expect(memoryWhileDisabled.status).toBe(503);
+    await expect(memoryWhileDisabled.json()).resolves.toEqual({ error: "memory_retrieval_not_available" });
+    expect(inferenceCalls).toBe(1);
+
     const enableMemory = await workerModule.fetch(request("/auth/memories/enable", {
       method: "POST",
       headers: ownerHeaders,
