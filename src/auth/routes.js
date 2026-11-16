@@ -127,6 +127,10 @@ export async function readJson(request) {
   }
 }
 
+function hasOnlyKeys(value, allowed) {
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
+
 function getCookie(request, name) {
   const cookieHeader = request.headers.get("Cookie") || "";
   for (const part of cookieHeader.split(";")) {
@@ -212,7 +216,7 @@ async function registrationVerify(request, env, cfg, now) {
   }
   if (await findOwner(cfg.db)) return fail(request, 409, "enrollment_closed");
   const body = await readJson(request);
-  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+  if (!body || !hasOnlyKeys(body, ["challenge", "response"]) || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
   }
   const consumed = await consumeChallenge(cfg.db, {
@@ -261,7 +265,7 @@ async function registrationVerify(request, env, cfg, now) {
 async function recoveryOptions(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   const body = await readJson(request);
-  if (!body || typeof body.recoveryCode !== "string") return fail(request, 400, "invalid_request");
+  if (!body || !hasOnlyKeys(body, ["recoveryCode"]) || typeof body.recoveryCode !== "string") return fail(request, 400, "invalid_request");
   const recoveryCodeHash = await findActiveRecoveryCode(cfg.db, body.recoveryCode);
   if (!recoveryCodeHash || !await findOwner(cfg.db)) return fail(request, 401, "recovery_failed");
 
@@ -300,7 +304,7 @@ async function recoveryOptions(request, cfg, now) {
 async function recoveryVerify(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   const body = await readJson(request);
-  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+  if (!body || !hasOnlyKeys(body, ["challenge", "response"]) || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
   }
   const consumed = await consumeRecoveryChallenge(cfg.db, {
@@ -372,7 +376,7 @@ async function loginOptions(request, cfg, now) {
 async function loginVerify(request, cfg, now) {
   if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
   const body = await readJson(request);
-  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+  if (!body || !hasOnlyKeys(body, ["challenge", "response"]) || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
   }
   const consumed = await consumeChallenge(cfg.db, {
@@ -494,7 +498,7 @@ async function addCredentialVerify(request, cfg, now) {
   if (!auth) return fail(request, 403, "session_or_csrf_invalid");
   if (now - auth.session.createdAt > 5 * 60) return fail(request, 403, "reauthentication_required");
   const body = await readJson(request);
-  if (!body || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
+  if (!body || !hasOnlyKeys(body, ["challenge", "response"]) || typeof body.challenge !== "string" || !body.response || typeof body.response !== "object") {
     return fail(request, 400, "invalid_request");
   }
   const consumed = await consumeChallenge(cfg.db, {
@@ -542,7 +546,7 @@ async function removeCredential(request, cfg, now) {
   if (!auth) return fail(request, 403, "session_or_csrf_invalid");
   if (now - auth.session.createdAt > 5 * 60) return fail(request, 403, "reauthentication_required");
   const body = await readJson(request);
-  if (!body || typeof body.credentialId !== "string") return fail(request, 400, "invalid_request");
+  if (!body || !hasOnlyKeys(body, ["credentialId"]) || typeof body.credentialId !== "string") return fail(request, 400, "invalid_request");
   const credentials = await listActiveCredentials(cfg.db);
   if (credentials.length <= 1) return fail(request, 409, "cannot_revoke_last_credential");
   const revoked = await revokeCredential(cfg.db, { credentialId: body.credentialId, now });
