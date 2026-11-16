@@ -1068,6 +1068,7 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/memories/enable": { name: "memory_enable", limit: 2, windowSeconds: 60, method: "POST" },
     "/auth/memories/disable": { name: "memory_disable", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/memories/export": { name: "memory_export", limit: 3, windowSeconds: 60, method: "POST" },
+    "/auth/memories/rotate": { name: "memory_rotate", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/me": { name: "session_info", limit: 60, windowSeconds: 60, method: "GET" },
     "/auth/chat": { name: "chat", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/credentials": { name: "credential_list", limit: 60, windowSeconds: 60, method: "GET" },
@@ -1140,7 +1141,8 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/memories": { name: "memory", limit: 30, windowSeconds: 60 },
     "/auth/memories/enable": { name: "memory_enable", limit: 3, windowSeconds: 60 },
     "/auth/memories/disable": { name: "memory_disable", limit: 10, windowSeconds: 60 },
-    "/auth/memories/export": { name: "memory_export", limit: 3, windowSeconds: 60 }
+    "/auth/memories/export": { name: "memory_export", limit: 3, windowSeconds: 60 },
+    "/auth/memories/rotate": { name: "memory_rotate", limit: 30, windowSeconds: 60 }
   };
   const memoryIpRecordPath = /^\/auth\/memories\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname);
   const policy = groups[pathname] || (memoryRecordPath ? { name: "memory_record", limit: 30, windowSeconds: 60 } : null);
