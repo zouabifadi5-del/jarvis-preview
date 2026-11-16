@@ -945,6 +945,8 @@ async function logout(request, cfg, now) {
 
 async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) {
   const sessionPolicies = {
+    "/auth/memories/enable": { name: "memory_enable", limit: 2, windowSeconds: 60, method: "POST" },
+    "/auth/memories/disable": { name: "memory_disable", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/memories/export": { name: "memory_export", limit: 3, windowSeconds: 60, method: "POST" },
     "/auth/me": { name: "session_info", limit: 60, windowSeconds: 60, method: "GET" },
     "/auth/chat": { name: "chat", limit: 10, windowSeconds: 60, method: "POST" },
@@ -1016,6 +1018,8 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/recovery/verify": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
     "/auth/chat": { name: "chat", limit: 30, windowSeconds: 60 },
     "/auth/memories": { name: "memory", limit: 30, windowSeconds: 60 },
+    "/auth/memories/enable": { name: "memory_enable", limit: 3, windowSeconds: 60 },
+    "/auth/memories/disable": { name: "memory_disable", limit: 10, windowSeconds: 60 },
     "/auth/memories/export": { name: "memory_export", limit: 3, windowSeconds: 60 }
   };
   const memoryIpRecordPath = /^\/auth\/memories\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname);
@@ -1099,6 +1103,12 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/memories" && request.method === "GET") {
       return await memoryList(request, env, cfg, now);
+    }
+    if (pathname === "/auth/memories/enable" && request.method === "POST") {
+      return await memoryEnable(request, env, cfg, now);
+    }
+    if (pathname === "/auth/memories/disable" && request.method === "POST") {
+      return await memoryDisable(request, env, cfg, now);
     }
     if (pathname === "/auth/memories/export" && request.method === "POST") {
       return await memoryExport(request, env, cfg, now);
