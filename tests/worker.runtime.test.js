@@ -1257,6 +1257,34 @@ describe("authentication rate limits", () => {
 
 
 describe("authenticated session rate limits", () => {
+  it("throttles memory key rotation per authenticated session", async () => {
+    const { db, state } = makeRouteD1();
+    const session = await createSession(db, { now: Math.floor(Date.now() / 1000) });
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    };
+    let last;
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      last = await handleAuthRequest(request("/auth/memories/rotate", {
+        method: "POST",
+        headers: {
+          Origin: "https://example.test",
+          Cookie: "__Host-jarvis_session=" + session.sessionToken
+        },
+        body: { confirm: true, batchSize: 10 }
+      }), env);
+      if (attempt < 10) expect(last.status).toBe(503);
+    }
+    expect(last.status).toBe(429);
+    expect(state.rateLimits.some((item) => item.requestCount === 11)).toBe(true);
+    await expect(last.json()).resolves.toEqual(expect.objectContaining({
+      error: "rate_limit_exceeded"
+    }));
+  });
+
   it("limits authenticated credential-list requests per opaque session bucket", async () => {
     const { db, state } = makeRouteD1();
     const session = await createSession(db, { now: Math.floor(Date.now() / 1000) });
