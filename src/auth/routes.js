@@ -856,7 +856,19 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/logout": { name: "session_logout", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/logout-all": { name: "session_logout", limit: 5, windowSeconds: 60, method: "POST" }
   };
-  const sessionPolicy = sessionPolicies[pathname];
+  const memoryRecordPath = /^\/auth\/memories\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname);
+  const sessionPolicy = sessionPolicies[pathname] ||
+    (pathname === "/auth/memories" && request.method === "GET"
+      ? { name: "memory_list", limit: 60, windowSeconds: 60, method: "GET" }
+      : pathname === "/auth/memories" && request.method === "POST"
+        ? { name: "memory_create", limit: 10, windowSeconds: 60, method: "POST" }
+        : memoryRecordPath && request.method === "GET"
+          ? { name: "memory_read", limit: 30, windowSeconds: 60, method: "GET" }
+          : memoryRecordPath && request.method === "PUT"
+            ? { name: "memory_update", limit: 10, windowSeconds: 60, method: "PUT" }
+            : memoryRecordPath && request.method === "DELETE"
+              ? { name: "memory_delete", limit: 5, windowSeconds: 60, method: "DELETE" }
+              : null);
   if (sessionPolicy && request.method === sessionPolicy.method &&
       new URL(request.url).origin === cfg.origin &&
       (request.method === "GET" || sameOrigin(request, cfg.origin))) {
@@ -901,9 +913,11 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/register/verify": { name: "registration", limit: 6, windowSeconds: 60 * 60 },
     "/auth/recovery/options": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
     "/auth/recovery/verify": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
-    "/auth/chat": { name: "chat", limit: 30, windowSeconds: 60 }
+    "/auth/chat": { name: "chat", limit: 30, windowSeconds: 60 },
+    "/auth/memories": { name: "memory", limit: 30, windowSeconds: 60 }
   };
-  const policy = groups[pathname];
+  const memoryRecordPath = /^\/auth\/memories\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname);
+  const policy = groups[pathname] || (memoryRecordPath ? { name: "memory_record", limit: 30, windowSeconds: 60 } : null);
   if (!policy || request.method !== "POST") return null;
   // Bootstrap enrollment already has a high-entropy shared-secret gate;
   // reject missing/invalid bootstrap credentials before touching D1.
