@@ -34,6 +34,8 @@ The documentation does not establish reliable Tunisian Arabic dialect quality fo
 ## Integration design
 
 - Use the native Workers AI binding (`env.AI.run()`) from the Worker. No third-party provider key is required for this binding.
+- A stateless `POST /auth/chat` route and an owner-only browser chat panel now exist on the isolated branch. The route requires an active owner session and CSRF token, accepts one message of at most 6,000 characters, and returns a bounded reply. It does not persist conversation text or expose tools.
+- Chat calls are capped at 10 per session per minute, 30 per client IP per minute, and 100 per owner per UTC day using HMAC-derived D1 buckets. The daily cap is an application-side safety ceiling, not a guarantee of exact Neuron usage; it leaves margin below the provider's 10,000-Neuron daily allocation.
 - The current `wrangler.toml` on the security branch does not declare an AI binding. Add `[ai]\nbinding = "AI"` only in a reviewed feature commit; do not assume a dashboard binding is inherited by a Wrangler deployment.
 - All chat routes must require a valid owner session and CSRF protection for state-changing requests. Apply per-session and per-IP limits, strict JSON schemas, input/output size caps, bounded generation tokens, and request timeouts.
 - The model must never receive direct access to arbitrary shell, SQL, filesystem, or unrestricted network tools. Tool calls must be mapped to a server-side allowlist and validated independently.
