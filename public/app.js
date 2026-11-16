@@ -47,6 +47,7 @@ function setStatus(message, kind = "info") {
 function setBusy(busy) {
   for (const button of [loginButton, enrollButton, addButton, reauthButton, logoutButton, logoutAllButton, recoverButton, copyRecoveryButton, downloadRecoveryButton, acknowledgeRecoveryButton, sendChatButton]) if (button) button.disabled = busy;
   if (memoryControls) for (const control of memoryControls.querySelectorAll("button, input, select, textarea")) control.disabled = busy;
+  if (useMemoryCheckbox) useMemoryCheckbox.disabled = busy || !memoryEnabled || !memoryKeyAvailable;
   if (enableMemoryButton) enableMemoryButton.disabled = busy || !memoryKeyAvailable;
   if (disableMemoryButton) disableMemoryButton.disabled = busy || !memoryEnabled;
   if (saveMemoryButton) saveMemoryButton.disabled = busy || !memoryEnabled || !memoryKeyAvailable;
@@ -274,12 +275,13 @@ async function sendChatMessage() {
     setStatus("Write a message first.", "error");
     return;
   }
+  const useMemory = useMemoryCheckbox?.checked === true;
+  if (useMemoryCheckbox) useMemoryCheckbox.checked = false;
   setStatus("JARVIS is thinking…");
   const result = await api("/auth/chat", {
     method: "POST",
-    body: { message, history: chatHistory, ...(useMemoryCheckbox?.checked ? { useMemory: true } : {}) }
+    body: { message, history: chatHistory, ...(useMemory ? { useMemory: true } : {}) }
   });
-  if (useMemoryCheckbox) useMemoryCheckbox.checked = false;
   appendChatMessage("user", message);
   appendChatMessage("assistant", result.reply);
   chatHistory.push({ role: "user", content: message }, { role: "assistant", content: result.reply });
