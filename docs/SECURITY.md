@@ -60,7 +60,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 2. Verify the hosting account remains on a genuinely zero-cost plan; do not enable billing or paid add-ons.
 3. Choose storage only after checking its current free limits, data location, access model, retention, and deletion semantics.
 4. Select and test a maintained WebAuthn verifier compatible with the runtime.
-5. Complete one-owner enrollment, passkey login, session rotation, logout, credential revocation, CSRF, recovery-code replacement, and sign-out-everywhere tests. IP rate limiting is implemented and synthetically tested. Before production, exercise the code against real D1 using disposable synthetic records, verify secret values and the live origin, test the real Safari/iPhone ceremony, review dependency locking, and complete an independent security review.
+5. Complete one-owner enrollment, passkey login, session rotation, logout, credential revocation, CSRF, recovery-code replacement, and sign-out-everywhere tests. IP and authenticated-session rate limiting are implemented and synthetically tested. Before production, exercise the code against real D1 using disposable synthetic records, verify secret values and the live origin, test the real Safari/iPhone ceremony, review dependency locking, and complete an independent security review.
 6. Complete a security review and negative tests before storing any personal information.
 
 Until every gate is met, the service must remain a non-sensitive scaffold. A successful health check is not proof of authentication, privacy, or production readiness.
