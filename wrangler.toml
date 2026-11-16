@@ -15,3 +15,7 @@ database_name = "jarvis-owner-auth"
 database_id = "2bee8195-488a-4c73-ba42-d21950e890c4"
 
 # No account ID, routes, or paid resources are configured here.
+
+# Workers AI is only invoked from the authenticated, stateless chat route.
+[ai]
+binding = "AI"
