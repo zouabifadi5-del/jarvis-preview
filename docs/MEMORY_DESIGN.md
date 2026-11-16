@@ -54,7 +54,7 @@ Cloudflare's current D1 documentation lists the Workers Free limits as 5 million
 - A live-row deletion is not immediate physical erasure: historical D1 state may be restorable for up to seven days. The product must disclose this retention window and must not promise immediate deletion from backups.
 - Do not store sensitive owner memory until the owner accepts the seven-day recovery window or a separately reviewed crypto-erasure design is available.
 - Define an expiry policy for temporary notes and prune expired items through bounded, authenticated maintenance.
-- Do not enable backups or replication for memory until retention, access, and deletion semantics are understood.
+- Do not configure additional backups or replication for memory until retention, access, and deletion semantics are understood. Cloudflare D1 Free Time Travel is always on and retains up to seven days of historical database state.
 - Document that deleting a live D1 row may not immediately remove provider-managed backups. Never promise complete erasure without evidence.
 - Keep an audit trail of memory-management events without logging memory content.
 
