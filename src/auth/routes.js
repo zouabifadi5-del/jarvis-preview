@@ -84,7 +84,7 @@ function equalSecret(a, b) {
   return difference === 0;
 }
 
-async function readJson(request) {
+export async function readJson(request) {
   const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
   if (contentType !== "application/json") return null;
   const declaredLength = Number(request.headers.get("Content-Length") || 0);
