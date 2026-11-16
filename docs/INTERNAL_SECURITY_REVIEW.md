@@ -2,7 +2,7 @@
 
 **Review type:** Maintainer-assisted static review and synthetic-test review; not an independent audit  
 **Reviewed branch:** `jarvis-security-hardening`  
-**Review baseline:** `80abe08600103d0c0ba94ee230cb6e67ada0f186`  
+**Review baseline:** `b058f16016d39d7a9c1fd9c18dce4ff3f045ea9d`  
 **Date:** 16 November 2026
 
 ## Scope examined
@@ -42,13 +42,21 @@ This is a code-level review of the isolated prototype. It does not prove product
 
 **Verification:** Added a regression test that executes a newer touch followed by an older touch and asserts the stored timestamp remains at the newer value. CI run #671 passed.
 
+### 4. Concurrent recovery attempts using the same code
+
+**Risk examined:** An owner may open more than one recovery challenge using the same recovery code. Both challenges can be individually valid, so the final recovery operation must enforce single-use at the recovery-code row itself rather than relying only on challenge consumption.
+
+**Observed control:** `completeOwnerRecovery` atomically claims the recovery-code row using `used_at IS NULL` and a per-attempt claim hash. Credential replacement, deletion of unused old recovery codes, insertion of replacement codes, and session revocation are conditioned on that same claim marker within the D1 batch.
+
+**Verification:** Added a concurrent two-attempt regression test using separate valid recovery challenges but the same underlying recovery-code hash. Exactly one recovery operation must succeed and exactly one active replacement credential must remain. CI run #674 passed.
+
 ## Controls observed in the reviewed code
 
 - Single-owner enrollment is gated by a high-entropy bootstrap secret and closes after the owner record exists.
 - WebAuthn verification requires user verification and binds challenges to configured origin/RP ID; challenges are short-lived and single-use.
 - Session cookies are Secure, HttpOnly for the session token, SameSite=Strict, hashed at rest, and subject to idle and absolute expiry. Concurrent activity touches are monotonic so an out-of-order request cannot shorten the idle window.
 - Mutating authenticated routes require same-origin and CSRF checks; sensitive memory operations require recent passkey authentication, except the deliberately immediate memory-disable control.
-- Recovery-code use is atomically claimed; recovery replaces credentials/codes and revokes active sessions.
+- Recovery-code use is atomically claimed; recovery replaces credentials/codes and revokes active sessions. Concurrent recovery attempts using different challenges but the same code are covered by a regression test.
 - The last active passkey cannot be revoked.
 - Memory payloads use AES-256-GCM with fresh nonces and authenticated metadata; keyring parsing is bounded and rejects malformed keys.
 - Memory retrieval is off by default and requires an explicit per-message choice; retrieved text is treated as untrusted data.
@@ -69,8 +77,8 @@ These are implementation observations, not guarantees against all threats. Produ
 
 ## Verification update
 
-- CI run #671 passed 37 Node/SQLite checks and 60 Workers-runtime checks (97 total), production dependency audit reported zero vulnerabilities, and Wrangler dry-run completed. This includes the monotonic session-touch regression test.
-- The preceding run #670 failed because the newly added test fixture queried a non-exported helper; the fixture was corrected, and #671 passed on the corrected commit.
+- CI run #674 passed 38 Node/SQLite checks and 60 Workers-runtime checks (98 total), production dependency audit reported zero vulnerabilities, and Wrangler dry-run completed. It includes the monotonic session-touch and concurrent recovery-code double-spend regression tests.
+- Earlier run #670 failed because the initial session-touch test fixture queried a non-exported helper; the fixture was corrected, and subsequent runs passed.
 
 ## Current safety boundary
 
