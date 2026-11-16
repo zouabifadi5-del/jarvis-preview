@@ -29,7 +29,7 @@
 - A responsive first-party browser interface is served from Workers Static Assets in the isolated branch.
 - Native WebAuthn APIs handle owner enrollment, passkey login, credential management, and recovery.
 - The owner-only chat panel keeps up to eight recent user/assistant messages in browser page memory only. It clears on reload or sign-out and is not written to D1 or localStorage.
-- The next client step is PWA installation support and a documented iOS Shortcuts/Siri entry point. iOS does not generally allow an ordinary website to continuously listen for a custom wake word in the background.
+- The owner interface now includes a standalone web-app manifest, an SVG app icon, and iPhone home-screen metadata. Actual Add to Home Screen installation and passkey behavior still require acceptance testing on the owner's iPhone. A documented iOS Shortcuts/Siri entry point remains future work. iOS does not generally allow an ordinary website to continuously listen for a custom wake word in the background.
 
 ### Identity and authorization
 
