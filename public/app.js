@@ -21,6 +21,7 @@ const credentialsNode = document.querySelector("#credentials");
 const chatLog = document.querySelector("#chat-log");
 const chatMessageInput = document.querySelector("#chat-message");
 const sendChatButton = document.querySelector("#send-chat");
+const useMemoryCheckbox = document.querySelector("#use-memory");
 let chatHistory = [];
 const memoryPanel = document.querySelector("#memory-panel");
 const memoryStatus = document.querySelector("#memory-status");
@@ -176,6 +177,7 @@ function showSignedOut() {
   memoryControls.hidden = true;
   memoryEnabled = false;
   memoryKeyAvailable = false;
+  if (useMemoryCheckbox) { useMemoryCheckbox.checked = false; useMemoryCheckbox.disabled = true; }
   enableMemoryButton.hidden = true;
   disableMemoryButton.hidden = true;
   memoryStatus.textContent = "Persistent memory is not available while signed out.";
@@ -275,8 +277,9 @@ async function sendChatMessage() {
   setStatus("JARVIS is thinking…");
   const result = await api("/auth/chat", {
     method: "POST",
-    body: { message, history: chatHistory }
+    body: { message, history: chatHistory, ...(useMemoryCheckbox?.checked ? { useMemory: true } : {}) }
   });
+  if (useMemoryCheckbox) useMemoryCheckbox.checked = false;
   appendChatMessage("user", message);
   appendChatMessage("assistant", result.reply);
   chatHistory.push({ role: "user", content: message }, { role: "assistant", content: result.reply });
@@ -359,6 +362,10 @@ async function loadMemories() {
     memoryControls.hidden = false;
     memoryEnabled = result.enabled === true;
     memoryKeyAvailable = result.keyAvailable === true;
+    if (useMemoryCheckbox) {
+      useMemoryCheckbox.checked = false;
+      useMemoryCheckbox.disabled = !memoryEnabled || !memoryKeyAvailable;
+    }
     enableMemoryButton.hidden = memoryEnabled || !memoryKeyAvailable;
     disableMemoryButton.hidden = !memoryEnabled;
     saveMemoryButton.disabled = !memoryEnabled || !memoryKeyAvailable;
