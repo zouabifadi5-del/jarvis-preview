@@ -7,7 +7,8 @@ compatibility_date = "2026-11-14"
 directory = "./public"
 binding = "ASSETS"
 
-# Isolated owner-authentication database; this binding is only for this branch.
+# Preview worker binding. D1 databases are account-scoped, not branch-scoped;
+# verify the target environment before any deployment.
 [[d1_databases]]
 binding = "DB"
 database_name = "jarvis-owner-auth"
