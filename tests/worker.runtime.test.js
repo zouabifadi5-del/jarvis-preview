@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { exports } from "cloudflare:workers";
+import workerModule from "../src/worker.js";
 import { handleAuthRequest, readJson } from "../src/auth/routes.js";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { createSession } from "../src/auth/d1-store.js";
@@ -1556,7 +1557,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       "X-Jarvis-Bootstrap": bootstrapSecret
     };
 
-    const registrationOptionsResponse = await worker.fetch(request("/auth/register/options", {
+    const registrationOptionsResponse = await workerModule.fetch(request("/auth/register/options", {
       method: "POST",
       headers: originHeaders
     }), env);
@@ -1564,7 +1565,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
     expect(registrationOptionsResponse.status, JSON.stringify(registrationOptionsPayload)).toBe(200);
     const registrationOptions = registrationOptionsPayload;
     const credential = await makeRouteRegistration(registrationOptions.challenge);
-    const registrationResponse = await worker.fetch(request("/auth/register/verify", {
+    const registrationResponse = await workerModule.fetch(request("/auth/register/verify", {
       method: "POST",
       headers: { ...originHeaders, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1580,7 +1581,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       ?.match(/__Host-jarvis_session=([^;,]+)/)?.[1];
     expect(registrationCookie).toBeTruthy();
 
-    const loginOptionsResponse = await worker.fetch(request("/auth/login/options", {
+    const loginOptionsResponse = await workerModule.fetch(request("/auth/login/options", {
       method: "POST",
       headers: { Origin: "https://example.test" }
     }), env);
@@ -1592,7 +1593,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
       challenge: loginOptions.challenge,
       counter: 1
     });
-    const loginResponse = await worker.fetch(request("/auth/login/verify", {
+    const loginResponse = await workerModule.fetch(request("/auth/login/verify", {
       method: "POST",
       headers: {
         Origin: "https://example.test",
@@ -1608,7 +1609,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
     expect(ownerCookie).toBeTruthy();
     expect(login.csrfToken).toBeTruthy();
 
-    const anonymousChat = await worker.fetch(request("/auth/chat", {
+    const anonymousChat = await workerModule.fetch(request("/auth/chat", {
       method: "POST",
       headers: {
         Origin: "https://example.test",
@@ -1618,7 +1619,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
     }), env);
     expect(anonymousChat.status).toBe(403);
 
-    const chatResponse = await worker.fetch(request("/auth/chat", {
+    const chatResponse = await workerModule.fetch(request("/auth/chat", {
       method: "POST",
       headers: {
         Origin: "https://example.test",
@@ -1635,7 +1636,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
     });
     expect(inferenceCalls).toBe(1);
 
-    const logoutResponse = await worker.fetch(request("/auth/logout", {
+    const logoutResponse = await workerModule.fetch(request("/auth/logout", {
       method: "POST",
       headers: {
         Origin: "https://example.test",
@@ -1647,7 +1648,7 @@ describe("JARVIS end-to-end owner simulation through Worker.fetch", () => {
     }), env);
     expect(logoutResponse.status).toBe(200);
 
-    const afterLogout = await worker.fetch(request("/auth/me", {
+    const afterLogout = await workerModule.fetch(request("/auth/me", {
       method: "GET",
       headers: { Cookie: "__Host-jarvis_session=" + ownerCookie }
     }), env);
