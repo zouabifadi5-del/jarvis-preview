@@ -332,6 +332,30 @@ test("first owner and first passkey are created atomically and enrollment closes
 });
 
 
+test("credential storage atomically enforces the ten-passkey owner limit", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    for (let index = 0; index < 10; index += 1) {
+      assert.equal(await storeCredential(binding, {
+        id: "passkey-" + index,
+        publicKey: new Uint8Array([index + 1]),
+        now: 1000 + index
+      }), true);
+    }
+    assert.equal(await storeCredential(binding, {
+      id: "passkey-over-limit",
+      publicKey: new Uint8Array([99]),
+      now: 1010
+    }), false);
+    assert.equal(sqlite.prepare(
+      "SELECT COUNT(*) AS count FROM owner_credentials WHERE owner_id = 1 AND revoked_at IS NULL"
+    ).get().count, 10);
+  } finally {
+    sqlite.close();
+  }
+});
+
+
 test("credential revocation atomically refuses to remove the final active passkey", async () => {
   const { sqlite, binding } = makeD1();
   try {
