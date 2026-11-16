@@ -128,7 +128,7 @@ Unknown routes and methods remain rejected. No AI command, memory, or external-a
 ### Browser and request protections
 - CSRF attempt and hostile Origin are rejected for state-changing routes.
 - Cross-origin credentialed requests from unapproved origins are rejected.
-- Rate limits apply to enrollment and login attempts.
+- Fixed-window IP rate limits apply to enrollment, login, and recovery attempts; per-session HMAC-keyed limits apply to session inspection, credential listing/addition/revocation, and logout routes. The raw IP and session token are not stored in D1 rate-limit buckets.
 - Errors do not reveal whether an owner or credential exists.
 - No secret or private credential material appears in the public repository or client bundle.
 
