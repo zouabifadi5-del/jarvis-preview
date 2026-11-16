@@ -4,7 +4,7 @@
 
 This repository contains the public-facing prototype and non-sensitive project documentation.
 
-> The foundation website remains a visual preview, not a functioning AI assistant. The isolated `jarvis-security-hardening` branch contains synthetic-tested owner passkey enrollment/login, session protection, multi-device credential management, and one-time recovery-code replacement. Its D1 schema and synthetic create/read/delete smoke test are verified, but the authentication code is not deployed and no real owner passkey has been enrolled. AI, memory, and account integrations are not connected.
+> The foundation website remains a visual preview, not a deployed AI assistant. The isolated `jarvis-security-hardening` branch contains synthetic-tested owner passkey enrollment/login, session protection, multi-device credential management, recovery, and a stateless owner-only chat route. The chat route is tested with a mocked AI binding; no real inference has been made. The branch is not deployed, no owner passkey is enrolled, and no conversation memory or account integrations are connected.
 
 ## Project documents
 
