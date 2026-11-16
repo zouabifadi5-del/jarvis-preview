@@ -23,7 +23,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 - Store only a hash of each session identifier. Use a 30-minute idle timeout and an 8-hour absolute expiry, rotate the browser session after successful passkey authentication, and provide owner-initiated individual and global logout/revocation.
 - Require CSRF protection for state-changing cookie-authenticated requests. Restrict CORS to the exact production client origin; never use wildcard origins with credentials.
 - Require HTTPS. Validate method, content type, body size, schema, and every field server-side. Reject unknown commands and unknown fields by default.
-- Apply per-IP and per-session rate limits to authentication and command routes. Return generic authentication errors that do not reveal whether a credential or account exists.
+- Apply fixed-window per-IP rate limits to registration, login, and recovery endpoints. Per-session throttling for authenticated credential-management and future command routes remains outstanding; do not describe it as implemented until it is added and tested. Return generic authentication errors that do not reveal whether a credential or account exists.
 - Set conservative security headers on the client (including a restrictive Content Security Policy) and avoid third-party scripts, trackers, and remote fonts on authenticated screens.
 
 ## Data and memory protection
@@ -60,7 +60,7 @@ Only the one enrolled owner may access private JARVIS data or issue privileged c
 2. Verify the hosting account remains on a genuinely zero-cost plan; do not enable billing or paid add-ons.
 3. Choose storage only after checking its current free limits, data location, access model, retention, and deletion semantics.
 4. Select and test a maintained WebAuthn verifier compatible with the runtime.
-5. Complete one-owner enrollment, passkey login, session rotation, logout, credential revocation, CSRF, recovery-code replacement, and sign-out-everywhere tests. Rate limiting is implemented and synthetically tested. Before production, exercise the code against real D1 using disposable synthetic records, verify secret values and the live origin, test the real Safari/iPhone ceremony, review dependency locking, and complete an independent security review.
+5. Complete one-owner enrollment, passkey login, session rotation, logout, credential revocation, CSRF, recovery-code replacement, and sign-out-everywhere tests. IP rate limiting is implemented and synthetically tested. Before production, exercise the code against real D1 using disposable synthetic records, verify secret values and the live origin, test the real Safari/iPhone ceremony, review dependency locking, and complete an independent security review.
 6. Complete a security review and negative tests before storing any personal information.
 
 Until every gate is met, the service must remain a non-sensitive scaffold. A successful health check is not proof of authentication, privacy, or production readiness.
