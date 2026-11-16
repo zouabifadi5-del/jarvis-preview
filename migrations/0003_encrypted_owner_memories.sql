@@ -25,3 +25,12 @@ CREATE INDEX IF NOT EXISTS idx_owner_memories_updated
 
 CREATE INDEX IF NOT EXISTS idx_owner_memories_expiry
   ON owner_memories(owner_id, expires_at);
+
+-- Durable memory use is off until the owner explicitly enables it after accepting
+-- the provider-managed seven-day D1 Time Travel recovery window.
+CREATE TABLE IF NOT EXISTS owner_memory_settings (
+  owner_id INTEGER PRIMARY KEY
+    REFERENCES jarvis_owner(id) ON DELETE CASCADE,
+  enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+  updated_at INTEGER NOT NULL
+);
