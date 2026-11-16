@@ -637,6 +637,45 @@ test("encrypted memory storage supports owner-scoped listing, inspection, update
   }
 });
 
+test("encrypted memory storage atomically caps active records at 100 and frees expired slots", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const ciphertext = new Uint8Array(16).fill(5);
+    const nonce = new Uint8Array(12).fill(6);
+    const idFor = (index) => "123e4567-e89b-42d3-a456-" + String(index).padStart(12, "0");
+
+    for (let index = 0; index < 99; index += 1) {
+      const inserted = await insertMemoryRecord(binding, {
+        id: idFor(index), category: "fact", ciphertext, nonce, keyVersion: 1, now: 1000
+      });
+      assert.ok(inserted);
+    }
+    const expiring = await insertMemoryRecord(binding, {
+      id: idFor(99), category: "temporary", ciphertext, nonce, keyVersion: 1,
+      now: 1000, expiresAt: 1005
+    });
+    assert.ok(expiring);
+
+    const overLimit = await insertMemoryRecord(binding, {
+      id: idFor(100), category: "fact", ciphertext, nonce, keyVersion: 1, now: 1001
+    });
+    assert.equal(overLimit, null);
+    assert.equal(sqlite.prepare(
+      "SELECT COUNT(*) AS n FROM owner_memories WHERE expires_at IS NULL OR expires_at > ?"
+    ).get(1001).n, 100);
+
+    const afterExpiry = await insertMemoryRecord(binding, {
+      id: idFor(101), category: "fact", ciphertext, nonce, keyVersion: 1, now: 1005
+    });
+    assert.ok(afterExpiry);
+    assert.equal(sqlite.prepare(
+      "SELECT COUNT(*) AS n FROM owner_memories WHERE expires_at IS NULL OR expires_at > ?"
+    ).get(1005).n, 100);
+  } finally {
+    sqlite.close();
+  }
+});
+
 test("encrypted memory storage rejects malformed IDs, categories, payloads, and expiry", async () => {
   const { sqlite, binding } = makeD1();
   try {
