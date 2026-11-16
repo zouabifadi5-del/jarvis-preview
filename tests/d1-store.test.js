@@ -21,7 +21,13 @@ import {
   findActiveRecoveryCode,
   consumeRecoveryChallenge,
   completeOwnerRecovery,
-  revokeAllSessions
+  revokeAllSessions,
+  insertMemoryRecord,
+  listMemoryRecords,
+  findMemoryRecord,
+  updateMemoryRecord,
+  deleteMemoryRecord,
+  pruneExpiredMemoryRecords
 } from "../src/auth/d1-store.js";
 
 const migration = readFileSync(
@@ -32,12 +38,17 @@ const rateLimitMigration = readFileSync(
   fileURLToPath(new URL("../migrations/0002_auth_rate_limits.sql", import.meta.url)),
   "utf8"
 );
+const memoryMigration = readFileSync(
+  fileURLToPath(new URL("../migrations/0003_encrypted_owner_memories.sql", import.meta.url)),
+  "utf8"
+);
 
 function makeD1({ seedOwner = true } = {}) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("PRAGMA foreign_keys = ON");
   sqlite.exec(migration);
   sqlite.exec(rateLimitMigration);
+  sqlite.exec(memoryMigration);
   if (seedOwner) sqlite.prepare("INSERT INTO jarvis_owner(id, created_at) VALUES(1, ?)").run(1);
 
   return {
@@ -541,6 +552,75 @@ test("rate-limit counters increment atomically within a fixed window and expire"
     await assert.rejects(consumeRateLimit(binding, {
       bucketHash: "short", windowStart: 1200, windowSeconds: 300, limit: 2, now: 1260
     }), TypeError);
+  } finally {
+    sqlite.close();
+  }
+});
+
+
+test("encrypted memory storage supports owner-scoped listing, inspection, update, expiry, and deletion", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const id = "123e4567-e89b-42d3-a456-426614174000";
+    const ciphertext = new Uint8Array(32).fill(7);
+    const nonce = new Uint8Array(12).fill(3);
+    const created = await insertMemoryRecord(binding, {
+      id, category: "fact", ciphertext, nonce, keyVersion: 1, now: 1000
+    });
+    assert.deepEqual(created, {
+      id, category: "fact", createdAt: 1000, updatedAt: 1000, expiresAt: null, keyVersion: 1
+    });
+    const listed = await listMemoryRecords(binding, { now: 1001 });
+    assert.equal(listed.length, 1);
+    assert.deepEqual(listed[0], {
+      id, category: "fact", keyVersion: 1, createdAt: 1000, updatedAt: 1000, expiresAt: null
+    });
+    assert.equal("ciphertext" in listed[0], false);
+    const found = await findMemoryRecord(binding, id, { now: 1001 });
+    assert.deepEqual([...found.ciphertext], [...ciphertext]);
+    assert.deepEqual([...found.nonce], [...nonce]);
+
+    const updatedCiphertext = new Uint8Array(32).fill(8);
+    const updatedNonce = new Uint8Array(12).fill(4);
+    assert.equal(await updateMemoryRecord(binding, {
+      id, category: "project", ciphertext: updatedCiphertext, nonce: updatedNonce,
+      keyVersion: 1, now: 1002, expiresAt: 2000
+    }), true);
+    const updated = await findMemoryRecord(binding, id, { now: 1003 });
+    assert.equal(updated.category, "project");
+    assert.equal(updated.updatedAt, 1002);
+    assert.equal(updated.expiresAt, 2000);
+
+    const temporaryId = "123e4567-e89b-42d3-a456-426614174001";
+    await insertMemoryRecord(binding, {
+      id: temporaryId, category: "temporary", ciphertext, nonce, keyVersion: 1,
+      now: 1000, expiresAt: 1005
+    });
+    assert.equal(await pruneExpiredMemoryRecords(binding, { now: 1005 }), 1);
+    assert.equal(await findMemoryRecord(binding, temporaryId, { now: 1005 }), null);
+    assert.equal(await deleteMemoryRecord(binding, id), true);
+    assert.equal(await deleteMemoryRecord(binding, id), false);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM owner_memories").get().n, 0);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("encrypted memory storage rejects malformed IDs, categories, payloads, and expiry", async () => {
+  const { sqlite, binding } = makeD1();
+  try {
+    const valid = {
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      category: "fact",
+      ciphertext: new Uint8Array(16),
+      nonce: new Uint8Array(12),
+      keyVersion: 1,
+      now: 1000
+    };
+    await assert.rejects(insertMemoryRecord(binding, { ...valid, id: "bad-id" }), TypeError);
+    await assert.rejects(insertMemoryRecord(binding, { ...valid, category: "credential" }), TypeError);
+    await assert.rejects(insertMemoryRecord(binding, { ...valid, nonce: new Uint8Array(11) }), TypeError);
+    await assert.rejects(insertMemoryRecord(binding, { ...valid, expiresAt: 999 }), RangeError);
   } finally {
     sqlite.close();
   }
