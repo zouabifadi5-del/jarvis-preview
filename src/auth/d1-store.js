@@ -514,8 +514,14 @@ const MEMORY_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a
 function assertMemoryRecordInput({ id, category, ciphertext, nonce, keyVersion, schemaVersion = 1, now, expiresAt }) {
   if (typeof id !== "string" || !MEMORY_ID_PATTERN.test(id)) throw new TypeError("Memory ID is invalid");
   if (!MEMORY_CATEGORIES.has(category)) throw new TypeError("Memory category is invalid");
-  const encrypted = ciphertext instanceof Uint8Array ? ciphertext : new Uint8Array(ciphertext || []);
-  const iv = nonce instanceof Uint8Array ? nonce : new Uint8Array(nonce || []);
+  const toBytes = (value, label) => {
+    if (value instanceof Uint8Array) return value;
+    if (value instanceof ArrayBuffer) return new Uint8Array(value);
+    if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    throw new TypeError("Encrypted memory " + label + " must be bytes");
+  };
+  const encrypted = toBytes(ciphertext, "ciphertext");
+  const iv = toBytes(nonce, "nonce");
   if (encrypted.byteLength < 16 || iv.byteLength !== 12) throw new TypeError("Encrypted memory payload is invalid");
   assertPositiveInteger(keyVersion, "keyVersion");
   if (schemaVersion !== 1) throw new TypeError("Memory schema version is unsupported");
