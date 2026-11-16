@@ -1587,6 +1587,14 @@ describe("gated encrypted owner memory routes", () => {
       "Content-Type": "application/json"
     };
 
+    const enabled = await handleAuthRequest(request("/auth/memories/enable", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(enabled.status).toBe(200);
+    await expect(enabled.json()).resolves.toMatchObject({ enabled: true });
+
     const invalidTemporary = await handleAuthRequest(request("/auth/memories", {
       method: "POST",
       headers: authHeaders,
@@ -1678,6 +1686,21 @@ describe("gated encrypted owner memory routes", () => {
     expect(deleteAll.status).toBe(200);
     await expect(deleteAll.json()).resolves.toMatchObject({ deleted: true, deletedCount: 1 });
     expect(state.memories).toHaveLength(0);
+
+    const disabled = await handleAuthRequest(request("/auth/memories/disable", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(disabled.status).toBe(200);
+    await expect(disabled.json()).resolves.toMatchObject({ enabled: false });
+    const blockedSave = await handleAuthRequest(request("/auth/memories", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ content: "must not save while disabled", category: "fact" })
+    }), env);
+    expect(blockedSave.status).toBe(409);
+    await expect(blockedSave.json()).resolves.toEqual({ error: "memory_disabled" });
   });
 
   it("requires recent passkey reauthentication before memory creation, edits, export, and deletion", async () => {
