@@ -21,6 +21,7 @@ const credentialsNode = document.querySelector("#credentials");
 const chatLog = document.querySelector("#chat-log");
 const chatMessageInput = document.querySelector("#chat-message");
 const sendChatButton = document.querySelector("#send-chat");
+let chatHistory = [];
 
 function setStatus(message, kind = "info") {
   statusNode.textContent = message;
@@ -135,6 +136,7 @@ function showSignedOut() {
   recoveryPanel.hidden = true;
   chatLog.replaceChildren();
   chatMessageInput.value = "";
+  chatHistory = [];
 }
 function showRecoveryCodes(codes) {
   if (!Array.isArray(codes) || codes.length !== 10 || codes.some((code) => typeof code !== "string")) {
@@ -231,10 +233,12 @@ async function sendChatMessage() {
   setStatus("JARVIS is thinking…");
   const result = await api("/auth/chat", {
     method: "POST",
-    body: { message }
+    body: { message, history: chatHistory }
   });
   appendChatMessage("user", message);
   appendChatMessage("assistant", result.reply);
+  chatHistory.push({ role: "user", content: message }, { role: "assistant", content: result.reply });
+  if (chatHistory.length > 8) chatHistory = chatHistory.slice(-8);
   chatMessageInput.value = "";
   setStatus("Reply received. This prototype does not save chat history.", "success");
 }
