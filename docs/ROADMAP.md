@@ -56,9 +56,10 @@
 - [ ] Obtain separate explicit owner approval before deploying the isolated Worker branch.
 - [x] Document encrypted, owner-controlled memory lifecycle and release gates in [Private Memory Design](MEMORY_DESIGN.md); persistent memory remains disabled.
 - [x] Implement AES-256-GCM encrypted memory storage and owner CRUD/inspect/export/delete API routes with synthetic tests; activation is blocked unless the explicit seven-day D1 retention acceptance flag and server-side key are configured.
-- [x] Encrypt memory payloads at rest with AES-256-GCM and protect transport with HTTPS; key rotation, management audit events, expiry pruning, one-tap disable, bounded chat retrieval, and independent review remain outstanding.
+- [x] Encrypt memory payloads at rest with AES-256-GCM and protect transport with HTTPS; explicit enable and one-tap disable are implemented. Key rotation, management audit events, expiry pruning, bounded chat retrieval, and independent review remain outstanding.
 - [x] Build the owner-facing memory review/edit/export/delete interface; memory writes require recent passkey confirmation in both UI and API.
-- [ ] Add a one-tap memory-disable control and bounded chat retrieval; keep real memory disabled until release gates pass.
+- [x] Add explicit owner-controlled memory enable and one-tap disable controls; persistent memory remains disabled until separate release gates pass.
+- [ ] Add bounded chat retrieval with retrieved text treated as untrusted context; keep real memory disabled until release gates pass.
 
 ## Milestone 4 — AI and integrations
 - [x] Research the Workers AI Free allocation and shortlist Free-eligible models; document cost, quota, privacy, and test boundaries in [AI Provider Plan](AI_PROVIDER_PLAN.md). No inference request has been made.
