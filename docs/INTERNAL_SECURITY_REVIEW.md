@@ -2,7 +2,7 @@
 
 **Review type:** Maintainer-assisted static review and synthetic-test review; not an independent audit  
 **Reviewed branch:** `jarvis-security-hardening`  
-**Review baseline:** `b058f16016d39d7a9c1fd9c18dce4ff3f045ea9d`  
+**Review baseline:** `d96dc55667a4bc01bb9653b944651817c9e1f98d`  
 **Date:** 16 November 2026
 
 ## Scope examined
@@ -87,6 +87,7 @@ These are implementation observations, not guarantees against all threats. Produ
 ## Verification update
 
 - CI run #674 passed 38 Node/SQLite checks and 60 Workers-runtime checks (98 total), production dependency audit reported zero vulnerabilities, and Wrangler dry-run completed. It includes the monotonic session-touch and concurrent recovery-code double-spend regression tests.
+- CI run #677 passed after pinning GitHub Actions to immutable commit SHAs; the 98 tests, production dependency audit, and Wrangler dry run all passed on that workflow revision.
 - Earlier run #670 failed because the initial session-touch test fixture queried a non-exported helper; the fixture was corrected, and subsequent runs passed.
 
 ## Current safety boundary
