@@ -1403,7 +1403,7 @@ describe("owner-only stateless AI chat", () => {
     const { db } = makeRouteD1();
     const now = Math.floor(Date.now() / 1000);
     const sessions = [];
-    for (let i = 0; i < 11; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       sessions.push(await createSession(db, { now }));
     }
     let aiCalls = 0;
@@ -1420,7 +1420,7 @@ describe("owner-only stateless AI chat", () => {
       }
     };
     let last;
-    for (let attempt = 0; attempt < 101; attempt += 1) {
+    for (let attempt = 0; attempt < 51; attempt += 1) {
       const sessionIndex = Math.floor(attempt / 10);
       const session = sessions[sessionIndex];
       last = await handleAuthRequest(request("/auth/chat", {
@@ -1434,10 +1434,10 @@ describe("owner-only stateless AI chat", () => {
         },
         body: JSON.stringify({ message: "hello" })
       }), env);
-      if (attempt < 100) expect(last.status).toBe(200);
+      if (attempt < 50) expect(last.status).toBe(200);
     }
     expect(last.status).toBe(429);
-    expect(aiCalls).toBe(100);
+    expect(aiCalls).toBe(50);
     expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
     await expect(last.json()).resolves.toEqual(expect.objectContaining({
       error: "daily_ai_limit_reached"
