@@ -4,7 +4,7 @@ import workerModule from "../src/worker.js";
 import { handleAuthRequest, readJson } from "../src/auth/routes.js";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { createSession } from "../src/auth/d1-store.js";
-import { encodeMemoryKeyForSetup, importMemoryEncryptionKey, encryptMemoryText, decryptMemoryText } from "../src/auth/memory-crypto.js";
+import { encodeMemoryKeyForSetup, importMemoryEncryptionKey, importMemoryEncryptionKeyring, encryptMemoryText, decryptMemoryText } from "../src/auth/memory-crypto.js";
 
 const worker = exports.default;
 
@@ -1770,6 +1770,29 @@ describe("encrypted memory WebCrypto in Workers runtime", () => {
   });
 });
 
+describe("versioned memory encryption keyring", () => {
+  it("validates key versions and imports a bounded keyring", async () => {
+    const keyV1 = encodeMemoryKeyForSetup(crypto.getRandomValues(new Uint8Array(32)));
+    const keyV2 = encodeMemoryKeyForSetup(crypto.getRandomValues(new Uint8Array(32)));
+    const keyring = await importMemoryEncryptionKeyring(JSON.stringify({
+      currentVersion: 2,
+      keys: { "1": keyV1, "2": keyV2 }
+    }));
+    expect(keyring.currentVersion).toBe(2);
+    expect(keyring.keys.get(1)).toBeDefined();
+    expect(keyring.keys.get(2)).toBeDefined();
+    await expect(importMemoryEncryptionKeyring(JSON.stringify({
+      currentVersion: 3, keys: { "1": keyV1, "2": keyV2 }
+    }))).rejects.toThrow();
+    await expect(importMemoryEncryptionKeyring(JSON.stringify({
+      currentVersion: 2, keys: { "1": "not-a-key", "2": keyV2 }
+    }))).rejects.toThrow();
+    await expect(importMemoryEncryptionKeyring(JSON.stringify({
+      currentVersion: 1, keys: { "1": keyV1 }, extra: true
+    }))).rejects.toThrow();
+  });
+});
+
 describe("gated encrypted owner memory routes", () => {
   function memoryEnv(db) {
     return {
@@ -1838,6 +1861,16 @@ describe("gated encrypted owner memory routes", () => {
     expect(state.memories[0].content).toBeUndefined();
     expect(new TextDecoder().decode(state.memories[0].ciphertext)).not.toContain("concise answers");
 
+    // Simulate staged key rotation: keep v1 for old records and make v2 current.
+    const oldKey = env.JARVIS_MEMORY_ENCRYPTION_KEY;
+    const newKey = encodeMemoryKeyForSetup(crypto.getRandomValues(new Uint8Array(32)));
+    env.JARVIS_MEMORY_KEYRING = JSON.stringify({
+      currentVersion: 2,
+      keys: { "1": oldKey, "2": newKey }
+    });
+    delete env.JARVIS_MEMORY_ENCRYPTION_KEY;
+    delete env.JARVIS_MEMORY_KEY_VERSION;
+
     state.memories.push({
       id: "123e4567-e89b-42d3-a456-426614174099",
       owner_id: 1,
@@ -1877,6 +1910,7 @@ describe("gated encrypted owner memory routes", () => {
       body: JSON.stringify({ content: "The owner prefers brief replies.", category: "project" })
     }), env);
     expect(updated.status).toBe(200);
+    expect(state.memories.find((item) => item.id === id).key_version).toBe(2);
     const updatedDetail = await handleAuthRequest(request("/auth/memories/" + id, {
       method: "GET",
       headers: { Cookie: authHeaders.Cookie }
