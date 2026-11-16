@@ -1272,7 +1272,8 @@ describe("authenticated session rate limits", () => {
         method: "POST",
         headers: {
           Origin: "https://example.test",
-          Cookie: "__Host-jarvis_session=" + session.sessionToken
+          Cookie: "__Host-jarvis_session=" + session.sessionToken + "; __Host-jarvis_csrf=" + session.csrfToken,
+          "X-CSRF-Token": session.csrfToken
         },
         body: { confirm: true, batchSize: 10 }
       }), env);
