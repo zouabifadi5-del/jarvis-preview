@@ -3,7 +3,7 @@
 **Review requested:** Independent, pre-release security assessment  
 **Repository:** https://github.com/zouabifadi5-del/jarvis-preview  
 **Branch:** `jarvis-security-hardening`  
-**Current reviewed implementation baseline:** `b058f16016d39d7a9c1fd9c18dce4ff3f045ea9d`  
+**Current implementation baseline:** `dc8928476ecfaf3df8af2633bddcebc16c5a6d1a` (latest code change; subsequent commits are documentation only)  
 **Latest confirmed implementation CI:** Run #674 — 98 tests passed, zero production dependency vulnerabilities, Wrangler dry run passed  
 **Scope:** Prototype code review only; no production approval implied.
 
@@ -29,7 +29,7 @@ Please explicitly state the commit reviewed and whether the review was independe
 4. **Abuse controls:** IP and per-session HMAC buckets, D1 atomicity, trusted client-IP source, limits and cleanup behavior.
 5. **Memory confidentiality:** AES-256-GCM, nonce uniqueness, AAD coverage, keyring parsing, rotation and compare-and-set behavior, key retirement, D1 backup/Time Travel retention.
 6. **AI boundary:** prompt injection through history and memory, size limits, model output validation, provider failures, and confirmation that no privileged tools or external actions are available.
-7. **Cloudflare/runtime/deployment:** D1 binding and migrations, Worker routing, cron gating, secret configuration, asset security headers, CI permissions and dependency supply chain.
+7. **Cloudflare/runtime/deployment:** D1 binding and migrations, Worker routing, cron gating, secret configuration, asset security headers, CI permissions, immutable action pins, branch protection, and dependency supply chain.
 
 ## Existing verification evidence
 
@@ -41,6 +41,8 @@ Please explicitly state the commit reviewed and whether the review was independe
 - Release gate checklist: `docs/PHASE_4_RELEASE_CHECKLIST.md`.
 
 ## Known limitations and release gates
+
+- The `jarvis-security-hardening` branch currently has no branch protection enabled. Require pull requests and passing CI before release/merge; direct-push restrictions should be enabled where available.
 
 - This is not a production security certification.
 - No real owner passkey has been enrolled; no real personal memory or transcript exists.
