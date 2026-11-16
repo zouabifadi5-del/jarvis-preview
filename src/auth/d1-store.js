@@ -625,3 +625,12 @@ export async function pruneExpiredMemoryRecords(db, {
   ).bind(now).run();
   return result.meta?.changes || 0;
 }
+
+
+export async function deleteAllMemoryRecords(db) {
+  assertD1(db);
+  const result = await db.prepare(
+    "DELETE FROM owner_memories WHERE owner_id = 1"
+  ).run();
+  return result.meta?.changes || 0;
+}
