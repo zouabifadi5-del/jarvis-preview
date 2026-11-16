@@ -677,6 +677,7 @@ async function memoryCreate(request, env, cfg, now) {
     nonce: encrypted.nonce, keyVersion: encrypted.keyVersion,
     schemaVersion: encrypted.schemaVersion, now, expiresAt: body.expiresAt ?? null
   });
+  if (!memory) return fail(request, 409, "memory_limit_reached");
   return response(request, { memory });
 }
 
