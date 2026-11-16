@@ -1995,6 +1995,16 @@ describe("gated encrypted owner memory routes", () => {
       memory: { id, category: "project", content: "The owner prefers brief replies." }
     });
 
+    const rotationComplete = await handleAuthRequest(request("/auth/memories/rotate", {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ confirm: true })
+    }), env);
+    expect(rotationComplete.status).toBe(200);
+    await expect(rotationComplete.json()).resolves.toMatchObject({
+      rotated: 0, remaining: 0, currentVersion: 2, oldKeyVersions: []
+    });
+
     const exported = await handleAuthRequest(request("/auth/memories/export", {
       method: "POST",
       headers: authHeaders,
