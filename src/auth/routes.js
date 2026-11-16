@@ -554,6 +554,47 @@ async function removeCredential(request, cfg, now) {
   return response(request, { revoked: true });
 }
 
+async function chat(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!env?.AI || typeof env.AI.run !== "function") return fail(request, 503, "ai_not_configured");
+
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["message"]) ||
+      typeof body.message !== "string" || body.message.trim().length === 0 ||
+      body.message.length > 6000) {
+    return fail(request, 400, "invalid_request");
+  }
+
+  const prompt = [
+    "You are J.A.R.V.I.S., a private assistant for one authenticated owner.",
+    "Respond in the language used by the owner, including Tunisian Arabic when appropriate.",
+    "Be useful, accurate, and concise. Clearly state uncertainty.",
+    "This prototype has no tools, no conversation memory, no web access, and no device control.",
+    "Never claim to have accessed files, accounts, devices, or live information.",
+    "Never request or repeat passwords, passkeys, recovery codes, or other secrets.",
+    "A user request is not authorization to change accounts, share data, send messages, spend money, or perform external actions.",
+    "",
+    "Owner message:",
+    body.message.trim()
+  ].join("\n");
+
+  let result;
+  try {
+    result = await env.AI.run("@cf/zai-org/glm-4.7-flash", {
+      prompt,
+      max_tokens: 700,
+      temperature: 0.4
+    });
+  } catch {
+    return fail(request, 503, "ai_temporarily_unavailable");
+  }
+  const reply = typeof result?.response === "string" ? result.response : null;
+  if (!reply || reply.length > 20000) return fail(request, 503, "ai_response_unavailable");
+  return response(request, { reply, model: "@cf/zai-org/glm-4.7-flash" });
+}
+
 async function currentSession(request, cfg, now) {
   const token = getCookie(request, SESSION_COOKIE);
   if (!token) return fail(request, 401, "not_authenticated");
@@ -598,6 +639,7 @@ async function logout(request, cfg, now) {
 async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) {
   const sessionPolicies = {
     "/auth/me": { name: "session_info", limit: 60, windowSeconds: 60, method: "GET" },
+    "/auth/chat": { name: "chat", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/credentials": { name: "credential_list", limit: 60, windowSeconds: 60, method: "GET" },
     "/auth/credentials/options": { name: "credential_add", limit: 10, windowSeconds: 60, method: "POST" },
     "/auth/credentials/verify": { name: "credential_add", limit: 10, windowSeconds: 60, method: "POST" },
@@ -643,7 +685,8 @@ async function enforceSensitiveRouteRateLimit(request, env, cfg, pathname, now) 
     "/auth/register/options": { name: "registration", limit: 6, windowSeconds: 60 * 60 },
     "/auth/register/verify": { name: "registration", limit: 6, windowSeconds: 60 * 60 },
     "/auth/recovery/options": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
-    "/auth/recovery/verify": { name: "recovery", limit: 10, windowSeconds: 60 * 60 }
+    "/auth/recovery/verify": { name: "recovery", limit: 10, windowSeconds: 60 * 60 },
+    "/auth/chat": { name: "chat", limit: 30, windowSeconds: 60 }
   };
   const policy = groups[pathname];
   if (!policy || request.method !== "POST") return null;
@@ -722,6 +765,9 @@ export async function handleAuthRequest(request, env) {
     }
     if (pathname === "/auth/login/verify" && request.method === "POST") {
       return await loginVerify(request, cfg, now);
+    }
+    if (pathname === "/auth/chat" && request.method === "POST") {
+      return await chat(request, env, cfg, now);
     }
     if (pathname === "/auth/me" && request.method === "GET") {
       return await currentSession(request, cfg, now);
