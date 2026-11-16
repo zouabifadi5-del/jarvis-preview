@@ -750,7 +750,8 @@ describe("JARVIS Worker runtime contract", () => {
     }), {
       DB: withRateLimitSupport(db),
       AUTH_ORIGIN: "https://example.test",
-      WEBAUTHN_RP_ID: "example.test"
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
     });
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({ error: "cannot_revoke_last_credential" });
@@ -1216,7 +1217,7 @@ describe("authenticated session rate limits", () => {
       JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
     };
     let last;
-    for (let attempt = 0; attempt < 6; attempt += 1) {
+    for (let attempt = 0; attempt < 11; attempt += 1) {
       last = await handleAuthRequest(request("/auth/logout", {
         method: "POST",
         headers: {
@@ -1227,10 +1228,10 @@ describe("authenticated session rate limits", () => {
         },
         body: "{}"
       }), env);
-      if (attempt < 5) expect(last.status).toBe(403);
+      if (attempt < 10) expect(last.status).toBe(403);
     }
     expect(last.status).toBe(429);
-    expect(count).toBe(6);
+    expect(count).toBe(11);
     expect(last.headers.get("retry-after")).toMatch(/^[0-9]+$/);
     await expect(last.json()).resolves.toEqual(expect.objectContaining({
       error: "rate_limit_exceeded"
