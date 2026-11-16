@@ -1236,4 +1236,39 @@ describe("authenticated session rate limits", () => {
       error: "rate_limit_exceeded"
     }));
   });
+
+  it("applies session throttling to same-origin GET requests without an Origin header", async () => {
+    let count = 0;
+    const db = {
+      prepare(sql) {
+        if (sql.startsWith("INSERT INTO auth_rate_limits")) {
+          return { bind() { return { async first() { count += 1; return { request_count: count }; } }; } };
+        }
+        if (sql.startsWith("DELETE FROM auth_rate_limits")) {
+          return { bind() { return { async run() { return { success: true, meta: { changes: 0 } }; } }; } };
+        }
+        if (sql.includes("SELECT created_at, expires_at, last_seen_at")) {
+          return { bind() { return { async first() { return null; } }; } };
+        }
+        throw new Error("Unexpected database query in GET session rate-limit test");
+      }
+    };
+    const env = {
+      DB: db,
+      AUTH_ORIGIN: "https://example.test",
+      WEBAUTHN_RP_ID: "example.test",
+      JARVIS_RATE_LIMIT_HMAC_SECRET: "synthetic-test-rate-limit-secret-0123456789"
+    };
+    let last;
+    for (let attempt = 0; attempt < 61; attempt += 1) {
+      last = await handleAuthRequest(request("/auth/me", {
+        method: "GET",
+        headers: { Cookie: "__Host-jarvis_session=" + "s".repeat(48) }
+      }), env);
+      if (attempt < 60) expect(last.status).toBe(401);
+    }
+    expect(last.status).toBe(429);
+    expect(count).toBe(61);
+  });
+
 });
