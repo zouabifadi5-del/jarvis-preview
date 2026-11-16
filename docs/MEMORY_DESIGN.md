@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Private Memory Design
 
-**Status (16 November 2026):** Design only. No owner memories or chat transcripts are stored. The stateless chat route retains only a bounded recent conversation in browser page memory; it is cleared on reload or sign-out.
+**Status (16 November 2026):** Encrypted memory storage helpers and owner-only API routes (create, list, inspect, update, export, delete-one, delete-all) are implemented on `jarvis-security-hardening` with synthetic tests. Memory remains disabled unless both the explicit D1-retention acceptance flag and a valid server-side encryption key are configured. No owner memory or chat transcript has been stored. There is no memory-management UI, model retrieval integration, key-rotation workflow, or management audit trail yet. The stateless chat route retains only bounded recent conversation in browser page memory; it clears on reload or sign-out.
 
 ## Goals
 
@@ -25,11 +25,11 @@ Do not automatically store credentials, passkeys, recovery codes, financial acco
 ## Encryption and storage
 
 - Use AES-256-GCM through WebCrypto on the Worker. Generate a fresh 96-bit nonce for every record.
-- Keep a random 256-bit encryption key only in a Cloudflare Worker secret named `JARVIS_MEMORY_ENCRYPTION_KEY`. Never store it in D1, Wrangler files, browser code, Git, logs, or the model prompt.
+- Keep a random 256-bit encryption key only in a Cloudflare Worker secret named `JARVIS_MEMORY_ENCRYPTION_KEY`. Never store it in D1, Wrangler files, browser code, Git, logs, or the model prompt. The current code accepts key version 1 only; do not rotate or replace the key until a reviewed rotation/migration procedure exists.
 - Version the key and ciphertext format so future key rotation can be tested. Bind record ID, owner ID, schema version, and key version as authenticated additional data (AAD).
 - Store ciphertext, nonce, key version, owner ID, record ID, timestamps, and non-sensitive lifecycle fields only. Avoid plaintext titles, tags, summaries, or search indexes in the first version.
 - Fail closed if the encryption key is absent, malformed, or has the wrong length. Do not fall back to plaintext storage.
-- Decrypt only after owner-session and CSRF checks. Never expose bulk decrypted memory to the browser unless the owner requests an export or inspection.
+- Decrypt only after owner-session checks; require CSRF for writes and recent passkey authentication for creation, editing, export, and deletion. Never expose bulk decrypted memory to the browser unless the owner requests an export or inspection.
 
 ## Retrieval and prompt safety
 
@@ -56,18 +56,21 @@ Cloudflare's current D1 documentation lists the Workers Free limits as 5 million
 - Define an expiry policy for temporary notes and prune expired items through bounded, authenticated maintenance.
 - Do not configure additional backups or replication for memory until retention, access, and deletion semantics are understood. Cloudflare D1 Free Time Travel is always on and retains up to seven days of historical database state.
 - Document that deleting a live D1 row may not immediately remove provider-managed backups. Never promise complete erasure without evidence.
-- Keep an audit trail of memory-management events without logging memory content.
+- Add a privacy-preserving audit trail of memory-management events without logging memory content before enabling the feature.
 
-## Implementation gates
+## Implementation status and remaining gates
 
-1. Verify current D1 Free limits and backup/retention behavior before adding a memory table.
-2. Add a migration for encrypted records only; test it with synthetic ciphertext and local SQLite.
-3. Implement AES-GCM encryption/decryption and AAD validation with negative tests for tampering, nonce mismatch, wrong key version, and wrong owner ID.
-4. Add owner-only CRUD, export, correction, and deletion routes with CSRF, recent-passkey checks for export/bulk deletion, strict schemas, rate limits, and audit metadata.
-5. Test all flows using synthetic data; no personal data in CI.
-6. Review the full design independently before enabling memory for the owner.
-7. Require separate deployment and owner-enrollment approval before storing any real memory.
+- [x] Verify D1 Free limits and mandatory seven-day Time Travel retention; explicitly gate activation on owner acceptance.
+- [x] Add encrypted-record schema and test it with synthetic data/local SQLite.
+- [x] Implement AES-256-GCM encryption/decryption, fresh 96-bit nonces, AAD binding, and negative tamper/key/metadata tests.
+- [x] Implement owner-only CRUD, JSON export, and deletion routes with strict schemas, CSRF on writes, recent-passkey checks, and request throttles.
+- [x] Test backend flows with synthetic data only.
+- [ ] Add an owner-facing memory management UI with explicit review, edit, export, delete, and disable controls.
+- [ ] Add bounded memory retrieval to chat, with retrieved text treated as untrusted context and no automatic writes.
+- [ ] Implement and test key rotation, crypto-erasure options, expiry pruning, and privacy-preserving management audit events.
+- [ ] Review the full design independently before enabling memory for the owner.
+- [ ] Require separate deployment and owner approval before storing any real memory.
 
 ## Current decision
 
-Do not implement or enable persistent memory until these gates are satisfied. The existing chat prototype remains stateless, with only temporary in-page conversation context.
+Keep persistent memory disabled. Backend encryption and CRUD APIs are a tested prototype, not an enabled personal-memory feature. The existing chat remains stateless, with only temporary in-page conversation context.
