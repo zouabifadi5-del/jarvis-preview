@@ -22,6 +22,8 @@ import {
   updateMemoryRecord,
   deleteMemoryRecord,
   deleteAllMemoryRecords,
+  getMemorySettings,
+  setMemoryEnabled,
   revokeAllSessions,
   revokeCredential,
   revokeSession,
@@ -610,9 +612,10 @@ function validMemoryExpiry(category, expiresAt, now) {
 async function memoryList(request, env, cfg, now) {
   const auth = await authenticatedOwner(request, cfg, now);
   if (!auth) return fail(request, 401, "not_authenticated");
-  if (!await loadMemoryKey(env)) return fail(request, 503, "memory_not_enabled");
+  if (!memoryConfiguration(env)) return fail(request, 503, "memory_not_enabled");
+  const settings = await getMemorySettings(cfg.db);
   const memories = await listMemoryRecords(cfg.db, { now, limit: 100 });
-  return response(request, { memories });
+  return response(request, { enabled: settings.enabled, memories });
 }
 
 async function memoryGet(request, env, cfg, now, id) {
@@ -641,6 +644,8 @@ async function memoryCreate(request, env, cfg, now) {
   if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
   const config = await loadMemoryKey(env);
   if (!config) return fail(request, 503, "memory_not_enabled");
+  const settings = await getMemorySettings(cfg.db);
+  if (!settings.enabled) return fail(request, 409, "memory_disabled");
   const body = await readJson(request);
   if (!body || !hasOnlyKeys(body, ["content", "category", "expiresAt"]) ||
       typeof body.content !== "string" || body.content.trim().length === 0 ||
@@ -681,6 +686,8 @@ async function memoryUpdate(request, env, cfg, now, id) {
   if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
   const config = await loadMemoryKey(env);
   if (!config) return fail(request, 503, "memory_not_enabled");
+  const settings = await getMemorySettings(cfg.db);
+  if (!settings.enabled) return fail(request, 409, "memory_disabled");
   const body = await readJson(request);
   if (!body || !hasOnlyKeys(body, ["content", "category", "expiresAt"]) ||
       typeof body.content !== "string" || body.content.trim().length === 0 ||
@@ -709,6 +716,31 @@ async function memoryUpdate(request, env, cfg, now, id) {
   });
   if (!updated) return fail(request, 404, "memory_not_found");
   return response(request, { updated: true, id });
+}
+
+async function memoryEnable(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (!hasRecentPasskeySession(auth.session, now)) return fail(request, 403, "reauthentication_required");
+  if (!await loadMemoryKey(env)) return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["confirm"]) || body.confirm !== true) {
+    return fail(request, 400, "explicit_confirmation_required");
+  }
+  return response(request, { ...(await setMemoryEnabled(cfg.db, true, now)) });
+}
+
+async function memoryDisable(request, env, cfg, now) {
+  if (!sameOrigin(request, cfg.origin)) return fail(request, 403, "origin_not_allowed");
+  const auth = await authenticatedOwner(request, cfg, now, true);
+  if (!auth) return fail(request, 403, "session_or_csrf_invalid");
+  if (env?.JARVIS_MEMORY_RETENTION_ACCEPTED !== "true") return fail(request, 503, "memory_not_enabled");
+  const body = await readJson(request);
+  if (!body || !hasOnlyKeys(body, ["confirm"]) || body.confirm !== true) {
+    return fail(request, 400, "explicit_confirmation_required");
+  }
+  return response(request, { ...(await setMemoryEnabled(cfg.db, false, now)) });
 }
 
 async function memoryExport(request, env, cfg, now) {
