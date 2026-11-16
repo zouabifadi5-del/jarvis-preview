@@ -137,7 +137,7 @@ async function makeRouteAssertion({ keyPair, credentialId, challenge, counter = 
   };
 }
 function makeRouteD1() {
-  const state = { owner: null, credentials: [], challenges: [], sessions: [], recoveryCodes: [], rateLimits: [] };
+  const state = { owner: null, credentials: [], challenges: [], sessions: [], recoveryCodes: [], rateLimits: [], memories: [] };
   function statement(sql, values = []) {
     return {
       bind(...bound) { return statement(sql, bound); },
@@ -153,6 +153,11 @@ function makeRouteD1() {
           return { request_count: bucket.requestCount };
         }
         if (sql.includes("SELECT id, created_at, enrollment_closed_at")) return state.owner;
+        if (sql.includes("SELECT id, owner_id, category, ciphertext, nonce")) {
+          const [id, now] = values;
+          return state.memories.find((row) => row.id === id && row.owner_id === 1 &&
+            (row.expires_at === null || row.expires_at > now)) || null;
+        }
         if (sql.includes("DELETE FROM auth_challenges")) {
           let index;
           if (sql.includes("purpose = 'recovery'")) {
@@ -191,12 +196,41 @@ function makeRouteD1() {
         return null;
       },
       async all() {
+        if (sql.includes("SELECT id, category, key_version, created_at, updated_at, expires_at")) {
+          const [now, limit] = values;
+          return { results: state.memories.filter((row) => row.owner_id === 1 &&
+            (row.expires_at === null || row.expires_at > now))
+            .sort((a, b) => b.updated_at - a.updated_at).slice(0, limit) };
+        }
         if (sql.includes("SELECT credential_id, public_key, sign_count")) {
           return { results: state.credentials.filter((row) => row.owner_id === 1 && row.revoked_at === null) };
         }
         return { results: [] };
       },
       async run() {
+        if (sql.includes("INSERT INTO owner_memories")) {
+          const [id, category, ciphertext, nonce, keyVersion, schemaVersion, createdAt, updatedAt, expiresAt] = values;
+          state.memories.push({
+            id, owner_id: 1, category, ciphertext, nonce, key_version: keyVersion,
+            schema_version: schemaVersion, created_at: createdAt, updated_at: updatedAt,
+            expires_at: expiresAt
+          });
+          return { success: true, meta: { changes: 1 } };
+        } else if (sql.includes("UPDATE owner_memories SET category")) {
+          const [category, ciphertext, nonce, keyVersion, schemaVersion, updatedAt, expiresAt, id] = values;
+          const row = state.memories.find((item) => item.id === id && item.owner_id === 1);
+          if (!row) return { success: true, meta: { changes: 0 } };
+          Object.assign(row, {
+            category, ciphertext, nonce, key_version: keyVersion,
+            schema_version: schemaVersion, updated_at: updatedAt, expires_at: expiresAt
+          });
+          return { success: true, meta: { changes: 1 } };
+        } else if (sql.includes("DELETE FROM owner_memories")) {
+          const id = values[0];
+          const before = state.memories.length;
+          state.memories = state.memories.filter((row) => row.id !== id || row.owner_id !== 1);
+          return { success: true, meta: { changes: before - state.memories.length } };
+        }
         if (sql.includes("DELETE FROM auth_rate_limits")) {
           const cutoff = values[0];
           const before = state.rateLimits.length;
